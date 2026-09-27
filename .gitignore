@@ -1,0 +1,30 @@
+# Architecture and internal analysis notes (as requested)
+architecture.md
+ARCHITECTURE_IMPLEMENTATION_ANALYSIS.md
+
+# Compiled class files & build artifacts
+**/target/
+target/
+*.class
+
+# Log files
+*.log
+
+# IDE and Editor configs
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# Maven wrapper jar binary
+!**/src/main/**
+!**/src/test/**
