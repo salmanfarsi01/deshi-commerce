@@ -2,6 +2,7 @@ package com.example.SocialMedia.user.repository;
 
 import com.example.SocialMedia.user.model.Role;
 import com.example.SocialMedia.user.model.User;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
@@ -17,13 +18,16 @@ public class InMemoryUserRepository implements UserRepository {
     private final Map<String, User> userMap = new ConcurrentHashMap<>();
 
     public InMemoryUserRepository() {
-        // Seed initial admin and test customer
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        String hashedPassword = encoder.encode("Password123!");
+
+        // Seed initial admin and test customer with BCrypt hashed passwords
         User admin = new User(
                 "usr_admin_01",
                 "Rahim Chowdhury",
                 "01711111111",
                 "admin@store.com.bd",
-                "Password123!",
+                hashedPassword,
                 Role.ADMIN,
                 true,
                 Instant.now()
@@ -33,7 +37,7 @@ public class InMemoryUserRepository implements UserRepository {
                 "Karim Ahmed",
                 "01722222222",
                 "karim@example.com",
-                "Password123!",
+                hashedPassword,
                 Role.CUSTOMER,
                 true,
                 Instant.now()

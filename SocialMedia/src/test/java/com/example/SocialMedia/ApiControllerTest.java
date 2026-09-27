@@ -3,6 +3,8 @@ package com.example.SocialMedia;
 import com.example.SocialMedia.admin.controller.AdminDashboardController;
 import com.example.SocialMedia.admin.dto.DashboardSummaryResponse;
 import com.example.SocialMedia.auth.controller.AuthController;
+import com.example.SocialMedia.auth.dto.LoginRequest;
+import com.example.SocialMedia.auth.dto.RefreshTokenRequest;
 import com.example.SocialMedia.auth.dto.RegisterRequest;
 import com.example.SocialMedia.auth.dto.TokenResponse;
 import com.example.SocialMedia.cart.controller.CartController;
@@ -10,8 +12,10 @@ import com.example.SocialMedia.cart.dto.AddToCartRequest;
 import com.example.SocialMedia.cart.dto.CartResponse;
 import com.example.SocialMedia.category.controller.CategoryController;
 import com.example.SocialMedia.category.dto.CategoryResponse;
+import com.example.SocialMedia.common.exception.UnauthorizedException;
 import com.example.SocialMedia.common.response.ApiResponse;
 import com.example.SocialMedia.common.response.PagedResponse;
+import com.example.SocialMedia.common.security.jwt.JwtTokenProvider;
 import com.example.SocialMedia.order.controller.OrderController;
 import com.example.SocialMedia.order.dto.CreateOrderRequest;
 import com.example.SocialMedia.order.dto.OrderResponse;
@@ -22,6 +26,7 @@ import com.example.SocialMedia.payment.model.PaymentMethod;
 import com.example.SocialMedia.product.controller.ProductController;
 import com.example.SocialMedia.product.dto.ProductFilter;
 import com.example.SocialMedia.product.dto.ProductResponse;
+import com.example.SocialMedia.user.model.Role;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,6 +62,9 @@ public class ApiControllerTest {
     @Autowired
     private AdminDashboardController adminDashboardController;
 
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
     @Test
     @DisplayName("GET /api/v1/categories - Returns active categories")
     void testGetCategories() {
@@ -89,7 +97,7 @@ public class ApiControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/auth/register - Successfully registers user with normalized Bangladeshi phone")
+    @DisplayName("POST /api/v1/auth/register - Successfully registers user with normalized phone and BCrypt password")
     void testRegisterUser() {
         RegisterRequest request = new RegisterRequest(
                 "Tanvir Hasan",
@@ -106,6 +114,43 @@ public class ApiControllerTest {
         TokenResponse tokenData = response.getBody().getData();
         assertNotNull(tokenData.getAccessToken());
         assertEquals("01912345699", tokenData.getUser().getPhone());
+
+        // Verify that the generated token is a valid JWT
+        assertTrue(jwtTokenProvider.validateToken(tokenData.getAccessToken()));
+        assertEquals(Role.CUSTOMER, jwtTokenProvider.extractRole(tokenData.getAccessToken()));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/login - Authenticates with BCrypt password and issues HMAC-SHA256 JWT")
+    void testLoginWithBcryptAndJwt() {
+        LoginRequest loginRequest = new LoginRequest("01722222222", "Password123!");
+        ResponseEntity<ApiResponse<TokenResponse>> response = authController.login(loginRequest);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().isSuccess());
+
+        TokenResponse tokenData = response.getBody().getData();
+        assertNotNull(tokenData.getAccessToken());
+        assertNotNull(tokenData.getRefreshToken());
+
+        // Validate JWT signature and claims
+        assertTrue(jwtTokenProvider.validateToken(tokenData.getAccessToken()));
+        assertEquals("usr_customer_01", jwtTokenProvider.extractUserId(tokenData.getAccessToken()));
+        assertEquals(Role.CUSTOMER, jwtTokenProvider.extractRole(tokenData.getAccessToken()));
+
+        // Test refresh token rotation
+        RefreshTokenRequest refreshReq = new RefreshTokenRequest(tokenData.getRefreshToken());
+        ResponseEntity<ApiResponse<TokenResponse>> refreshResponse = authController.refresh(refreshReq);
+        assertEquals(HttpStatus.OK, refreshResponse.getStatusCode());
+        assertNotNull(refreshResponse.getBody().getData().getAccessToken());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/login - Rejects invalid password")
+    void testLoginInvalidPasswordFails() {
+        LoginRequest badLogin = new LoginRequest("01722222222", "WrongPassword!");
+        assertThrows(UnauthorizedException.class, () -> authController.login(badLogin));
     }
 
     @Test

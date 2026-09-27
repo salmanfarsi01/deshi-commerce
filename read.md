@@ -8,6 +8,7 @@ Welcome to the documentation for our e-commerce backend platform. This system is
 
 - **Language:** Java (JDK 27)
 - **Framework:** Spring Boot (Spring Web MVC)
+- **Security & Authentication:** Spring Security with BCrypt password hashing & HMAC-SHA256 Stateless JWT Filter
 - **Data Validation:** Jakarta Bean Validation (Hibernate Validator)
 - **Storage Layer (Agile Phase):** Thread-safe in-memory repositories with pre-loaded mock data (fully decoupling the API layer from the database so frontend development and testing can happen immediately)
 - **Build Tool:** Maven with Maven Wrapper (`mvnw`)

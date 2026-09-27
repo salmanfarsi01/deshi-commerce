@@ -5,11 +5,15 @@ import com.example.SocialMedia.common.exception.BadRequestException;
 import com.example.SocialMedia.common.exception.ConflictException;
 import com.example.SocialMedia.common.exception.ResourceNotFoundException;
 import com.example.SocialMedia.common.exception.UnauthorizedException;
+import com.example.SocialMedia.common.security.jwt.JwtTokenProvider;
 import com.example.SocialMedia.common.util.PhoneNormalizer;
 import com.example.SocialMedia.user.dto.UserProfileResponse;
 import com.example.SocialMedia.user.model.Role;
 import com.example.SocialMedia.user.model.User;
 import com.example.SocialMedia.user.repository.UserRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -21,19 +25,22 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtTokenProvider jwtTokenProvider;
 
-    // Active session tokens: token -> userId
-    private final Map<String, String> tokenSessions = new ConcurrentHashMap<>();
     // Refresh tokens: refreshToken -> userId
     private final Map<String, String> refreshTokens = new ConcurrentHashMap<>();
+    // Blacklisted / invalidated access tokens
+    private final Map<String, Boolean> tokenBlacklist = new ConcurrentHashMap<>();
     // Active OTP codes: phone -> otp
     private final Map<String, String> otpStore = new ConcurrentHashMap<>();
 
-    public AuthService(UserRepository userRepository) {
+    public AuthService(UserRepository userRepository,
+                       PasswordEncoder passwordEncoder,
+                       JwtTokenProvider jwtTokenProvider) {
         this.userRepository = userRepository;
-        // Pre-authenticate seed user for direct API testing
-        tokenSessions.put("mock-token-customer", "usr_customer_01");
-        tokenSessions.put("mock-token-admin", "usr_admin_01");
+        this.passwordEncoder = passwordEncoder;
+        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     public TokenResponse register(RegisterRequest request) {
@@ -50,12 +57,14 @@ public class AuthService {
         }
 
         String userId = "usr_" + UUID.randomUUID().toString().substring(0, 8);
+        String hashedPassword = passwordEncoder.encode(request.getPassword());
+
         User user = new User(
                 userId,
                 request.getName().trim(),
                 normalizedPhone,
                 request.getEmail() != null ? request.getEmail().trim().toLowerCase() : null,
-                request.getPassword(), // In production, BcryptPasswordEncoder
+                hashedPassword,
                 Role.CUSTOMER,
                 true,
                 Instant.now()
@@ -90,7 +99,8 @@ public class AuthService {
             throw new UnauthorizedException("Your account has been deactivated. Please contact support.");
         }
 
-        if (!user.getPassword().equals(request.getPassword())) {
+        // Verify password using BCrypt
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new UnauthorizedException("Invalid credentials. Please check your phone/email and password.");
         }
 
@@ -98,23 +108,24 @@ public class AuthService {
     }
 
     public TokenResponse refreshToken(RefreshTokenRequest request) {
-        String userId = refreshTokens.get(request.getRefreshToken());
-        if (userId == null) {
+        String refreshToken = request.getRefreshToken();
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
             throw new UnauthorizedException("Invalid or expired refresh token", "INVALID_REFRESH_TOKEN");
         }
 
+        String userId = jwtTokenProvider.extractUserId(refreshToken);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UnauthorizedException("User no longer exists"));
 
-        // Rotate tokens
-        refreshTokens.remove(request.getRefreshToken());
+        // Rotate refresh token
+        refreshTokens.remove(refreshToken);
         return generateTokens(user);
     }
 
     public void logout(String token) {
         if (token != null) {
             String cleanToken = token.replace("Bearer ", "").trim();
-            tokenSessions.remove(cleanToken);
+            tokenBlacklist.put(cleanToken, true);
         }
     }
 
@@ -140,36 +151,41 @@ public class AuthService {
         User user = userRepository.findByPhone(normalizedPhone)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        user.setPassword(request.getNewPassword());
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
         otpStore.remove(normalizedPhone);
     }
 
     public User getAuthenticatedUser(String authHeader) {
-        if (authHeader == null || authHeader.isBlank()) {
-            // Default to demo customer if no header provided during development
-            return userRepository.findById("usr_customer_01")
-                    .orElseThrow(() -> new UnauthorizedException("User not found"));
+        // 1. Try SecurityContextHolder principal (populated by JwtAuthenticationFilter)
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof User) {
+            return (User) authentication.getPrincipal();
         }
 
-        String token = authHeader.replace("Bearer ", "").trim();
-        String userId = tokenSessions.get(token);
-        if (userId == null) {
-            // If unknown token, fallback to demo customer for agile testing
-            return userRepository.findById("usr_customer_01").orElse(null);
+        // 2. Try parsing Bearer JWT from header directly
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7).trim();
+            if (jwtTokenProvider.validateToken(token)) {
+                String userId = jwtTokenProvider.extractUserId(token);
+                return userRepository.findById(userId)
+                        .orElseThrow(() -> new UnauthorizedException("User not found"));
+            }
         }
 
-        return userRepository.findById(userId)
+        // 3. Fallback to default demo customer if testing without security context
+        return userRepository.findById("usr_customer_01")
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
     }
 
     private TokenResponse generateTokens(User user) {
-        String accessToken = "jwt_acc_" + UUID.randomUUID();
-        String refreshToken = "jwt_ref_" + UUID.randomUUID();
+        String accessToken = jwtTokenProvider.generateAccessToken(user);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user);
 
-        tokenSessions.put(accessToken, user.getId());
         refreshTokens.put(refreshToken, user.getId());
 
-        return new TokenResponse(accessToken, refreshToken, UserProfileResponse.fromUser(user));
+        TokenResponse response = new TokenResponse(accessToken, refreshToken, UserProfileResponse.fromUser(user));
+        response.setExpiresIn(jwtTokenProvider.getExpirationSeconds());
+        return response;
     }
 }
