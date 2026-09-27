@@ -19,9 +19,11 @@ public class Product {
     private List<ProductImage> images = new ArrayList<>();
     private boolean available;
     private Double rating = 4.5;
+    private String tenantId;
     private Instant createdAt;
 
     public Product() {
+        this.tenantId = com.example.SocialMedia.common.security.tenant.TenantContext.getTenantId();
         this.createdAt = Instant.now();
     }
 
@@ -40,7 +42,16 @@ public class Product {
         this.images = images != null ? images : new ArrayList<>();
         this.available = available;
         this.rating = rating != null ? rating : 4.5;
+        this.tenantId = com.example.SocialMedia.common.security.tenant.TenantContext.getTenantId();
         this.createdAt = createdAt != null ? createdAt : Instant.now();
+    }
+
+    public String getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(String tenantId) {
+        this.tenantId = tenantId;
     }
 
     public String getId() {

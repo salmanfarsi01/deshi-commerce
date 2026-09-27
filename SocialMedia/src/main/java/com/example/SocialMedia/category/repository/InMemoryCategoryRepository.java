@@ -52,7 +52,10 @@ public class InMemoryCategoryRepository implements CategoryRepository {
 
     @Override
     public List<Category> findAll() {
-        return new ArrayList<>(categoryMap.values());
+        String currentTenant = com.example.SocialMedia.common.security.tenant.TenantContext.getTenantId();
+        return categoryMap.values().stream()
+                .filter(c -> c.getTenantId() == null || c.getTenantId().equalsIgnoreCase(currentTenant))
+                .collect(java.util.stream.Collectors.toList());
     }
 
     @Override

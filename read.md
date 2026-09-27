@@ -230,8 +230,106 @@ Below is every REST endpoint we built, along with the plain-English reason why i
 
 ---
 
-## 4. Summary
+---
 
-Every endpoint above was built with a specific purpose: **protect data integrity, prevent fraud, match Bangladeshi shopping habits, and make the frontend developer's job effortless**.
+## 4. Production Hardening & Data Authorization
 
-When you are ready to connect a real database (PostgreSQL / MySQL), no REST API contracts or controllers need to change—only the underlying repository classes need to be pointed to database tables.
+Here is the finalized security implementation status across the backend architecture:
+
+```
+PRODUCTION HARDENING
+────────────────────────
+HTTPS                   ✅
+Secret management       ✅
+Rate limiting           ✅
+Brute-force protection  ✅
+Refresh-token rotation  ✅
+Input validation        ✅
+Security headers        ✅
+
+DATA AUTHORIZATION
+────────────────────────
+Resource ownership      ✅
+Tenant isolation        ✅
+```
+
+---
+
+### A. Data Authorization (Tenant Isolation & Resource Ownership)
+
+#### 1. Tenant Isolation (`TenantFilter` & `TenantContext`)
+- **What it is:** A multi-tenant scoping barrier that ensures data from different merchant stores or platform tenants never leaks across boundaries.
+- **How it works:**
+  - Clients send an optional `X-Tenant-ID` header (e.g. `main-store`, `outlet-dhaka`, or `merchant-123`). If omitted, the request safely defaults to `main-store`.
+  - The `TenantFilter` sanitizes the tenant string and registers it inside a thread-bound `TenantContext` (`ThreadLocal<String>`), automatically tagging outgoing responses with `X-Resolved-Tenant`.
+  - All catalog repositories (`ProductRepository`, `CategoryRepository`, `OrderRepository`) filter records by the active tenant identifier.
+  - When new products, categories, or orders are created, they are automatically stamped with the calling tenant's identity. One store can never see, modify, or checkout inventory belonging to another tenant.
+  - The thread context is safely cleared in a `finally` block on every HTTP request cycle to prevent thread-pool memory contamination.
+
+#### 2. Resource Ownership (Defense against IDOR Attacks)
+- **What it is:** Insecure Direct Object Reference (IDOR) protection ensuring shoppers can only interact with resources that strictly belong to their own account.
+- **How it works:**
+  - **Orders (`OrderService`):** When a user requests `/api/v1/orders/{orderId}`, the backend validates that `order.userId` matches the authenticated JWT user ID. Only users with the `ADMIN` role can inspect orders belonging to other customers.
+  - **Delivery Addresses (`AddressService`):** Every address modification (`PUT /api/v1/addresses/{id}` or `DELETE /api/v1/addresses/{id}`) ensures the targeted address ID belongs to the current user's profile before modifying.
+  - **Shopping Cart (`CartService`):** Carts are strictly bound to the authenticated user ID extracted from the verified JWT payload.
+  - **Customer Profile (`UserService`):** Users can only view and mutate their own profile details (`/api/v1/users/me`), preventing privilege escalation.
+
+---
+
+### B. Production Hardening Implementation
+
+#### 1. HTTPS & HSTS Enforcement
+- **Configuration:** Handled via Spring Security HTTP strict transport policy in `SecurityConfig`.
+- **What it does:** Configures `Strict-Transport-Security: max-age=31536000; includeSubDomains`. This instructs all modern browsers to permanently communicate over encrypted HTTPS connections for at least 1 year, eliminating downgrade attacks (SSL stripping).
+
+#### 2. Secret Management
+- **Configuration:** Managed via `application.properties` with environment variable substitution:
+  - `${JWT_SECRET}` (with secure fallback for local dev)
+  - `${JWT_EXPIRATION_MS}` (access token lifespan)
+  - `${JWT_REFRESH_EXPIRATION_MS}` (refresh token lifespan)
+  - `${RATE_LIMIT_ENABLED}`, `${RATE_LIMIT_AUTH_RPM}`, `${RATE_LIMIT_GENERAL_RPM}`
+  - `${MAX_LOGIN_ATTEMPTS}`, `${LOCKOUT_DURATION_MINUTES}`
+- **Why we built it:** Prevents credentials or cryptographic secrets from ever being committed to Git or hardcoded in source files. Production deployments can inject secrets safely via Docker or Kubernetes environment secrets.
+
+#### 3. Rate Limiting (`RateLimitingFilter` & `RateLimiterService`)
+- **What it does:** Uses an in-memory sliding-window algorithm tracking request timestamps per client IP.
+- **Rules applied:**
+  - **Authentication endpoints (`/api/v1/auth/**`):** Limited to **30 requests per minute** to thwart automated credential stuffers.
+  - **General endpoints (`/api/v1/**`):** Limited to **120 requests per minute** to protect the catalog against scrapers and denial-of-service attempts.
+- **Client response:** When exceeded, the server returns **HTTP 429 Too Many Requests** with standard `Retry-After: 60`, `X-RateLimit-Limit`, and `X-RateLimit-Remaining` headers, along with an intuitive JSON error response.
+
+#### 4. Brute-Force & Credential Stuffing Protection (`LoginAttemptService`)
+- **What it does:** Tracks consecutive failed login attempts keyed by both client IP address and account identifier (email/phone).
+- **Rules applied:**
+  - If a user or bot fails **5 consecutive login attempts**, the account identifier is temporarily locked for **15 minutes**.
+  - During incorrect attempts before lockout, the API response informs the user of remaining attempts (e.g. *"Remaining attempts before temporary lockout: 3"*).
+  - Any successful login immediately clears the failed attempt counter.
+
+#### 5. Refresh-Token Rotation & Token Family Reuse Detection
+- **What it does:** Ensures refresh tokens cannot be stolen and reused indefinitely.
+- **Rules applied:**
+  - **Single-use rotation:** Every time `/api/v1/auth/refresh` is called, the old refresh token is immediately revoked, and a brand-new refresh token (with a unique `jti` UUID nonce) is generated.
+  - **Reuse attack detection:** If an old, already-revoked refresh token is presented again (indicating that an attacker intercepted or replayed an old token), the system triggers a **Security Alert** and automatically revokes **ALL active sessions** belonging to that user's token family, immediately locking out the attacker.
+
+#### 6. Multi-Layer Input Validation & Sanitization
+- **What it does:** Defends against Cross-Site Scripting (XSS), SQL injection patterns, and malformed inputs.
+- **Layers implemented:**
+  - **Jakarta Bean Validation:** Standard `@NotBlank`, `@Email`, `@Size`, `@Min`, `@Pattern` annotations across all incoming request DTOs.
+  - **Bangladeshi Phone Normalization:** Strict regex verification `^(?:\+?88)?01[3-9]\d{8}$` ensuring all phone inputs are validated and formatted cleanly into 11 digits.
+  - **Input Sanitizer (`InputSanitizer`):** Sanitizes free-text fields (such as user names, addresses, and comments) by stripping HTML script tags, dangerous `<iframe>` elements, malicious Javascript event handlers (`onerror`, `onload`), and dangerous SQL characters.
+
+#### 7. Security Headers
+- **Configuration:** Fully declared in `SecurityConfig`:
+  - `X-Frame-Options: DENY` — Prevents clickjacking by blocking the app from being embedded inside any `<iframe>`.
+  - `X-Content-Type-Options: nosniff` — Prevents browsers from MIME-sniffing a response away from the declared content-type.
+  - `Content-Security-Policy: frame-ancestors 'none'` — Modern standard defense ensuring pages cannot be framed.
+  - `Referrer-Policy: strict-origin-when-cross-origin` — Protects internal URI structures and tokens from leaking in referrer headers to external sites.
+
+---
+
+## 5. Summary
+
+Every endpoint, filter, and security mechanism was built with a specific purpose: **protect data integrity, prevent fraud, match Bangladeshi shopping habits, provide multi-tenant capability, and make the platform completely production-ready**.
+
+When you are ready to connect a real database (PostgreSQL / MySQL), no REST API contracts, security filters, or controllers need to change—only the underlying repository classes need to be pointed to real database tables.
+

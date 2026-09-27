@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Repository
 public class InMemoryProductRepository implements ProductRepository {
@@ -135,7 +136,10 @@ public class InMemoryProductRepository implements ProductRepository {
 
     @Override
     public List<Product> findAll() {
-        return new ArrayList<>(productMap.values());
+        String currentTenant = com.example.SocialMedia.common.security.tenant.TenantContext.getTenantId();
+        return productMap.values().stream()
+                .filter(p -> p.getTenantId() == null || p.getTenantId().equalsIgnoreCase(currentTenant))
+                .collect(Collectors.toList());
     }
 
     @Override

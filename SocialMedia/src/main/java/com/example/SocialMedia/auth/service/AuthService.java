@@ -27,23 +27,29 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final com.example.SocialMedia.common.security.bruteforce.LoginAttemptService loginAttemptService;
 
-    // Refresh tokens: refreshToken -> userId
+    // Active refresh tokens: refreshToken -> userId
     private final Map<String, String> refreshTokens = new ConcurrentHashMap<>();
-    // Blacklisted / invalidated access tokens
+    // Previously used/revoked refresh tokens: token -> userId (used for REUSE DETECTION)
+    private final Map<String, String> revokedTokens = new ConcurrentHashMap<>();
+    // Blacklisted access tokens
     private final Map<String, Boolean> tokenBlacklist = new ConcurrentHashMap<>();
     // Active OTP codes: phone -> otp
     private final Map<String, String> otpStore = new ConcurrentHashMap<>();
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
-                       JwtTokenProvider jwtTokenProvider) {
+                       JwtTokenProvider jwtTokenProvider,
+                       com.example.SocialMedia.common.security.bruteforce.LoginAttemptService loginAttemptService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.loginAttemptService = loginAttemptService;
     }
 
     public TokenResponse register(RegisterRequest request) {
+        String sanitizedName = com.example.SocialMedia.common.util.InputSanitizer.sanitize(request.getName());
         String normalizedPhone = PhoneNormalizer.normalize(request.getPhone());
 
         if (userRepository.existsByPhone(normalizedPhone)) {
@@ -61,7 +67,7 @@ public class AuthService {
 
         User user = new User(
                 userId,
-                request.getName().trim(),
+                sanitizedName,
                 normalizedPhone,
                 request.getEmail() != null ? request.getEmail().trim().toLowerCase() : null,
                 hashedPassword,
@@ -76,6 +82,12 @@ public class AuthService {
 
     public TokenResponse login(LoginRequest request) {
         String identifier = request.getIdentifier().trim();
+
+        // 1. Check Brute-Force lockout
+        if (loginAttemptService.isBlocked(identifier)) {
+            throw new BadRequestException("Account temporarily locked due to excessive failed login attempts. Please wait 15 minutes before trying again.", "ACCOUNT_LOCKED");
+        }
+
         User user = null;
 
         // Try as phone number if looks like digits
@@ -92,6 +104,7 @@ public class AuthService {
         }
 
         if (user == null) {
+            loginAttemptService.loginFailed(identifier);
             throw new UnauthorizedException("Invalid credentials. Please check your phone/email and password.");
         }
 
@@ -101,14 +114,28 @@ public class AuthService {
 
         // Verify password using BCrypt
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new UnauthorizedException("Invalid credentials. Please check your phone/email and password.");
+            loginAttemptService.loginFailed(identifier);
+            int remaining = loginAttemptService.getRemainingAttempts(identifier);
+            throw new UnauthorizedException("Invalid credentials. Remaining attempts before temporary lockout: " + remaining);
         }
+
+        // Reset failed login attempts on successful authentication
+        loginAttemptService.loginSucceeded(identifier);
 
         return generateTokens(user);
     }
 
     public TokenResponse refreshToken(RefreshTokenRequest request) {
         String refreshToken = request.getRefreshToken();
+
+        // 1. REUSE DETECTION: Check if this token was already rotated/revoked
+        if (revokedTokens.containsKey(refreshToken)) {
+            String compromisedUserId = revokedTokens.get(refreshToken);
+            // Revoke ALL active sessions for this user family to protect account!
+            refreshTokens.values().removeIf(userId -> userId.equals(compromisedUserId));
+            throw new UnauthorizedException("Security Alert: Refresh token reuse detected! All active sessions have been revoked for your security. Please log in again.", "TOKEN_REUSE_DETECTED");
+        }
+
         if (!jwtTokenProvider.validateToken(refreshToken)) {
             throw new UnauthorizedException("Invalid or expired refresh token", "INVALID_REFRESH_TOKEN");
         }
@@ -117,8 +144,10 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UnauthorizedException("User no longer exists"));
 
-        // Rotate refresh token
+        // 2. Rotate token: invalidate old refresh token and mark it revoked
         refreshTokens.remove(refreshToken);
+        revokedTokens.put(refreshToken, userId);
+
         return generateTokens(user);
     }
 

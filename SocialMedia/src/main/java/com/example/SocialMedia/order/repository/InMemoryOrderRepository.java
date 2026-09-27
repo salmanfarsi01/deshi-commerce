@@ -36,29 +36,38 @@ public class InMemoryOrderRepository implements OrderRepository {
 
     @Override
     public List<Order> findByUserId(String userId) {
+        String currentTenant = com.example.SocialMedia.common.security.tenant.TenantContext.getTenantId();
         return orderMap.values().stream()
                 .filter(o -> userId.equals(o.getUserId()))
+                .filter(o -> o.getTenantId() == null || o.getTenantId().equalsIgnoreCase(currentTenant))
                 .sorted((o1, o2) -> o2.getCreatedAt().compareTo(o1.getCreatedAt()))
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<Order> findAll() {
+        String currentTenant = com.example.SocialMedia.common.security.tenant.TenantContext.getTenantId();
         return orderMap.values().stream()
+                .filter(o -> o.getTenantId() == null || o.getTenantId().equalsIgnoreCase(currentTenant))
                 .sorted((o1, o2) -> o2.getCreatedAt().compareTo(o1.getCreatedAt()))
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<Order> findByStatus(OrderStatus status) {
+        String currentTenant = com.example.SocialMedia.common.security.tenant.TenantContext.getTenantId();
         return orderMap.values().stream()
                 .filter(o -> status == o.getStatus())
+                .filter(o -> o.getTenantId() == null || o.getTenantId().equalsIgnoreCase(currentTenant))
                 .sorted((o1, o2) -> o2.getCreatedAt().compareTo(o1.getCreatedAt()))
                 .collect(Collectors.toList());
     }
 
     @Override
     public long count() {
-        return orderMap.size();
+        String currentTenant = com.example.SocialMedia.common.security.tenant.TenantContext.getTenantId();
+        return orderMap.values().stream()
+                .filter(o -> o.getTenantId() == null || o.getTenantId().equalsIgnoreCase(currentTenant))
+                .count();
     }
 }

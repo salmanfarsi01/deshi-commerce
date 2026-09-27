@@ -48,12 +48,14 @@ public class JwtTokenProvider {
     private String buildToken(String userId, String role, String phone, long durationMs) {
         long now = Instant.now().getEpochSecond();
         long exp = now + (durationMs / 1000);
+        String jti = java.util.UUID.randomUUID().toString();
 
         String payloadJson = String.format(
-                "{\"sub\":\"%s\",\"role\":\"%s\",\"phone\":\"%s\",\"iat\":%d,\"exp\":%d}",
+                "{\"sub\":\"%s\",\"role\":\"%s\",\"phone\":\"%s\",\"jti\":\"%s\",\"iat\":%d,\"exp\":%d}",
                 escapeJson(userId),
                 escapeJson(role),
                 escapeJson(phone != null ? phone : ""),
+                jti,
                 now,
                 exp
         );

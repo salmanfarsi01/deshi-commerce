@@ -7,8 +7,10 @@ public class Category {
     private String slug;
     private String description;
     private boolean active;
+    private String tenantId;
 
     public Category() {
+        this.tenantId = com.example.SocialMedia.common.security.tenant.TenantContext.getTenantId();
     }
 
     public Category(String id, String name, String slug, String description, boolean active) {
@@ -17,6 +19,15 @@ public class Category {
         this.slug = slug;
         this.description = description;
         this.active = active;
+        this.tenantId = com.example.SocialMedia.common.security.tenant.TenantContext.getTenantId();
+    }
+
+    public String getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(String tenantId) {
+        this.tenantId = tenantId;
     }
 
     public String getId() {

@@ -25,10 +25,12 @@ public class Order {
     private PaymentStatus paymentStatus;
     private OrderStatus status;
     private String notes;
+    private String tenantId;
     private Instant createdAt;
     private Instant updatedAt;
 
     public Order() {
+        this.tenantId = com.example.SocialMedia.common.security.tenant.TenantContext.getTenantId();
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
     }
@@ -52,8 +54,17 @@ public class Order {
         this.paymentStatus = paymentStatus;
         this.status = status;
         this.notes = notes;
+        this.tenantId = com.example.SocialMedia.common.security.tenant.TenantContext.getTenantId();
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
+    }
+
+    public String getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(String tenantId) {
+        this.tenantId = tenantId;
     }
 
     public String getId() {
