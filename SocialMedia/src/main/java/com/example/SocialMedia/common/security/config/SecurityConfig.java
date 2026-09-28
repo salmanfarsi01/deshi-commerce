@@ -57,7 +57,7 @@ public class SecurityConfig {
                                 .maxAgeInSeconds(31536000)
                         )
                         .contentSecurityPolicy(csp -> csp
-                                .policyDirectives("default-src 'self'; frame-ancestors 'none'; object-src 'none';")
+                                .policyDirectives("default-src 'self' 'unsafe-inline' 'unsafe-eval' data:; frame-ancestors 'none'; object-src 'none';")
                         )
                         .referrerPolicy(ref -> ref
                                 .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)
@@ -68,6 +68,15 @@ public class SecurityConfig {
                         .accessDeniedHandler(customAccessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        // Public Swagger & OpenAPI Documentation
+                        .requestMatchers(
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/swagger-resources/**",
+                                "/webjars/**"
+                        ).permitAll()
                         // Public Auth APIs
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         // Public Catalog Browsing

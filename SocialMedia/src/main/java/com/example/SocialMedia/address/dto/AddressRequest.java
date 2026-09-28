@@ -1,13 +1,16 @@
 package com.example.SocialMedia.address.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.NotBlank;
 
 public class AddressRequest {
 
     @NotBlank(message = "Recipient name is required")
+    @JsonAlias({"recipientName", "fullName"})
     private String name;
 
     @NotBlank(message = "Recipient contact phone is required")
+    @JsonAlias({"contactPhone", "mobile"})
     private String phone;
 
     @NotBlank(message = "Division is required (e.g. Dhaka, Chittagong, Sylhet)")
@@ -22,6 +25,7 @@ public class AddressRequest {
     private String area;
 
     @NotBlank(message = "Detailed address line is required (e.g. House 12, Road 5)")
+    @JsonAlias({"detailedAddress", "streetAddress", "street"})
     private String addressLine;
 
     private String postalCode;
@@ -37,6 +41,14 @@ public class AddressRequest {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public void setRecipientName(String recipientName) {
+        this.name = recipientName;
+    }
+
+    public void setDetailedAddress(String detailedAddress) {
+        this.addressLine = detailedAddress;
     }
 
     public String getPhone() {

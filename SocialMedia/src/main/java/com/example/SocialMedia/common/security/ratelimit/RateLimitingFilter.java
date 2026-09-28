@@ -27,6 +27,12 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         String clientIp = getClientIp(request);
         String uri = request.getRequestURI();
 
+        // Bypass Swagger UI & OpenAPI documentation from rate limiting
+        if (uri.startsWith("/swagger-ui") || uri.startsWith("/v3/api-docs") || uri.startsWith("/webjars")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         if (!rateLimiterService.isAllowed(clientIp, uri)) {
             response.setStatus(429); // 429 Too Many Requests
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);

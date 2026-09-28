@@ -1,6 +1,7 @@
 package com.example.SocialMedia.order.dto;
 
 import com.example.SocialMedia.payment.model.PaymentMethod;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -12,6 +13,7 @@ public class CreateOrderRequest {
     @NotNull(message = "Payment method is required (e.g. COD, BKASH, NAGAD, SSLCOMMERZ)")
     private PaymentMethod paymentMethod;
 
+    @JsonAlias({"customerNote", "customerNotes", "note"})
     private String notes;
 
     public CreateOrderRequest() {
@@ -45,5 +47,13 @@ public class CreateOrderRequest {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+
+    public void setCustomerNote(String customerNote) {
+        this.notes = customerNote;
+    }
+
+    public void setCustomerNotes(String customerNotes) {
+        this.notes = customerNotes;
     }
 }
