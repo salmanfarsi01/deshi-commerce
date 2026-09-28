@@ -25,6 +25,10 @@ public class Order {
     private PaymentStatus paymentStatus;
     private OrderStatus status;
     private String notes;
+    private String courierName;
+    private String trackingNumber;
+    private String trackingUrl;
+    private String estimatedDeliveryDate;
     private String tenantId;
     private Instant createdAt;
     private Instant updatedAt;
@@ -178,6 +182,38 @@ public class Order {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+
+    public String getCourierName() {
+        return courierName;
+    }
+
+    public void setCourierName(String courierName) {
+        this.courierName = courierName;
+    }
+
+    public String getTrackingNumber() {
+        return trackingNumber;
+    }
+
+    public void setTrackingNumber(String trackingNumber) {
+        this.trackingNumber = trackingNumber;
+    }
+
+    public String getTrackingUrl() {
+        return trackingUrl;
+    }
+
+    public void setTrackingUrl(String trackingUrl) {
+        this.trackingUrl = trackingUrl;
+    }
+
+    public String getEstimatedDeliveryDate() {
+        return estimatedDeliveryDate;
+    }
+
+    public void setEstimatedDeliveryDate(String estimatedDeliveryDate) {
+        this.estimatedDeliveryDate = estimatedDeliveryDate;
     }
 
     public Instant getCreatedAt() {

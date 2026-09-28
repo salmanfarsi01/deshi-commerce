@@ -29,6 +29,10 @@ public class OrderResponse {
     private PaymentStatus paymentStatus;
     private OrderStatus status;
     private String notes;
+    private String courierName;
+    private String trackingNumber;
+    private String trackingUrl;
+    private String estimatedDeliveryDate;
     private PaymentResponse payment;
     private Instant createdAt;
     private Instant updatedAt;
@@ -53,6 +57,10 @@ public class OrderResponse {
         dto.setPaymentStatus(order.getPaymentStatus());
         dto.setStatus(order.getStatus());
         dto.setNotes(order.getNotes());
+        dto.setCourierName(order.getCourierName());
+        dto.setTrackingNumber(order.getTrackingNumber());
+        dto.setTrackingUrl(order.getTrackingUrl());
+        dto.setEstimatedDeliveryDate(order.getEstimatedDeliveryDate());
         dto.setCreatedAt(order.getCreatedAt());
         dto.setUpdatedAt(order.getUpdatedAt());
         dto.setPayment(payment);
@@ -204,5 +212,37 @@ public class OrderResponse {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getCourierName() {
+        return courierName;
+    }
+
+    public void setCourierName(String courierName) {
+        this.courierName = courierName;
+    }
+
+    public String getTrackingNumber() {
+        return trackingNumber;
+    }
+
+    public void setTrackingNumber(String trackingNumber) {
+        this.trackingNumber = trackingNumber;
+    }
+
+    public String getTrackingUrl() {
+        return trackingUrl;
+    }
+
+    public void setTrackingUrl(String trackingUrl) {
+        this.trackingUrl = trackingUrl;
+    }
+
+    public String getEstimatedDeliveryDate() {
+        return estimatedDeliveryDate;
+    }
+
+    public void setEstimatedDeliveryDate(String estimatedDeliveryDate) {
+        this.estimatedDeliveryDate = estimatedDeliveryDate;
     }
 }

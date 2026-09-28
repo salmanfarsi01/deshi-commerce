@@ -20,5 +20,7 @@ public interface OrderRepository {
 
     List<Order> findByStatus(OrderStatus status);
 
+    List<Order> findWithFilter(OrderStatus status, String userId, String search);
+
     long count();
 }

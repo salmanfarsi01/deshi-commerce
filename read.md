@@ -181,50 +181,73 @@ Below is every REST endpoint we built, along with the plain-English reason why i
 ### G. Orders & Checkout APIs (`/api/v1/orders` & `/api/v1/admin/orders`)
 
 #### 25. `POST /api/v1/orders`
-- **What it does:** Converts the shopping cart into a real order. It checks stock, calculates the final BDT total and delivery charge (BDT 60, or free if over BDT 5,000), decrements inventory, creates a payment intent, and empties the cart.
-- **Why we built it:** This is the most critical transaction in the system. Everything happens in one coordinated flow to prevent overselling items.
+- **What it does:** Converts the shopping cart into a real order. It checks live stock, decrements inventory, creates a payment intent, and empties the cart.
+- **Dynamic Delivery Fee Calculation (Inside vs Outside Dhaka):**
+  - **Inside Dhaka:** **60 BDT** (applied when the shipping address district is Dhaka).
+  - **Outside Dhaka:** **120 BDT** (applied for all other districts across Bangladesh, e.g., Chittagong, Sylhet, Rajshahi, Khulna).
+  - **Free Shipping Threshold:** Orders of **5,000 BDT or more** qualify for **FREE Delivery (0 BDT)** anywhere in Bangladesh!
+- **Why we built it:** Protects against incorrect delivery rates and standardizes courier fees matching Bangladeshi courier realities (Steadfast, Pathao, RedX).
 
 #### 26. `GET /api/v1/orders` & `GET /api/v1/orders/{orderId}`
-- **What it does:** Shows the customer their order history and order tracking status.
-- **Why we built it:** Customers want to track their packages and review past purchases.
+- **What it does:** Shows the customer their order history, courier assignment (`Steadfast`, `Pathao`), tracking code, and live tracking link.
+- **Why we built it:** Gives customers peace of mind by allowing them to track parcels directly on courier websites.
 
 #### 27. `POST /api/v1/orders/{orderId}/cancel`
 - **What it does:** Lets the customer cancel a pending order.
-- **Why we built it:** If a customer changes their mind before the parcel is shipped, they can cancel it immediately. When cancelled, the reserved stock is automatically returned to the warehouse inventory.
+- **Why we built it:** If cancelled, reserved stock automatically returns to store inventory.
 
 #### 28. `GET /api/v1/admin/orders`
-- **What it does:** Lets store managers see all customer orders across the platform, with a filter for order status (`PENDING`, `PROCESSING`, `SHIPPED`, etc.).
-- **Why we built it:** Order fulfillment teams need a live queue to see which orders need to be packed and shipped next.
+- **What it does:** Lets store managers see and search customer orders across the platform.
+- **Search & Filters:**
+  - `status`: filter by `PENDING`, `CONFIRMED`, `PROCESSING`, `SHIPPED`, `DELIVERED`, `CANCELLED`
+  - `userId`: track all orders belonging to one specific customer
+  - `search`: search by order number (e.g. `BD-73029654`) or customer phone/name/district.
+- **Why we built it:** Order fulfillment teams need flexible lookup tools to process orders swiftly.
 
-#### 29. `PATCH /api/v1/admin/orders/{orderId}/status`
+#### 29. `GET /api/v1/admin/orders/customer/{userId}`
+- **What it does:** Returns an in-depth customer order tracking profile: total lifetime orders, total amount spent in BDT, count of pending vs delivered orders, and complete order history.
+- **Why we built it:** Store owners can instantly identify VIP repeat customers and track high-value shopping patterns.
+
+#### 30. `PATCH /api/v1/admin/orders/{orderId}/status`
 - **What it does:** Moves an order forward along the pipeline (`CONFIRMED` ➔ `PROCESSING` ➔ `SHIPPED` ➔ `DELIVERED`).
-- **Why we built it:** Regulates order dispatch. We built an internal state machine so an admin cannot accidentally mark a delivered order as "Pending", avoiding chaos in bookkeeping.
+- **Why we built it:** Regulates order dispatch with state transition validation.
+
+#### 31. `PATCH /api/v1/admin/orders/{orderId}/tracking`
+- **What it does:** Assigns courier partner details: Courier Name (`Steadfast`, `Pathao`, `RedX`), Consignment/Tracking ID, Tracking URL, and Estimated Delivery Date. Automatically marks the order as `SHIPPED`.
+- **Why we built it:** Bridges the gap between warehouse dispatch and customer courier tracking.
 
 ---
 
 ### H. Payment Gateway APIs (`/api/v1/payments`)
 
-#### 30. `GET /api/v1/payments/methods`
+#### 32. `GET /api/v1/payments/methods`
 - **What it does:** Returns the list of enabled payment channels: **Cash on Delivery (COD)**, **bKash**, **Nagad**, and **SSLCommerz**.
-- **Why we built it:** The checkout screen dynamically renders only the payment options that are currently operational.
+- **Why we built it:** The checkout screen dynamically renders available payment options.
 
-#### 31. `POST /api/v1/payments/verify`
-- **What it does:** Verifies payment transaction codes returned by gateways like bKash or SSLCommerz webhooks.
-- **Why we built it:** Guarantees that online payments are authenticated and legitimate before warehouse staff ship expensive items.
+#### 33. `POST /api/v1/payments/sslcommerz/init/{orderId}`
+- **What it does:** Initializes an SSLCommerz unified gateway session for an order, returning a secure `gatewayPageURL` (supporting Visa, Mastercard, AMEX, and Bangladeshi Internet Banking/MFS).
+- **Why we built it:** Standard online card checkout for Bangladesh.
 
-#### 32. `GET /api/v1/payments/order/{orderId}`
-- **What it does:** Checks the payment status of any order.
-- **Why we built it:** Useful for the frontend to poll payment confirmation screens after redirecting back from bKash or Nagad.
+#### 34. `POST /api/v1/payments/sslcommerz/success`, `/fail`, `/cancel`, `/ipn`
+- **What it does:** Automated webhooks called by SSLCommerz. On success, it validates the transaction (`val_id`), updates the payment record to `SUCCESS`, and marks the order as `CONFIRMED` and `PAID`.
+- **Why we built it:** Fully automated online payment confirmation without manual human intervention.
+
+#### 35. `POST /api/v1/payments/sslcommerz/simulate-success/{orderId}`
+- **What it does:** 1-click sandbox payment simulator. Instantly simulates a successful SSLCommerz transaction without having to leave Swagger or enter test credit cards on external gateways.
+- **Why we built it:** Supercharges frontend development and manual QA testing.
+
+#### 36. `POST /api/v1/payments/verify` & `GET /api/v1/payments/order/{orderId}`
+- **What it does:** Verifies manual transaction codes and queries payment status for any order.
 
 ---
 
 ### I. Admin Dashboard APIs (`/api/v1/admin`)
 
-#### 33. `GET /api/v1/admin/dashboard/summary`
+#### 37. `GET /api/v1/admin/dashboard/summary`
 - **What it does:** Calculates live business numbers: Total Revenue (in BDT), Total Orders, Pending Orders, Total Customers, and Low-Stock Alert Counts (items with < 15 units left).
-- **Why we built it:** Gives business owners an instant snapshot of their store health every morning without needing to run manual database reports.
+- **Why we built it:** Gives business owners an instant snapshot of their store health every morning.
 
-#### 34. `GET /api/v1/admin/users` & `PATCH /api/v1/admin/users/{userId}/status`
+#### 38. `GET /api/v1/admin/users` & `PATCH /api/v1/admin/users/{userId}/status`
 - **What it does:** Lists all registered users and lets administrators deactivate fraudulent accounts.
 - **Why we built it:** Essential for trust and safety to prevent abusive fake orders.
 

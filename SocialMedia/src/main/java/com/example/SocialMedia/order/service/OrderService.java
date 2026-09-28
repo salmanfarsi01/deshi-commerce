@@ -23,6 +23,9 @@ import com.example.SocialMedia.product.model.Product;
 import com.example.SocialMedia.product.service.ProductService;
 import com.example.SocialMedia.user.model.Role;
 import com.example.SocialMedia.user.model.User;
+import com.example.SocialMedia.common.service.DeliveryService;
+import com.example.SocialMedia.admin.dto.CustomerOrderTrackingSummary;
+import com.example.SocialMedia.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -41,19 +44,25 @@ public class OrderService {
     private final ProductService productService;
     private final PaymentService paymentService;
     private final AuthService authService;
+    private final DeliveryService deliveryService;
+    private final UserRepository userRepository;
 
     public OrderService(OrderRepository orderRepository,
                         CartService cartService,
                         AddressService addressService,
                         ProductService productService,
                         PaymentService paymentService,
-                        AuthService authService) {
+                        AuthService authService,
+                        DeliveryService deliveryService,
+                        UserRepository userRepository) {
         this.orderRepository = orderRepository;
         this.cartService = cartService;
         this.addressService = addressService;
         this.productService = productService;
         this.paymentService = paymentService;
         this.authService = authService;
+        this.deliveryService = deliveryService;
+        this.userRepository = userRepository;
     }
 
     public OrderResponse createOrder(String authHeader, CreateOrderRequest request) {
@@ -86,8 +95,12 @@ public class OrderService {
             calculatedSubtotal = calculatedSubtotal.add(orderItem.getSubtotal());
         }
 
-        // 4. Calculate Delivery Charge (Inside Dhaka standard 60 BDT, free over 5000 BDT)
-        BigDecimal deliveryCharge = calculatedSubtotal.compareTo(BigDecimal.valueOf(5000)) >= 0 ? BigDecimal.ZERO : BigDecimal.valueOf(60);
+        // 4. Calculate Delivery Charge (Inside Dhaka vs Outside Dhaka, free over threshold)
+        BigDecimal deliveryCharge = deliveryService.calculateDeliveryCharge(
+                calculatedSubtotal,
+                address.getDistrict(),
+                address.getDivision()
+        );
         BigDecimal discount = BigDecimal.ZERO;
         BigDecimal total = calculatedSubtotal.add(deliveryCharge).subtract(discount);
 
@@ -186,13 +199,102 @@ public class OrderService {
     }
 
     public List<OrderResponse> getAllOrdersAdmin(OrderStatus status) {
-        List<Order> orders = (status != null)
-                ? orderRepository.findByStatus(status)
-                : orderRepository.findAll();
+        return getAllOrdersAdmin(status, null, null);
+    }
+
+    public List<OrderResponse> getAllOrdersAdmin(OrderStatus status, String userId, String search) {
+        List<Order> orders = orderRepository.findWithFilter(status, userId, search);
 
         return orders.stream()
                 .map(this::toOrderResponse)
                 .collect(Collectors.toList());
+    }
+
+    public CustomerOrderTrackingSummary getCustomerOrderSummaryAdmin(String customerUserId) {
+        User customer = userRepository.findById(customerUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer", "id", customerUserId));
+
+        List<Order> customerOrders = orderRepository.findByUserId(customerUserId);
+        List<OrderResponse> responseList = customerOrders.stream()
+                .map(this::toOrderResponse)
+                .collect(Collectors.toList());
+
+        BigDecimal totalSpent = customerOrders.stream()
+                .filter(o -> o.getStatus() != OrderStatus.CANCELLED && o.getStatus() != OrderStatus.FAILED)
+                .map(Order::getTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        int pendingCount = (int) customerOrders.stream()
+                .filter(o -> o.getStatus() == OrderStatus.PENDING || o.getStatus() == OrderStatus.PROCESSING || o.getStatus() == OrderStatus.CONFIRMED)
+                .count();
+
+        int deliveredCount = (int) customerOrders.stream()
+                .filter(o -> o.getStatus() == OrderStatus.DELIVERED)
+                .count();
+
+        return new CustomerOrderTrackingSummary(
+                customer.getId(),
+                customer.getName(),
+                customer.getPhone(),
+                customer.getEmail(),
+                customerOrders.size(),
+                totalSpent,
+                pendingCount,
+                deliveredCount,
+                responseList
+        );
+    }
+
+    public OrderResponse updateOrderTrackingAdmin(String orderId, OrderTrackingUpdateRequest request) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order", "id", orderId));
+
+        order.setCourierName(request.getCourierName());
+        order.setTrackingNumber(request.getTrackingNumber());
+        if (request.getTrackingUrl() != null && !request.getTrackingUrl().isBlank()) {
+            order.setTrackingUrl(request.getTrackingUrl());
+        } else {
+            // Auto generate standard tracking url if Steadfast / Pathao
+            if ("steadfast".equalsIgnoreCase(request.getCourierName())) {
+                order.setTrackingUrl("https://steadfast.com.bd/tracking/" + request.getTrackingNumber());
+            } else if ("pathao".equalsIgnoreCase(request.getCourierName())) {
+                order.setTrackingUrl("https://merchant.pathao.com/tracking?consignment_id=" + request.getTrackingNumber());
+            }
+        }
+        order.setEstimatedDeliveryDate(request.getEstimatedDeliveryDate());
+
+        // Update status to SHIPPED if currently in CONFIRMED or PROCESSING
+        if (request.getStatus() != null) {
+            order.setStatus(request.getStatus());
+        } else if (order.getStatus() == OrderStatus.CONFIRMED || order.getStatus() == OrderStatus.PROCESSING) {
+            order.setStatus(OrderStatus.SHIPPED);
+        }
+
+        if (request.getNote() != null && !request.getNote().isBlank()) {
+            order.setNotes((order.getNotes() != null ? order.getNotes() + " | " : "") + request.getNote());
+        }
+
+        order.setUpdatedAt(Instant.now());
+        orderRepository.save(order);
+
+        return toOrderResponse(order);
+    }
+
+    public OrderResponse confirmOrderPayment(String orderId, String transactionId, PaymentStatus status) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order", "id", orderId));
+
+        order.setPaymentStatus(status);
+        if (status == PaymentStatus.SUCCESS) {
+            order.setStatus(OrderStatus.CONFIRMED);
+            order.setNotes((order.getNotes() != null ? order.getNotes() + " | " : "") + "Paid via SSLCommerz: " + transactionId);
+        } else if (status == PaymentStatus.FAILED) {
+            order.setNotes((order.getNotes() != null ? order.getNotes() + " | " : "") + "SSLCommerz Payment Failed: " + transactionId);
+        }
+        order.setUpdatedAt(Instant.now());
+        orderRepository.save(order);
+
+        return toOrderResponse(order);
     }
 
     public OrderResponse updateOrderStatusAdmin(String orderId, OrderStatusUpdateRequest request) {

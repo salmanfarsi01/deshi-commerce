@@ -27,8 +27,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         String clientIp = getClientIp(request);
         String uri = request.getRequestURI();
 
-        // Bypass Swagger UI & OpenAPI documentation from rate limiting
-        if (uri.startsWith("/swagger-ui") || uri.startsWith("/v3/api-docs") || uri.startsWith("/webjars")) {
+        // Bypass Swagger UI & OpenAPI documentation and payment webhooks from rate limiting
+        if (uri.startsWith("/swagger-ui") || uri.startsWith("/v3/api-docs") || uri.startsWith("/webjars")
+                || uri.startsWith("/api/v1/payments/sslcommerz")) {
             filterChain.doFilter(request, response);
             return;
         }

@@ -85,6 +85,7 @@ public class SecurityConfig {
                         // Public Payment Methods & Webhooks
                         .requestMatchers(HttpMethod.GET, "/api/v1/payments/methods").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/payments/verify").permitAll()
+                        .requestMatchers("/api/v1/payments/sslcommerz/**").permitAll()
                         // Admin Endpoints require ROLE_ADMIN
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         // Customer Endpoints require Authentication
