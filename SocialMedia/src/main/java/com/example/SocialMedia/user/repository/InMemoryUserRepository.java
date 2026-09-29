@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Repository
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "app.database.in-memory", havingValue = "true")
 public class InMemoryUserRepository implements UserRepository {
 
     private final Map<String, User> userMap = new ConcurrentHashMap<>();

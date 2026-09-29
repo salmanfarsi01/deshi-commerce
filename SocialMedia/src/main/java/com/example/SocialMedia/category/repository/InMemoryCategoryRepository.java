@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Repository
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "app.database.in-memory", havingValue = "true")
 public class InMemoryCategoryRepository implements CategoryRepository {
 
     private final Map<String, Category> categoryMap = new ConcurrentHashMap<>();

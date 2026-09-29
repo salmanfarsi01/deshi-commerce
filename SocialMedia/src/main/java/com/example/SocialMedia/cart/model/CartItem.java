@@ -1,14 +1,32 @@
 package com.example.SocialMedia.cart.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.math.BigDecimal;
 
+@Entity
+@Table(name = "cart_items")
 public class CartItem {
 
+    @Id
+    @Column(name = "cart_item_id", length = 64)
     private String cartItemId;
+
+    @Column(name = "product_id", length = 64)
     private String productId;
+
+    @Column(name = "product_name", length = 255)
     private String productName;
+
+    @Column(name = "unit_price", precision = 12, scale = 2)
     private BigDecimal unitPrice;
+
+    @Column(name = "quantity")
     private int quantity;
+
+    @Column(name = "subtotal", precision = 12, scale = 2)
     private BigDecimal subtotal;
 
     public CartItem() {

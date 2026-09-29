@@ -1,17 +1,46 @@
 package com.example.SocialMedia.address.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "addresses")
 public class Address {
 
+    @Id
+    @Column(name = "id", length = 64)
     private String id;
+
+    @Column(name = "user_id", nullable = false, length = 64)
     private String userId;
+
+    @Column(name = "name", length = 150)
     private String name;
+
+    @Column(name = "phone", length = 30)
     private String phone;
+
+    @Column(name = "division", length = 50)
     private String division;
+
+    @Column(name = "district", length = 50)
     private String district;
+
+    @Column(name = "upazila", length = 50)
     private String upazila;
+
+    @Column(name = "area", length = 100)
     private String area;
+
+    @Column(name = "address_line", columnDefinition = "TEXT")
     private String addressLine;
+
+    @Column(name = "postal_code", length = 20)
     private String postalCode;
+
+    @Column(name = "is_default")
     private boolean isDefault;
 
     public Address() {

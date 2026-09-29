@@ -1,19 +1,50 @@
 package com.example.SocialMedia.payment.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 
+@Entity
+@Table(name = "payment_records")
 public class PaymentRecord {
 
+    @Id
+    @Column(name = "id", length = 64)
     private String id;
+
+    @Column(name = "order_id", length = 64)
     private String orderId;
+
+    @Column(name = "user_id", length = 64)
     private String userId;
+
+    @Column(name = "amount", precision = 12, scale = 2)
     private BigDecimal amount;
+
+    @Column(name = "currency", length = 10)
     private String currency = "BDT";
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "method", length = 30)
     private PaymentMethod method;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 30)
     private PaymentStatus status;
+
+    @Column(name = "transaction_id", length = 100)
     private String transactionId;
+
+    @Column(name = "gateway_payment_url", columnDefinition = "TEXT")
     private String gatewayPaymentUrl;
+
+    @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
     public PaymentRecord() {

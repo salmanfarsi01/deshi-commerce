@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Repository
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "app.database.in-memory", havingValue = "true")
 public class InMemoryAddressRepository implements AddressRepository {
 
     private final Map<String, Address> addressMap = new ConcurrentHashMap<>();

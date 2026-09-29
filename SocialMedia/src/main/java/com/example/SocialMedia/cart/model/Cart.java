@@ -1,17 +1,42 @@
 package com.example.SocialMedia.cart.model;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+@Entity
+@Table(name = "carts")
 public class Cart {
 
+    @Id
+    @Column(name = "user_id", length = 64)
     private String userId;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "cart_user_id")
     private List<CartItem> items = new ArrayList<>();
+
+    @Column(precision = 12, scale = 2)
     private BigDecimal subtotal = BigDecimal.ZERO;
-    private BigDecimal deliveryCharge = BigDecimal.valueOf(60); // Default BDT 60 standard inside Dhaka
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal deliveryCharge = BigDecimal.valueOf(60);
+
+    @Column(precision = 12, scale = 2)
     private BigDecimal discount = BigDecimal.ZERO;
+
+    @Column(precision = 12, scale = 2)
     private BigDecimal total = BigDecimal.ZERO;
+
+    @Column(length = 10)
     private String currency = "BDT";
 
     public Cart() {
@@ -23,6 +48,9 @@ public class Cart {
     }
 
     public void recalculate() {
+        if (this.items == null) {
+            this.items = new ArrayList<>();
+        }
         this.subtotal = items.stream()
                 .map(CartItem::getSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -53,7 +81,7 @@ public class Cart {
     }
 
     public void setItems(List<CartItem> items) {
-        this.items = items;
+        this.items = items != null ? items : new ArrayList<>();
         recalculate();
     }
 

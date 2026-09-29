@@ -1,8 +1,15 @@
 package com.example.SocialMedia.product.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+@Embeddable
 public class ProductImage {
 
+    @Column(name = "image_url", columnDefinition = "TEXT")
     private String url;
+
+    @Column(name = "alt_text")
     private String alt;
 
     public ProductImage() {

@@ -1,16 +1,41 @@
 package com.example.SocialMedia.user.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.time.Instant;
 
+@Entity
+@Table(name = "users")
 public class User {
 
+    @Id
+    @Column(name = "id", length = 64)
     private String id;
+
+    @Column(name = "name", nullable = false, length = 150)
     private String name;
+
+    @Column(name = "phone", nullable = false, unique = true, length = 30)
     private String phone;
+
+    @Column(name = "email", nullable = false, unique = true, length = 150)
     private String email;
+
+    @Column(name = "password", nullable = false, length = 255)
     private String password;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false, length = 30)
     private Role role;
+
+    @Column(name = "active", nullable = false)
     private boolean active;
+
+    @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
     public User() {
@@ -24,7 +49,7 @@ public class User {
         this.password = password;
         this.role = role;
         this.active = active;
-        this.createdAt = createdAt;
+        this.createdAt = createdAt != null ? createdAt : Instant.now();
     }
 
     public String getId() {

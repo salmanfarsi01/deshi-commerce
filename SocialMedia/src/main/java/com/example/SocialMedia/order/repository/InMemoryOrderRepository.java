@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Repository
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "app.database.in-memory", havingValue = "true")
 public class InMemoryOrderRepository implements OrderRepository {
 
     private final Map<String, Order> orderMap = new ConcurrentHashMap<>();

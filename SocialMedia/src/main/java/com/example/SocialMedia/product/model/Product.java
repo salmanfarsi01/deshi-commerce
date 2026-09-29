@@ -1,25 +1,64 @@
 package com.example.SocialMedia.product.model;
 
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+@Entity
+@Table(name = "products")
 public class Product {
 
+    @Id
+    @Column(name = "id", length = 64)
     private String id;
+
+    @Column(name = "name", nullable = false, length = 255)
     private String name;
+
+    @Column(name = "slug", nullable = false, unique = true, length = 255)
     private String slug;
+
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "price", nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
+
+    @Column(name = "discount_price", precision = 12, scale = 2)
     private BigDecimal discountPrice;
+
+    @Column(name = "currency", length = 10)
     private String currency = "BDT";
+
+    @Column(name = "stock", nullable = false)
     private int stock;
+
+    @Column(name = "category_id", length = 64)
     private String categoryId;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "product_images", joinColumns = @JoinColumn(name = "product_id"))
     private List<ProductImage> images = new ArrayList<>();
+
+    @Column(name = "available", nullable = false)
     private boolean available;
+
+    @Column(name = "rating")
     private Double rating = 4.5;
+
+    @Column(name = "tenant_id", length = 50)
     private String tenantId;
+
+    @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
     public Product() {

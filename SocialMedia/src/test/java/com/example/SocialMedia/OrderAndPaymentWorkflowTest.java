@@ -82,7 +82,8 @@ public class OrderAndPaymentWorkflowTest {
     @DisplayName("Full checkout and SSLCommerz payment simulation flow")
     void testCheckoutAndSslCommerzWorkflow() {
         String email = "ssluser_" + System.currentTimeMillis() + "@test.com";
-        TokenResponse tokens = authService.register(new RegisterRequest("Shopper", "01822334455", email, "Password123!"));
+        String phone = "018" + String.format("%08d", (System.currentTimeMillis() % 100000000));
+        TokenResponse tokens = authService.register(new RegisterRequest("Shopper", phone, email, "Password123!"));
         String authHeader = "Bearer " + tokens.getAccessToken();
 
         // 1. Create affordable test product (1500 BDT) so delivery charge is applicable
@@ -124,9 +125,9 @@ public class OrderAndPaymentWorkflowTest {
         OrderResponse order = orderService.createOrder(authHeader, orderReq);
 
         assertNotNull(order.getId());
-        assertEquals(BigDecimal.valueOf(1500), order.getSubtotal());
-        assertEquals(BigDecimal.valueOf(120), order.getDeliveryCharge(), "Outside Dhaka delivery charge must be 120 BDT");
-        assertEquals(BigDecimal.valueOf(1620), order.getTotal());
+        assertEquals(0, BigDecimal.valueOf(1500).compareTo(order.getSubtotal()));
+        assertEquals(0, BigDecimal.valueOf(120).compareTo(order.getDeliveryCharge()), "Outside Dhaka delivery charge must be 120 BDT");
+        assertEquals(0, BigDecimal.valueOf(1620).compareTo(order.getTotal()));
         assertEquals(OrderStatus.PENDING, order.getStatus());
 
         // 5. Initiate SSLCommerz Session
@@ -163,6 +164,6 @@ public class OrderAndPaymentWorkflowTest {
         CustomerOrderTrackingSummary summary = orderService.getCustomerOrderSummaryAdmin(updatedOrder.getUserId());
         assertNotNull(summary);
         assertEquals(1, summary.getTotalOrdersCount());
-        assertEquals(BigDecimal.valueOf(1620), summary.getTotalAmountSpent());
+        assertEquals(0, BigDecimal.valueOf(1620).compareTo(summary.getTotalAmountSpent()));
     }
 }

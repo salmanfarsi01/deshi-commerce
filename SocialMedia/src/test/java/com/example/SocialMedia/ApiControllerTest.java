@@ -99,10 +99,12 @@ public class ApiControllerTest {
     @Test
     @DisplayName("POST /api/v1/auth/register - Successfully registers user with normalized phone and BCrypt password")
     void testRegisterUser() {
+        String uniquePhone = "019" + String.format("%08d", (System.currentTimeMillis() % 100000000));
+        String uniqueEmail = "tanvir_" + System.currentTimeMillis() + "@example.com";
         RegisterRequest request = new RegisterRequest(
                 "Tanvir Hasan",
-                "+8801912345699",
-                "tanvir@example.com",
+                uniquePhone,
+                uniqueEmail,
                 "SecretPass123!"
         );
 
@@ -113,7 +115,7 @@ public class ApiControllerTest {
 
         TokenResponse tokenData = response.getBody().getData();
         assertNotNull(tokenData.getAccessToken());
-        assertEquals("01912345699", tokenData.getUser().getPhone());
+        assertEquals(uniquePhone, tokenData.getUser().getPhone());
 
         // Verify that the generated token is a valid JWT
         assertTrue(jwtTokenProvider.validateToken(tokenData.getAccessToken()));

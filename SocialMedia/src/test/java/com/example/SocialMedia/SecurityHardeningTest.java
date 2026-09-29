@@ -83,9 +83,10 @@ public class SecurityHardeningTest {
     @DisplayName("Brute-Force Protection locks out rapid failed login attempts")
     void testBruteForceProtection() {
         String bruteForceEmail = "hacker_" + System.currentTimeMillis() + "@test.com";
+        String bruteForcePhone = "018" + String.format("%08d", (System.currentTimeMillis() % 100000000));
 
         // Register user
-        RegisterRequest registerReq = new RegisterRequest("Target User", "01812345678", bruteForceEmail, "Secr3t!P@ss");
+        RegisterRequest registerReq = new RegisterRequest("Target User", bruteForcePhone, bruteForceEmail, "Secr3t!P@ss");
         authService.register(registerReq);
 
         // Trigger 5 consecutive failed logins
@@ -106,7 +107,8 @@ public class SecurityHardeningTest {
     @DisplayName("Refresh Token Rotation prevents reuse of invalidated refresh tokens")
     void testRefreshTokenRotation() {
         String testEmail = "rotate_" + System.currentTimeMillis() + "@test.com";
-        TokenResponse tokens = authService.register(new RegisterRequest("Rotator", "01712345678", testEmail, "Secr3t!P@ss"));
+        String rotatePhone = "017" + String.format("%08d", (System.currentTimeMillis() % 100000000));
+        TokenResponse tokens = authService.register(new RegisterRequest("Rotator", rotatePhone, testEmail, "Secr3t!P@ss"));
 
         String originalRefreshToken = tokens.getRefreshToken();
 

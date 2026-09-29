@@ -1,12 +1,31 @@
 package com.example.SocialMedia.category.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "categories")
 public class Category {
 
+    @Id
+    @Column(name = "id", length = 64)
     private String id;
+
+    @Column(name = "name", nullable = false, length = 150)
     private String name;
+
+    @Column(name = "slug", nullable = false, unique = true, length = 150)
     private String slug;
+
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "active", nullable = false)
     private boolean active;
+
+    @Column(name = "tenant_id", length = 50)
     private String tenantId;
 
     public Category() {

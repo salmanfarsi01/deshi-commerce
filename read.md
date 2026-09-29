@@ -7,12 +7,14 @@ Welcome to the documentation for our e-commerce backend platform. This system is
 ## 1. Technology Stack Used
 
 - **Language:** Java (JDK 27)
-- **Framework:** Spring Boot (Spring Web MVC)
+- **Framework:** Spring Boot 4.1.1 (Spring Web MVC)
+- **Persistence & ORM:** Spring Data JPA & Hibernate with PostgreSQL (`org.postgresql:postgresql`)
+- **Database:** PostgreSQL (`deshi_commerce_db`)
 - **Security & Authentication:** Spring Security with BCrypt password hashing & HMAC-SHA256 Stateless JWT Filter
 - **Data Validation:** Jakarta Bean Validation (Hibernate Validator)
-- **Storage Layer (Agile Phase):** Thread-safe in-memory repositories with pre-loaded mock data (fully decoupling the API layer from the database so frontend development and testing can happen immediately)
+- **API Documentation:** OpenAPI 3.0 / Swagger UI (`/swagger-ui.html`)
 - **Build Tool:** Maven with Maven Wrapper (`mvnw`)
-- **Testing:** JUnit 5 and Spring Boot Test
+- **Testing:** JUnit 5 and Spring Boot Test (16/16 Integration Tests Passing)
 
 ---
 
@@ -350,9 +352,81 @@ Tenant isolation        ✅
 
 ---
 
-## 5. Summary
+## 5. PostgreSQL Database Schema & Persistence Architecture
 
-Every endpoint, filter, and security mechanism was built with a specific purpose: **protect data integrity, prevent fraud, match Bangladeshi shopping habits, provide multi-tenant capability, and make the platform completely production-ready**.
+The backend is connected to a production-grade **PostgreSQL** database named **`deshi_commerce_db`** running on `localhost:5432`.
 
-When you are ready to connect a real database (PostgreSQL / MySQL), no REST API contracts, security filters, or controllers need to change—only the underlying repository classes need to be pointed to real database tables.
+### Database Connection Configuration
+```properties
+spring.datasource.url=jdbc:postgresql://localhost:5432/deshi_commerce_db
+spring.datasource.username=postgres
+spring.datasource.password=Admin@123
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.open-in-view=false
+```
+
+### Relational Schema (3NF Tables)
+1. **`users`**:
+   - `id` (VARCHAR(64), Primary Key)
+   - `name` (VARCHAR(150), NOT NULL)
+   - `phone` (VARCHAR(30), UNIQUE, NOT NULL)
+   - `email` (VARCHAR(150), UNIQUE, NOT NULL)
+   - `password` (VARCHAR(255), BCrypt Hashed)
+   - `role` (VARCHAR(30), `CUSTOMER` or `ADMIN`)
+   - `active` (BOOLEAN)
+   - `created_at` (TIMESTAMP WITH TIME ZONE)
+
+2. **`categories`**:
+   - `id` (VARCHAR(64), Primary Key)
+   - `name` (VARCHAR(150), NOT NULL)
+   - `slug` (VARCHAR(150), UNIQUE, NOT NULL)
+   - `description` (TEXT)
+   - `active` (BOOLEAN)
+   - `tenant_id` (VARCHAR(50))
+
+3. **`products` & `product_images`**:
+   - `id` (VARCHAR(64), Primary Key)
+   - `name` (VARCHAR(255), NOT NULL)
+   - `slug` (VARCHAR(255), UNIQUE, NOT NULL)
+   - `description` (TEXT)
+   - `price` (NUMERIC(12, 2), NOT NULL)
+   - `discount_price` (NUMERIC(12, 2))
+   - `currency` (VARCHAR(10))
+   - `stock` (INT)
+   - `category_id` (VARCHAR(64))
+   - `available` (BOOLEAN)
+   - `rating` (DOUBLE PRECISION)
+   - `tenant_id` (VARCHAR(50))
+   - `created_at` (TIMESTAMP WITH TIME ZONE)
+   - Child Table `product_images`: `product_id` (Foreign Key), `image_url` (TEXT), `alt_text` (VARCHAR(255))
+
+4. **`addresses`**:
+   - `id` (VARCHAR(64), Primary Key)
+   - `user_id` (VARCHAR(64), Foreign Key to users)
+   - `name`, `phone`, `division`, `district`, `upazila`, `area`, `address_line`, `postal_code`, `is_default`
+
+5. **`carts` & `cart_items`**:
+   - `carts`: `user_id` (Primary Key), `subtotal`, `delivery_charge`, `discount`, `total`, `currency`
+   - `cart_items`: `cart_item_id` (Primary Key), `cart_user_id` (Foreign Key), `product_id`, `product_name`, `unit_price`, `quantity`, `subtotal`
+
+6. **`orders` & `order_items`**:
+   - `orders`: `id` (Primary Key), `order_number` (UNIQUE), `user_id`, `subtotal`, `delivery_charge`, `discount`, `total`, `currency`, `shipping_address_id` (Foreign Key to addresses), `payment_method`, `payment_status`, `status`, `notes`, `courier_name`, `tracking_number`, `tracking_url`, `estimated_delivery_date`, `tenant_id`, `created_at`, `updated_at`
+   - `order_items`: `order_item_id` (Primary Key), `order_id` (Foreign Key to orders), `product_id`, `product_name`, `unit_price`, `quantity`, `subtotal`
+
+7. **`payment_records`**:
+   - `id` (Primary Key), `order_id`, `user_id`, `amount`, `currency`, `method`, `status`, `transaction_id`, `gateway_payment_url`, `created_at`
+
+### Automatic Seeding & Health Check
+- On first startup, `DatabaseDataSeeder` automatically populates the admin account (`admin@store.com.bd`), test customer (`karim@example.com`), initial catalog categories (`Mobile`, `Electronics`, `Fashion`, `Home Appliance`), and showcase products into PostgreSQL.
+- All 16 automated integration and workflow tests pass (`BUILD SUCCESS`).
+
+---
+
+## 6. Summary
+
+Every endpoint, filter, security mechanism, and database table was built with a specific purpose: **protect data integrity, prevent fraud, match Bangladeshi shopping habits, provide multi-tenant capability, and make the platform completely production-ready**.
+
 
