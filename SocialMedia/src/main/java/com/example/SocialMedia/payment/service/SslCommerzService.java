@@ -49,13 +49,16 @@ public class SslCommerzService {
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
     private final UserRepository userRepository;
+    private final com.example.SocialMedia.notification.service.NotificationService notificationService;
 
     public SslCommerzService(OrderRepository orderRepository,
                              PaymentRepository paymentRepository,
-                             UserRepository userRepository) {
+                             UserRepository userRepository,
+                             com.example.SocialMedia.notification.service.NotificationService notificationService) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     public SslCommerzInitResponse initiatePayment(String orderId) {
@@ -144,6 +147,10 @@ public class SslCommerzService {
                     + String.format("Paid via SSLCommerz [Card: %s, ValID: %s]", cardType, valId));
             order.setUpdatedAt(Instant.now());
             orderRepository.save(order);
+
+            // Notify user of successful payment
+            User customer = userRepository.findById(order.getUserId()).orElse(null);
+            notificationService.notifyPaymentReceived(order, record, customer);
         }
 
         return new SslCommerzCallbackResponse(
@@ -250,6 +257,9 @@ public class SslCommerzService {
         order.setNotes((order.getNotes() != null ? order.getNotes() + " | " : "") + "SSLCommerz Simulated Test Success (" + tranId + ")");
         order.setUpdatedAt(Instant.now());
         orderRepository.save(order);
+
+        User customer = userRepository.findById(order.getUserId()).orElse(null);
+        notificationService.notifyPaymentReceived(order, record, customer);
 
         String valId = "VAL_SIM_" + UUID.randomUUID().toString().substring(0, 8);
         return new SslCommerzCallbackResponse(

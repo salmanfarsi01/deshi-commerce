@@ -419,14 +419,52 @@ spring.jpa.open-in-view=false
 7. **`payment_records`**:
    - `id` (Primary Key), `order_id`, `user_id`, `amount`, `currency`, `method`, `status`, `transaction_id`, `gateway_payment_url`, `created_at`
 
+8. **`notification_logs`**:
+   - `id` (VARCHAR(64), Primary Key)
+   - `channel` (`SMS` or `EMAIL`, EnumType.STRING)
+   - `event` (`ORDER_PLACED`, `ORDER_CONFIRMED`, `ORDER_SHIPPED`, `ORDER_DELIVERED`, `ORDER_CANCELLED`, `PAYMENT_RECEIVED`)
+   - `recipient` (VARCHAR(150), Normalized Bangladesh phone e.g. `88019XXXXXXXX` or Email)
+   - `subject` (VARCHAR(255))
+   - `message` (TEXT, Localized message content)
+   - `status` (`SENT`, `FAILED`, `SIMULATED`)
+   - `order_id` (VARCHAR(64))
+   - `user_id` (VARCHAR(64))
+   - `created_at` (TIMESTAMP WITH TIME ZONE)
+
 ### Automatic Seeding & Health Check
-- On first startup, `DatabaseDataSeeder` automatically populates the admin account (`admin@store.com.bd`), test customer (`karim@example.com`), initial catalog categories (`Mobile`, `Electronics`, `Fashion`, `Home Appliance`), and showcase products into PostgreSQL.
-- All 16 automated integration and workflow tests pass (`BUILD SUCCESS`).
+- On first startup, `DatabaseDataSeeder` automatically populates the admin account (`admin@store.com.bd`), test customer (`karim@example.com`), initial catalog categories (`Mobile`, `Electronics`, `Fashion`, `Home Appliance`), showcase products, and default delivery addresses into PostgreSQL.
+- All 17 automated integration and workflow tests pass (`BUILD SUCCESS`).
 
 ---
 
-## 6. Summary
+## 6. Automated Bangladesh SMS & Email Notification System
 
-Every endpoint, filter, security mechanism, and database table was built with a specific purpose: **protect data integrity, prevent fraud, match Bangladeshi shopping habits, provide multi-tenant capability, and make the platform completely production-ready**.
+A full notification subsystem keeps customers informed through critical order milestones via SMS and formatted Email.
+
+### Lifecycle Triggers & Localized Formats
+1. **Order Placed (`ORDER_PLACED`)**:
+   - **SMS:** *"Dear [Customer], your order #[OrderNumber] of BDT [Total] has been placed successfully. Payment Method: [Method]. Delivery to [District]. Thank you for shopping with Deshi Commerce!"*
+   - **Email:** HTML order receipt detailing subtotal, Bangladesh delivery charge, and shipping address.
+2. **Payment Received (`PAYMENT_RECEIVED`)**:
+   - Triggered upon successful SSLCommerz webhook / gateway verification.
+   - **SMS:** *"Dear [Customer], payment of BDT [Amount] for order #[OrderNumber] received successfully via SSLCOMMERZ. Transaction ID: [TrxID]. Deshi Commerce."*
+3. **Order Shipped & Courier Assigned (`ORDER_SHIPPED`)**:
+   - Triggered when admin assigns courier (Steadfast / Pathao / Paperfly) and tracking number.
+   - **SMS:** *"Dear [Customer], your order #[OrderNumber] has been SHIPPED via [Courier]. Tracking No: [TrackingNumber]. Track your parcel: [TrackingUrl]. Deshi Commerce."*
+4. **Order Delivered (`ORDER_DELIVERED`)**:
+   - **SMS:** *"Dear [Customer], your order #[OrderNumber] has been successfully DELIVERED. We hope you love your products! Deshi Commerce."*
+5. **Order Cancelled (`ORDER_CANCELLED`)**:
+   - **SMS:** *"Dear [Customer], your order #[OrderNumber] has been CANCELLED. If you made an online payment, a refund has been initiated. Deshi Commerce."*
+
+### Admin Notification Endpoints
+- `GET /api/v1/admin/notifications`: Inspect all dispatched notifications across the platform.
+- `GET /api/v1/admin/notifications/order/{orderId}`: Inspect full notification audit trail for a specific order.
+
+---
+
+## 7. Summary
+
+Every endpoint, filter, security mechanism, database table, and notification channel was built with a specific purpose: **protect data integrity, prevent fraud, match Bangladeshi shopping habits, provide multi-tenant capability, and make the platform completely production-ready**.
+
 
 

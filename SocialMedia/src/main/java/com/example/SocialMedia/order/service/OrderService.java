@@ -46,6 +46,7 @@ public class OrderService {
     private final AuthService authService;
     private final DeliveryService deliveryService;
     private final UserRepository userRepository;
+    private final com.example.SocialMedia.notification.service.NotificationService notificationService;
 
     public OrderService(OrderRepository orderRepository,
                         CartService cartService,
@@ -54,7 +55,8 @@ public class OrderService {
                         PaymentService paymentService,
                         AuthService authService,
                         DeliveryService deliveryService,
-                        UserRepository userRepository) {
+                        UserRepository userRepository,
+                        com.example.SocialMedia.notification.service.NotificationService notificationService) {
         this.orderRepository = orderRepository;
         this.cartService = cartService;
         this.addressService = addressService;
@@ -63,6 +65,7 @@ public class OrderService {
         this.authService = authService;
         this.deliveryService = deliveryService;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     public OrderResponse createOrder(String authHeader, CreateOrderRequest request) {
@@ -148,6 +151,9 @@ public class OrderService {
         // 8. Clear Cart
         cartService.clearCart(authHeader);
 
+        // 9. Dispatch SMS & Email Notifications
+        notificationService.notifyOrderPlaced(order, user);
+
         return OrderResponse.fromEntity(order, paymentResponse);
     }
 
@@ -194,6 +200,9 @@ public class OrderService {
             order.setNotes((order.getNotes() != null ? order.getNotes() + " | " : "") + "Cancelled: " + request.getReason());
         }
         orderRepository.save(order);
+
+        // Dispatch cancellation notification
+        notificationService.notifyOrderCancelled(order, user);
 
         return toOrderResponse(order);
     }
@@ -277,6 +286,10 @@ public class OrderService {
         order.setUpdatedAt(Instant.now());
         orderRepository.save(order);
 
+        // Notify customer via SMS and Email with tracking link
+        User customer = userRepository.findById(order.getUserId()).orElse(null);
+        notificationService.notifyOrderShipped(order, customer);
+
         return toOrderResponse(order);
     }
 
@@ -326,6 +339,15 @@ public class OrderService {
             order.setNotes((order.getNotes() != null ? order.getNotes() + " | " : "") + request.getComment());
         }
         orderRepository.save(order);
+
+        User customer = userRepository.findById(order.getUserId()).orElse(null);
+        if (request.getStatus() == OrderStatus.SHIPPED) {
+            notificationService.notifyOrderShipped(order, customer);
+        } else if (request.getStatus() == OrderStatus.DELIVERED) {
+            notificationService.notifyOrderDelivered(order, customer);
+        } else if (request.getStatus() == OrderStatus.CANCELLED) {
+            notificationService.notifyOrderCancelled(order, customer);
+        }
 
         return toOrderResponse(order);
     }
