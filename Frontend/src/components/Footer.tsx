@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShieldCheck, Truck, RotateCcw, Phone, Mail, MapPin, Headphones } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import mainLogo from '../images/main_logo.png';
+import footerLogo from '../images/footer logo.png';
 
 export const Footer: React.FC = () => {
   const { setCurrentView, setSelectedCategorySlug, openSupportModal, t, lang } = useApp();
@@ -72,11 +72,11 @@ export const Footer: React.FC = () => {
       {/* Main Footer Links */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid grid-cols-1 md:grid-cols-12 gap-8">
         <div className="md:col-span-5 space-y-3">
-          <div className="inline-block bg-white px-3 py-1.5 rounded-lg shadow-sm">
+          <div className="flex items-center">
             <img
-              src={mainLogo}
+              src={footerLogo}
               alt="Deshi Commerce"
-              className="h-7 w-auto object-contain"
+              className="h-8 sm:h-9 w-auto object-contain"
             />
           </div>
           <p className="text-slate-400 leading-relaxed text-xs max-w-sm">
