@@ -1,0 +1,6 @@
+{
+  "name": "Deshi Commerce - Modern Bangladesh E-Commerce Store & Admin Portal",
+  "description": "High-converting Bangladeshi e-commerce platform and executive admin dashboard with real-time Dhaka/outside delivery, SSLCommerz gateway, Steadfast courier tracking, and complete order management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
