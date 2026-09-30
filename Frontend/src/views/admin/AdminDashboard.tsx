@@ -27,8 +27,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { apiService } from '../../services/apiClient';
-import mainLogo from '../../images/main_logo.png';
+import footerLogo from '../../images/footer logo.png';
 import {
   AdminDashboardSummary,
   Order,
@@ -436,22 +435,13 @@ export const AdminDashboard: React.FC = () => {
       <header className="bg-slate-950 text-white px-4 sm:px-6 lg:px-8 py-3.5 border-b border-slate-800 sticky top-0 z-40 shadow-md">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="bg-white px-2.5 py-1 rounded-lg shrink-0 shadow-xs">
-              <img src={mainLogo} alt="Deshi Commerce" className="h-6 w-auto object-contain" />
+            <div className="shrink-0 flex items-center">
+              <img src={footerLogo} alt="Deshi Commerce" className="h-8 w-auto object-contain" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold tracking-tight text-white">
-                  Deshi Commerce &bull; Admin Portal
-                </h1>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  Active System
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 font-mono">
-                PostgreSQL &bull; 38 APIs Connected &bull; Steadfast Courier Integrated
-              </p>
+            <div className="border-l border-slate-800 pl-3">
+              <h1 className="text-base font-bold tracking-tight text-white">
+                Admin Portal
+              </h1>
             </div>
           </div>
 

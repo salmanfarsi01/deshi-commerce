@@ -84,7 +84,7 @@ export const Header: React.FC = () => {
 
           {/* Search Bar */}
           <div className="flex-1 max-w-xl hidden md:block">
-            <div className="flex items-center h-10 border border-[#E2E8F0] bg-[#F8FAFC] focus-within:border-slate-400 focus-within:bg-white rounded-lg overflow-hidden transition-all shadow-2xs">
+            <div className="flex items-center h-10 border border-[#E2E8F0] bg-[#F8FAFC] focus-within:border-slate-400 focus-within:bg-white rounded-none overflow-hidden transition-all shadow-2xs">
               <input
                 type="text"
                 value={searchQuery}
@@ -95,14 +95,14 @@ export const Header: React.FC = () => {
                   }
                 }}
                 placeholder={t('header.search.placeholder', 'Search phones, beauty, home & more...')}
-                className="flex-1 px-3.5 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none bg-transparent"
+                className="flex-1 px-3.5 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none bg-transparent rounded-none"
               />
 
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="px-2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                  className="px-2 text-slate-400 hover:text-slate-700 cursor-pointer rounded-none"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -113,7 +113,7 @@ export const Header: React.FC = () => {
                 onClick={() => {
                   if (currentView !== 'catalog') setCurrentView('catalog');
                 }}
-                className="h-full px-4 bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="h-full px-4 bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer rounded-none"
               >
                 <Search className="w-3.5 h-3.5" />
                 <span>{t('header.search.button', 'Search')}</span>
@@ -128,7 +128,7 @@ export const Header: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsLocationMenuOpen(!isLocationMenuOpen)}
-                className="flex items-center gap-1.5 text-xs font-medium text-slate-700 hover:text-[#0F172A] px-2 py-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer border border-transparent hover:border-slate-200"
+                className="flex items-center gap-1.5 text-xs font-medium text-slate-700 hover:text-[#0F172A] px-2 py-1.5 rounded-none hover:bg-slate-100 transition-colors cursor-pointer border border-transparent hover:border-slate-200"
               >
                 <MapPin className="w-3.5 h-3.5 text-slate-600" />
                 <span>
@@ -138,7 +138,7 @@ export const Header: React.FC = () => {
               </button>
 
               {isLocationMenuOpen && (
-                <div className="absolute right-0 mt-1.5 w-64 bg-white text-[#0F172A] shadow-xl rounded-xl border border-[#E2E8F0] p-2 z-50 animate-in fade-in">
+                <div className="absolute right-0 mt-1.5 w-64 bg-white text-[#0F172A] shadow-xl rounded-none border border-[#E2E8F0] p-2 z-50 animate-in fade-in">
                   <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1">
                     Select Bangladesh Delivery Zone
                   </div>
@@ -148,7 +148,7 @@ export const Header: React.FC = () => {
                       setSelectedRegion('Dhaka');
                       setIsLocationMenuOpen(false);
                     }}
-                    className={`rounded-lg w-full text-left px-3 py-2 text-xs flex items-center justify-between cursor-pointer ${
+                    className={`rounded-none w-full text-left px-3 py-2 text-xs flex items-center justify-between cursor-pointer ${
                       selectedRegion === 'Dhaka'
                         ? 'bg-slate-100 text-[#0F172A] font-bold border-l-2 border-[#0F172A]'
                         : 'text-slate-700 hover:bg-slate-50'
@@ -163,7 +163,7 @@ export const Header: React.FC = () => {
                       setSelectedRegion('Outside Dhaka');
                       setIsLocationMenuOpen(false);
                     }}
-                    className={`rounded-lg w-full text-left px-3 py-2 text-xs flex items-center justify-between cursor-pointer ${
+                    className={`rounded-none w-full text-left px-3 py-2 text-xs flex items-center justify-between cursor-pointer ${
                       selectedRegion === 'Outside Dhaka'
                         ? 'bg-slate-100 text-[#0F172A] font-bold border-l-2 border-[#0F172A]'
                         : 'text-slate-700 hover:bg-slate-50'
@@ -183,7 +183,7 @@ export const Header: React.FC = () => {
             <button
               type="button"
               onClick={toggleLang}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg border border-[#E2E8F0] hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-none border border-[#E2E8F0] hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
               title="Change Language (বাংলা / English)"
             >
               <Globe className="w-3.5 h-3.5 text-slate-600" />
@@ -197,16 +197,16 @@ export const Header: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                    className="flex items-center gap-2 p-1 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
+                    className="flex items-center gap-2 p-1 rounded-none hover:bg-slate-100 cursor-pointer transition-colors"
                   >
                     {user.avatarUrl ? (
                       <img
                         src={user.avatarUrl}
                         alt={user.name}
-                        className="w-7 h-7 rounded-full object-cover border border-[#E2E8F0]"
+                        className="w-7 h-7 rounded-none object-cover border border-[#E2E8F0]"
                       />
                     ) : (
-                      <div className="w-7 h-7 rounded-full bg-[#0F172A] text-white flex items-center justify-center font-bold text-xs">
+                      <div className="w-7 h-7 rounded-none bg-[#0F172A] text-white flex items-center justify-center font-bold text-xs">
                         {user.name.charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -217,7 +217,7 @@ export const Header: React.FC = () => {
                   </button>
 
                   {isUserMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white shadow-xl rounded-xl border border-[#E2E8F0] py-2 z-50 animate-in fade-in">
+                    <div className="absolute right-0 mt-2 w-56 bg-white shadow-xl rounded-none border border-[#E2E8F0] py-2 z-50 animate-in fade-in">
                       <div className="px-3 py-2 border-b border-slate-100">
                         <span className="font-bold text-xs text-[#0F172A] block truncate">{user.name}</span>
                         <span className="text-[11px] text-slate-500 font-mono block truncate">{user.phone || user.email}</span>
@@ -229,7 +229,7 @@ export const Header: React.FC = () => {
                           setCurrentView('orders');
                           setIsUserMenuOpen(false);
                         }}
-                        className="w-full text-left px-3 py-2 text-xs text-[#0F172A] hover:bg-slate-50 flex items-center gap-2 cursor-pointer font-medium"
+                        className="w-full text-left px-3 py-2 text-xs text-[#0F172A] hover:bg-slate-50 flex items-center gap-2 cursor-pointer font-medium rounded-none"
                       >
                         <Package className="w-3.5 h-3.5 text-slate-600" />
                         <span>{t('header.myorders', 'My Orders')}</span>
@@ -241,7 +241,7 @@ export const Header: React.FC = () => {
                           setCurrentView('account');
                           setIsUserMenuOpen(false);
                         }}
-                        className="w-full text-left px-3 py-2 text-xs text-[#0F172A] hover:bg-slate-50 flex items-center gap-2 cursor-pointer font-medium"
+                        className="w-full text-left px-3 py-2 text-xs text-[#0F172A] hover:bg-slate-50 flex items-center gap-2 cursor-pointer font-medium rounded-none"
                       >
                         <User className="w-3.5 h-3.5 text-slate-600" />
                         <span>{t('header.addresses', 'Account & Addresses')}</span>
@@ -253,7 +253,7 @@ export const Header: React.FC = () => {
                           openSupportModal();
                           setIsUserMenuOpen(false);
                         }}
-                        className="w-full text-left px-3 py-2 text-xs text-[#0F172A] hover:bg-slate-50 flex items-center gap-2 cursor-pointer font-medium"
+                        className="w-full text-left px-3 py-2 text-xs text-[#0F172A] hover:bg-slate-50 flex items-center gap-2 cursor-pointer font-medium rounded-none"
                       >
                         <Headphones className="w-3.5 h-3.5 text-slate-600" />
                         <span>{lang === 'bn' ? 'কাস্টমার সাপোর্ট' : 'Contact Support'}</span>
@@ -267,7 +267,7 @@ export const Header: React.FC = () => {
                           logout();
                           setIsUserMenuOpen(false);
                         }}
-                        className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-semibold"
+                        className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-semibold rounded-none"
                       >
                         <LogOut className="w-3.5 h-3.5" />
                         <span>{t('header.signout', 'Sign Out')}</span>
@@ -280,14 +280,14 @@ export const Header: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => openAuthModal('login')}
-                    className="px-3 py-1.5 border border-[#E2E8F0] hover:bg-slate-100 text-[#0F172A] text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                    className="px-3 py-1.5 border border-[#E2E8F0] hover:bg-slate-100 text-[#0F172A] text-xs font-bold rounded-none transition-colors cursor-pointer"
                   >
                     {t('header.signin', 'Sign In')}
                   </button>
                   <button
                     type="button"
                     onClick={() => openAuthModal('register')}
-                    className="hidden sm:inline-flex px-3 py-1.5 bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                    className="hidden sm:inline-flex px-3 py-1.5 bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold rounded-none transition-colors cursor-pointer"
                   >
                     {t('header.signup', 'Sign Up')}
                   </button>
@@ -299,7 +299,7 @@ export const Header: React.FC = () => {
             <button
               type="button"
               onClick={openSupportModal}
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-lg border border-[#E2E8F0] hover:bg-slate-100 text-slate-700 hover:text-[#0F172A] transition-colors cursor-pointer"
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-none border border-[#E2E8F0] hover:bg-slate-100 text-slate-700 hover:text-[#0F172A] transition-colors cursor-pointer"
               title="Customer Support & Help Desk"
             >
               <Headphones className="w-3.5 h-3.5 text-rose-600" />
@@ -312,12 +312,12 @@ export const Header: React.FC = () => {
               onClick={() => {
                 setCurrentView('wishlist');
               }}
-              className="relative p-1.5 text-slate-700 hover:text-[#0F172A] cursor-pointer transition-colors"
+              className="relative p-1.5 text-slate-700 hover:text-[#0F172A] cursor-pointer transition-colors rounded-none"
               title={lang === 'bn' ? 'পছন্দের পণ্যসমূহ' : 'Saved Wishlist'}
             >
               <Heart className={`w-5 h-5 ${wishlist.length > 0 ? 'text-rose-600 fill-rose-50' : 'text-slate-700 hover:text-rose-600'}`} />
               {wishlist.length > 0 && (
-                <span className="rounded-full absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center">
+                <span className="rounded-none absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center">
                   {wishlist.length}
                 </span>
               )}
@@ -327,13 +327,13 @@ export const Header: React.FC = () => {
             <button
               type="button"
               onClick={openCart}
-              className="relative flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-[#0F172A] rounded-lg transition-colors cursor-pointer font-bold text-xs"
+              className="relative flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-[#0F172A] rounded-none transition-colors cursor-pointer font-bold text-xs"
               title="Shopping Cart"
             >
               <ShoppingBag className="w-4 h-4 text-[#0F172A]" />
               <span className="hidden sm:inline">{t('header.cart', 'Cart')}</span>
               {cart.itemCount > 0 && (
-                <span className="rounded-full bg-[#0F172A] text-white text-[10px] font-bold px-1.5 py-0.2 min-w-[18px] text-center">
+                <span className="rounded-none bg-[#0F172A] text-white text-[10px] font-bold px-1.5 py-0.2 min-w-[18px] text-center">
                   {cart.itemCount}
                 </span>
               )}
@@ -343,7 +343,7 @@ export const Header: React.FC = () => {
 
         {/* Mobile Search Input */}
         <div className="mt-2.5 md:hidden">
-          <div className="flex h-9 border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] overflow-hidden focus-within:border-slate-400">
+          <div className="flex h-9 border border-[#E2E8F0] rounded-none bg-[#F8FAFC] overflow-hidden focus-within:border-slate-400">
             <input
               type="text"
               value={searchQuery}
@@ -354,14 +354,14 @@ export const Header: React.FC = () => {
                 }
               }}
               placeholder={t('header.search.placeholder', 'Search in Bangladesh...')}
-              className="flex-1 px-3 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none bg-transparent"
+              className="flex-1 px-3 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none bg-transparent rounded-none"
             />
             <button
               type="button"
               onClick={() => {
                 if (currentView !== 'catalog') setCurrentView('catalog');
               }}
-              className="px-3 bg-[#0F172A] text-white text-xs font-semibold"
+              className="px-3 bg-[#0F172A] text-white text-xs font-semibold rounded-none"
             >
               <Search className="w-3.5 h-3.5" />
             </button>
