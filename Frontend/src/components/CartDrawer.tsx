@@ -60,7 +60,7 @@ export const CartDrawer: React.FC = () => {
               <span className="font-medium text-[#2B2B2B] flex items-center gap-1.5">
                 <Truck className="w-3.5 h-3.5 text-[#E11D48]" />
                 {cart.eligibleForFreeDelivery ? (
-                  <span className="font-bold text-emerald-700">You qualify for FREE Delivery!</span>
+                  <span className="font-bold text-slate-900">You qualify for 100% FREE Delivery!</span>
                 ) : (
                   <span>
                     Add <strong className="text-[#E11D48] font-mono">{formatBDT(cart.amountNeededForFreeDelivery)}</strong> more for <strong>FREE Delivery</strong>

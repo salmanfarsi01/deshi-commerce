@@ -83,7 +83,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           {/* Brand & Compact Rating */}
           <div className="flex items-center justify-between text-xs">
             <span className="text-slate-500 font-medium truncate flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+              <CheckCircle2 className="w-3 h-3 text-slate-400 shrink-0" />
               <span className="truncate">{product.brand}</span>
             </span>
 

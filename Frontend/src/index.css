@@ -53,3 +53,40 @@
 .animate-pulse-fast {
   animation: pulseFast 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* Single-page standard company branded cash memo printing */
+@media print {
+  body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  #printable-cash-memo,
+  #printable-cash-memo * {
+    visibility: visible !important;
+  }
+
+  #printable-cash-memo {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 10mm 12mm !important;
+    background: #FFFFFF !important;
+    color: #111827 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+}

@@ -6,16 +6,15 @@ import {
   Mail,
   User as UserIcon,
   AlertCircle,
-  CheckCircle2,
   ShieldCheck,
   ArrowRight,
   ChevronLeft,
-  Sparkles,
+  KeyRound,
+  Check,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { isValidBDPhone } from '../data/bangladeshGeo';
 
-// Official multi-color Google 'G' Logo SVG
 const GoogleGIcon: React.FC<{ className?: string }> = ({ className = 'w-5 h-5' }) => (
   <svg className={className} viewBox="0 0 24 24">
     <path
@@ -47,13 +46,13 @@ export const AuthModal: React.FC = () => {
     register,
     loginWithGoogle,
     registerWithGoogle,
-    switchUserRole,
+    showToast,
+    t,
   } = useApp();
 
-  // Internal tab state synced with AppContext
-  const [tab, setTab] = useState<'login' | 'register'>('login');
+  const [tab, setTab] = useState<'login' | 'register' | 'otp'>('login');
 
-  // Google Account Chooser State
+  // Google Chooser State
   const [showGoogleChooser, setShowGoogleChooser] = useState(false);
   const [googleChooserMode, setGoogleChooserMode] = useState<'signin' | 'signup'>('signin');
   const [customGoogleEmail, setCustomGoogleEmail] = useState('');
@@ -61,7 +60,7 @@ export const AuthModal: React.FC = () => {
   const [isEnteringCustomGoogle, setIsEnteringCustomGoogle] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // Standard form inputs
+  // Standard inputs
   const [identifier, setIdentifier] = useState('01722222222');
   const [password, setPassword] = useState('123456');
 
@@ -72,19 +71,34 @@ export const AuthModal: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Sync tab with AppContext prop when modal opens
+  // Phone OTP Flow State
+  const [otpPhone, setOtpPhone] = useState('01722222222');
+  const [otpSent, setOtpSent] = useState(false);
+  const [enteredOtp, setEnteredOtp] = useState('');
+  const [generatedOtp, setGeneratedOtp] = useState('4829');
+  const [otpCountdown, setOtpCountdown] = useState(60);
+
   useEffect(() => {
     if (isAuthModalOpen) {
       setTab(authModalTab || 'login');
       setShowGoogleChooser(false);
       setIsEnteringCustomGoogle(false);
       setErrorMsg('');
+      setOtpSent(false);
+      setEnteredOtp('');
     }
   }, [isAuthModalOpen, authModalTab]);
 
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (otpSent && otpCountdown > 0) {
+      timer = setInterval(() => setOtpCountdown((c) => c - 1), 1000);
+    }
+    return () => clearInterval(timer);
+  }, [otpSent, otpCountdown]);
+
   if (!isAuthModalOpen) return null;
 
-  // Active detected Google Account (e.g. from local environment / session)
   const defaultGoogleAccount = {
     email: 'retro.class90@gmail.com',
     name: 'Retro Class',
@@ -98,26 +112,27 @@ export const AuthModal: React.FC = () => {
     setErrorMsg('');
   };
 
-  const handleSelectGoogleAccount = async (account: { email: string; name: string; avatarUrl?: string }) => {
-    setGoogleLoading(true);
-    setErrorMsg('');
+  const handleSelectDefaultGoogle = async () => {
     try {
+      setGoogleLoading(true);
       if (googleChooserMode === 'signup') {
         await registerWithGoogle({
-          email: account.email,
-          name: account.name,
-          avatarUrl: account.avatarUrl,
+          email: defaultGoogleAccount.email,
+          name: defaultGoogleAccount.name,
+          avatarUrl: defaultGoogleAccount.avatar,
+          googleId: 'gid_retro_class_001',
         });
       } else {
         await loginWithGoogle({
-          email: account.email,
-          name: account.name,
-          avatarUrl: account.avatarUrl,
+          email: defaultGoogleAccount.email,
+          name: defaultGoogleAccount.name,
+          avatarUrl: defaultGoogleAccount.avatar,
+          googleId: 'gid_retro_class_001',
         });
       }
       setShowGoogleChooser(false);
     } catch {
-      setErrorMsg('Failed to authenticate with Google Mail. Please try again.');
+      setErrorMsg('Could not authenticate with Google Mail.');
     } finally {
       setGoogleLoading(false);
     }
@@ -125,38 +140,38 @@ export const AuthModal: React.FC = () => {
 
   const handleCustomGoogleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customGoogleEmail.trim()) {
-      setErrorMsg('Please enter a Google Mail address.');
+    if (!customGoogleEmail.includes('@')) {
+      setErrorMsg('Please enter a valid Google Mail address.');
       return;
     }
-    const email = customGoogleEmail.trim().toLowerCase();
-    const finalEmail = email.includes('@') ? email : `${email}@gmail.com`;
-
-    if (!finalEmail.endsWith('@gmail.com') && !finalEmail.endsWith('@googlemail.com')) {
-      setErrorMsg('Please provide a valid @gmail.com or @googlemail.com address.');
-      return;
+    try {
+      setGoogleLoading(true);
+      const payload = {
+        email: customGoogleEmail.trim().toLowerCase(),
+        name: customGoogleName.trim() || customGoogleEmail.split('@')[0],
+        googleId: `gid_${Date.now()}`,
+      };
+      if (googleChooserMode === 'signup') {
+        await registerWithGoogle(payload);
+      } else {
+        await loginWithGoogle(payload);
+      }
+      setShowGoogleChooser(false);
+    } catch {
+      setErrorMsg('Failed to authenticate Google Mail account.');
+    } finally {
+      setGoogleLoading(false);
     }
-
-    const name = customGoogleName.trim() || finalEmail.split('@')[0];
-    await handleSelectGoogleAccount({
-      email: finalEmail,
-      name,
-      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
-    });
   };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
-    if (!identifier.trim()) {
-      setErrorMsg('Please enter your phone number or Google Mail.');
-      return;
-    }
     setLoading(true);
     try {
       await login(identifier);
     } catch {
-      setErrorMsg('Login failed. Please verify credentials.');
+      setErrorMsg('Invalid login credentials.');
     } finally {
       setLoading(false);
     }
@@ -165,155 +180,151 @@ export const AuthModal: React.FC = () => {
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
-    if (!regName.trim()) {
-      setErrorMsg('Please enter your full name.');
+    if (!regName.trim() || !regPhone.trim()) {
+      setErrorMsg('Please enter your full name and mobile number.');
       return;
     }
     if (!isValidBDPhone(regPhone)) {
-      setErrorMsg('Please enter a valid 11-digit Bangladeshi mobile (e.g. 017XXXXXXXX).');
+      setErrorMsg('Please enter a valid 11-digit Bangladesh phone (e.g. 017XXXXXXXX).');
       return;
     }
     setLoading(true);
     try {
       await register({
-        name: regName,
-        phone: regPhone,
-        email: regEmail,
+        name: regName.trim(),
+        phone: regPhone.trim(),
+        email: regEmail.trim() || undefined,
       });
     } catch {
-      setErrorMsg('Registration failed.');
+      setErrorMsg('Could not register account. Phone number may already exist.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDemoSwitch = async (role: 'CUSTOMER' | 'ADMIN') => {
+  // OTP Handlers
+  const handleSendOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isValidBDPhone(otpPhone)) {
+      setErrorMsg('Please enter a valid 11-digit Bangladesh mobile number.');
+      return;
+    }
+    setErrorMsg('');
+    const code = `${Math.floor(1000 + Math.random() * 9000)}`;
+    setGeneratedOtp(code);
+    setOtpSent(true);
+    setOtpCountdown(60);
+    showToast(`Verification code sent to +88${otpPhone}: [ ${code} ]`, 'info');
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+    if (enteredOtp.trim() !== generatedOtp) {
+      setErrorMsg('Incorrect OTP code. Please check SMS and try again.');
+      return;
+    }
     setLoading(true);
     try {
-      await switchUserRole(role);
+      await login(otpPhone);
+      showToast('Phone number verified! Welcome to Deshi Commerce.', 'success');
       closeAuthModal();
+    } catch {
+      setErrorMsg('Authentication error. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Backdrop */}
-      <div
-        onClick={closeAuthModal}
-        className="fixed inset-0 bg-stone-950/65 backdrop-blur-xs transition-opacity"
-      />
-
-      <div className="min-h-full flex items-center justify-center p-4">
-        <div className="relative w-full max-w-md bg-white shadow-2xl border border-[#D4D4D4] overflow-hidden animate-in zoom-in-95 duration-150">
-          {/* Header */}
-          <div className="p-6 bg-[#2B2B2B] text-white relative border-b border-[#3D3D3D]">
-            <button
-              type="button"
-              onClick={closeAuthModal}
-              className="rounded-none absolute top-4 right-4 p-1.5 text-stone-400 hover:text-white transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <div className="text-xl font-bold uppercase tracking-tight text-white font-serif">
-              Deshi commerce
-            </div>
-            <p className="text-xs text-[#D4D4D4] mt-1">
-              Shop nationwide with verified doorstep delivery and escrow protection.
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm">
+              {showGoogleChooser
+                ? 'Sign In with Google Mail'
+                : tab === 'otp'
+                ? 'Instant Phone OTP Verification'
+                : tab === 'register'
+                ? 'Create Customer Account'
+                : 'Customer Sign In'}
+            </h3>
+            <p className="text-xs text-slate-500">
+              Deshi Commerce &bull; Nationwide Verified Shopping
             </p>
           </div>
+          <button
+            type="button"
+            onClick={closeAuthModal}
+            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-          {/* VIEW A: Google Account Chooser Dialog */}
+        {/* Content Body */}
+        <div>
+          {/* VIEW A: Google Account Chooser */}
           {showGoogleChooser ? (
             <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#D4D4D4]">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowGoogleChooser(false);
-                    setIsEnteringCustomGoogle(false);
-                  }}
-                  className="rounded-none flex items-center gap-1 text-xs text-stone-600 hover:text-[#2B2B2B] font-bold uppercase cursor-pointer"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  <span>Back</span>
-                </button>
-                <div className="flex items-center gap-1.5 text-xs font-bold text-[#2B2B2B]">
-                  <GoogleGIcon className="w-4 h-4" />
-                  <span>Google Identity</span>
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowGoogleChooser(false)}
+                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 font-semibold cursor-pointer mb-2"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Back to sign in options</span>
+              </button>
 
-              <div>
-                <h4 className="text-base font-bold text-[#2B2B2B] font-serif uppercase">
-                  {googleChooserMode === 'signup' ? 'Sign up with Google Mail' : 'Sign in with Google Mail'}
-                </h4>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Choose a Google Mail account to continue to <strong>Deshi commerce</strong>.
+              <div className="text-center pb-2">
+                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-2 border border-slate-200">
+                  <GoogleGIcon className="w-6 h-6" />
+                </div>
+                <h4 className="text-sm font-bold text-slate-900">Choose a Google Account</h4>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  to continue to <strong className="text-slate-800">Deshi Commerce</strong>
                 </p>
               </div>
 
-              {errorMsg && (
-                <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-                  <span>{errorMsg}</span>
-                </div>
-              )}
-
-              {googleLoading ? (
-                <div className="py-12 text-center space-y-3">
-                  <div className="w-10 h-10 border-4 border-[#2B2B2B] border-t-[#E11D48] animate-spin mx-auto" />
-                  <div className="text-xs font-bold uppercase tracking-wider text-[#2B2B2B]">
-                    Connecting with Google Mail...
-                  </div>
-                  <div className="text-[11px] text-stone-500">Exchanging secure OAuth token credentials</div>
-                </div>
-              ) : !isEnteringCustomGoogle ? (
+              {!isEnteringCustomGoogle ? (
                 <div className="space-y-3">
-                  {/* Primary detected Google Account */}
                   <button
                     type="button"
-                    onClick={() => handleSelectGoogleAccount(defaultGoogleAccount)}
-                    className="rounded-none w-full p-3.5 border-2 border-[#D4D4D4] hover:border-[#2B2B2B] hover:bg-[#F8F9FA] transition-all text-left flex items-center justify-between group cursor-pointer"
+                    onClick={handleSelectDefaultGoogle}
+                    disabled={googleLoading}
+                    className="w-full p-3 rounded-xl border border-slate-200 hover:border-slate-400 hover:bg-slate-50 transition-all text-left flex items-center gap-3 cursor-pointer group"
                   >
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={defaultGoogleAccount.avatar}
-                        alt={defaultGoogleAccount.name}
-                        className="w-10 h-10 rounded-full border border-stone-300 bg-white"
-                      />
-                      <div>
-                        <div className="text-xs font-bold text-[#2B2B2B] flex items-center gap-1.5">
-                          <span>{defaultGoogleAccount.name}</span>
-                          <span className="text-[10px] font-bold text-white bg-blue-600 px-1.5 py-0.2 uppercase">
-                            Google Mail
-                          </span>
-                        </div>
-                        <div className="text-xs text-stone-500 font-mono mt-0.5">
-                          {defaultGoogleAccount.email}
-                        </div>
-                      </div>
+                    <img
+                      src={defaultGoogleAccount.avatar}
+                      alt={defaultGoogleAccount.name}
+                      className="w-9 h-9 rounded-full object-cover border border-slate-200"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-bold text-xs text-slate-900 block truncate group-hover:text-blue-600">
+                        {defaultGoogleAccount.name}
+                      </span>
+                      <span className="text-[11px] text-slate-500 font-mono block truncate">
+                        {defaultGoogleAccount.email}
+                      </span>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-stone-400 group-hover:text-[#2B2B2B] group-hover:translate-x-0.5 transition-all" />
                   </button>
 
-                  {/* Use another Google Mail account */}
                   <button
                     type="button"
                     onClick={() => setIsEnteringCustomGoogle(true)}
-                    className="rounded-none w-full py-2.5 px-3 border border-dashed border-[#D4D4D4] hover:border-[#2B2B2B] text-xs font-bold text-stone-700 hover:text-[#2B2B2B] hover:bg-[#F8F9FA] transition-colors flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider"
+                    className="w-full py-2.5 px-3 border border-dashed border-slate-300 hover:border-slate-500 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <Mail className="w-4 h-4 text-stone-500" />
+                    <Mail className="w-4 h-4 text-slate-500" />
                     <span>Use another Google Mail account</span>
                   </button>
                 </div>
               ) : (
-                /* Enter custom Google Mail */
                 <form onSubmit={handleCustomGoogleSubmit} className="space-y-3">
                   <div>
-                    <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                      Your Full Name
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      Full Name
                     </label>
                     <input
                       type="text"
@@ -321,56 +332,49 @@ export const AuthModal: React.FC = () => {
                       onChange={(e) => setCustomGoogleName(e.target.value)}
                       placeholder="e.g. Tanvir Hasan"
                       required
-                      className="rounded-none w-full px-3 py-2 text-xs bg-[#F8F9FA] border border-[#D4D4D4] focus:outline-none focus:border-[#2B2B2B] focus:bg-white"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                       Google Mail Address
                     </label>
-                    <div className="relative">
-                      <input
-                        type="email"
-                        value={customGoogleEmail}
-                        onChange={(e) => setCustomGoogleEmail(e.target.value)}
-                        placeholder="yourname@gmail.com"
-                        required
-                        className="rounded-none w-full pl-9 pr-3 py-2 text-xs bg-[#F8F9FA] border border-[#D4D4D4] focus:outline-none focus:border-[#2B2B2B] focus:bg-white font-mono"
-                      />
-                      <GoogleGIcon className="w-4 h-4 absolute left-3 top-2.5" />
-                    </div>
+                    <input
+                      type="email"
+                      value={customGoogleEmail}
+                      onChange={(e) => setCustomGoogleEmail(e.target.value)}
+                      placeholder="yourname@gmail.com"
+                      required
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 font-mono"
+                    />
                   </div>
 
                   <div className="flex gap-2 pt-2">
                     <button
                       type="button"
                       onClick={() => setIsEnteringCustomGoogle(false)}
-                      className="rounded-none px-4 py-2.5 border border-[#D4D4D4] text-xs font-bold text-stone-600 hover:text-[#2B2B2B] cursor-pointer uppercase"
+                      className="px-4 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="rounded-none flex-1 py-2.5 bg-[#2B2B2B] hover:bg-[#E11D48] text-white text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                      disabled={googleLoading}
+                      className="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                     >
-                      <span>Continue with Google Mail</span>
+                      <span>Continue with Google</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </form>
               )}
-
-              <div className="pt-3 border-t border-[#D4D4D4] flex items-center justify-center gap-1.5 text-[11px] text-stone-500">
-                <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-                <span>Protected by Google Identity Services &amp; 256-Bit Escrow</span>
-              </div>
             </div>
           ) : (
-            /* VIEW B: Standard Tabs (Sign In / Create Account) with Google CTA */
+            /* VIEW B: Standard Tabs (Sign In / Register / OTP) */
             <div>
-              {/* Tabs */}
-              <div className="flex border-b border-[#D4D4D4] text-sm font-bold bg-[#F8F9FA]">
+              {/* Tab Switcher */}
+              <div className="flex border-b border-slate-200 text-xs font-bold bg-slate-50">
                 <button
                   type="button"
                   onClick={() => {
@@ -378,10 +382,10 @@ export const AuthModal: React.FC = () => {
                     setAuthModalTab('login');
                     setErrorMsg('');
                   }}
-                  className={`rounded-none flex-1 py-3 text-center border-b-2 transition-colors cursor-pointer uppercase tracking-wider text-xs ${
+                  className={`flex-1 py-3 text-center border-b-2 transition-colors cursor-pointer uppercase tracking-wider ${
                     tab === 'login'
-                      ? 'border-[#E11D48] text-[#E11D48] bg-white font-bold'
-                      : 'border-transparent text-stone-500 hover:text-stone-800'
+                      ? 'border-[#0F172A] text-[#0F172A] bg-white font-extrabold'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
                   }`}
                 >
                   Sign In
@@ -393,78 +397,85 @@ export const AuthModal: React.FC = () => {
                     setAuthModalTab('register');
                     setErrorMsg('');
                   }}
-                  className={`rounded-none flex-1 py-3 text-center border-b-2 transition-colors cursor-pointer uppercase tracking-wider text-xs ${
+                  className={`flex-1 py-3 text-center border-b-2 transition-colors cursor-pointer uppercase tracking-wider ${
                     tab === 'register'
-                      ? 'border-[#E11D48] text-[#E11D48] bg-white font-bold'
-                      : 'border-transparent text-stone-500 hover:text-stone-800'
+                      ? 'border-[#0F172A] text-[#0F172A] bg-white font-extrabold'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
                   }`}
                 >
-                  Sign Up (Create Account)
+                  Register
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTab('otp');
+                    setErrorMsg('');
+                  }}
+                  className={`flex-1 py-3 text-center border-b-2 transition-colors cursor-pointer uppercase tracking-wider ${
+                    tab === 'otp'
+                      ? 'border-[#0F172A] text-[#0F172A] bg-white font-extrabold'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Phone OTP
                 </button>
               </div>
 
-              {/* Error notice */}
               {errorMsg && (
-                <div className="m-5 mb-0 p-3 bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                <div className="m-4 mb-0 p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                   <span>{errorMsg}</span>
                 </div>
               )}
 
               <div className="p-6 space-y-4">
-                {/* HIGH-VISIBILITY GOOGLE MAIL AUTH BUTTON (Sign in with Google Mail / Sign up with Google Mail) */}
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenGoogle(tab === 'register' ? 'signup' : 'signin')}
-                    className="rounded-none w-full py-3 px-4 bg-white hover:bg-stone-50 text-[#2B2B2B] border-2 border-[#2B2B2B] hover:border-[#E11D48] font-bold text-xs uppercase tracking-wider shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2.5 group"
-                  >
-                    <GoogleGIcon className="w-4 h-4 shrink-0" />
-                    <span className="group-hover:text-[#E11D48] transition-colors">
-                      {tab === 'register' ? 'Sign up with Google Mail' : 'Sign in with Google Mail'}
-                    </span>
-                  </button>
+                {/* 1-Click Google Mail */}
+                {tab !== 'otp' && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenGoogle(tab === 'register' ? 'signup' : 'signin')}
+                      className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs uppercase tracking-wider rounded-lg shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-2.5"
+                    >
+                      <GoogleGIcon className="w-4 h-4 shrink-0" />
+                      <span>{tab === 'register' ? 'Sign up with Google Mail' : 'Sign in with Google Mail'}</span>
+                    </button>
 
-                  <div className="text-center text-[10px] text-stone-500 flex items-center justify-center gap-1">
-                    <Sparkles className="w-3 h-3 text-amber-500" />
-                    <span>Instant 1-click verification · No password needed</span>
-                  </div>
-                </div>
+                    <div className="relative flex items-center justify-center">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-slate-200"></div>
+                      </div>
+                      <span className="relative bg-white px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Or with Credentials
+                      </span>
+                    </div>
+                  </>
+                )}
 
-                {/* Divider */}
-                <div className="relative flex items-center justify-center">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-[#D4D4D4]"></div>
-                  </div>
-                  <span className="relative bg-white px-3 text-[10px] font-bold uppercase tracking-wider text-stone-400">
-                    Or with Phone / Password
-                  </span>
-                </div>
-
-                {/* TAB 1: Sign In Form */}
-                {tab === 'login' ? (
-                  <form onSubmit={handleLoginSubmit} className="space-y-3.5">
+                {/* TAB 1: Password Sign In */}
+                {tab === 'login' && (
+                  <form onSubmit={handleLoginSubmit} className="space-y-3">
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                        Google Mail, Email or Mobile Number
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Mobile Number or Email
                       </label>
                       <div className="relative">
                         <input
                           type="text"
                           value={identifier}
                           onChange={(e) => setIdentifier(e.target.value)}
-                          placeholder="e.g. 017XXXXXXXX or name@gmail.com"
+                          placeholder="e.g. 017XXXXXXXX or user@example.com"
                           required
-                          className="rounded-none w-full pl-9 pr-3 py-2.5 text-xs bg-[#F8F9FA] border border-[#D4D4D4] focus:outline-none focus:border-[#2B2B2B] focus:bg-white"
+                          className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
                         />
-                        <Phone className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+                        <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                       </div>
                     </div>
 
                     <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <label className="text-xs font-bold text-stone-700 uppercase tracking-wider">Password</label>
-                      </div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Password
+                      </label>
                       <div className="relative">
                         <input
                           type="password"
@@ -472,43 +483,45 @@ export const AuthModal: React.FC = () => {
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="Enter your password"
                           required
-                          className="rounded-none w-full pl-9 pr-3 py-2.5 text-xs bg-[#F8F9FA] border border-[#D4D4D4] focus:outline-none focus:border-[#2B2B2B] focus:bg-white"
+                          className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
                         />
-                        <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                       </div>
                     </div>
 
                     <button
                       type="submit"
                       disabled={loading}
-                      className="rounded-none w-full py-3 bg-[#2B2B2B] hover:bg-[#E11D48] text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full mt-2 py-2.5 bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow-sm transition-colors cursor-pointer"
                     >
-                      {loading ? 'Authenticating...' : 'Sign In to Account'}
+                      {loading ? 'Signing In...' : 'Sign In'}
                     </button>
                   </form>
-                ) : (
-                  /* TAB 2: Sign Up / Create Account Form */
+                )}
+
+                {/* TAB 2: Register Form */}
+                {tab === 'register' && (
                   <form onSubmit={handleRegisterSubmit} className="space-y-3">
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                        Full Name
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Full Name *
                       </label>
                       <div className="relative">
                         <input
                           type="text"
                           value={regName}
                           onChange={(e) => setRegName(e.target.value)}
-                          placeholder="e.g. Karim Ahmed"
+                          placeholder="e.g. Tanvir Hasan"
                           required
-                          className="rounded-none w-full pl-9 pr-3 py-2 text-xs bg-[#F8F9FA] border border-[#D4D4D4] focus:outline-none focus:border-[#2B2B2B] focus:bg-white"
+                          className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
                         />
-                        <UserIcon className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
+                        <UserIcon className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                        Bangladeshi Mobile Number (11 Digits)
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Mobile Phone Number *
                       </label>
                       <div className="relative">
                         <input
@@ -517,36 +530,30 @@ export const AuthModal: React.FC = () => {
                           onChange={(e) => setRegPhone(e.target.value)}
                           placeholder="017XXXXXXXX"
                           required
-                          className="rounded-none w-full pl-9 pr-3 py-2 text-xs bg-[#F8F9FA] border border-[#D4D4D4] focus:outline-none focus:border-[#2B2B2B] focus:bg-white font-mono"
+                          className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 font-mono"
                         />
-                        <Phone className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
+                        <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                        Google Mail or Email (Optional)
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Email Address (Optional)
                       </label>
                       <div className="relative">
                         <input
                           type="email"
                           value={regEmail}
                           onChange={(e) => setRegEmail(e.target.value)}
-                          placeholder="name@gmail.com"
-                          className="rounded-none w-full pl-9 pr-3 py-2 text-xs bg-[#F8F9FA] border border-[#D4D4D4] focus:outline-none focus:border-[#2B2B2B] focus:bg-white font-mono"
+                          placeholder="name@example.com"
+                          className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 font-mono"
                         />
-                        <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
+                        <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                       </div>
-                      {regEmail.toLowerCase().includes('@gmail.com') && (
-                        <div className="text-[10px] text-blue-600 mt-0.5 flex items-center gap-1 font-semibold">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>Google Mail address linked</span>
-                        </div>
-                      )}
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                         Create Password
                       </label>
                       <div className="relative">
@@ -556,44 +563,116 @@ export const AuthModal: React.FC = () => {
                           onChange={(e) => setRegPass(e.target.value)}
                           placeholder="Min 6 characters"
                           required
-                          className="rounded-none w-full pl-9 pr-3 py-2 text-xs bg-[#F8F9FA] border border-[#D4D4D4] focus:outline-none focus:border-[#2B2B2B] focus:bg-white"
+                          className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
                         />
-                        <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                       </div>
                     </div>
 
                     <button
                       type="submit"
                       disabled={loading}
-                      className="rounded-none w-full mt-2 py-3 bg-[#E11D48] hover:bg-[#BE123C] text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full mt-2 py-2.5 bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow-sm transition-colors cursor-pointer"
                     >
                       {loading ? 'Creating Account...' : 'Register Account'}
                     </button>
                   </form>
                 )}
 
-                {/* 1-Click Fast Sandbox Demo Buttons */}
-                <div className="pt-2 border-t border-[#D4D4D4]">
-                  <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2 text-center">
-                    ⚡ Fast 1-Click Demo Profiles:
+                {/* TAB 3: Phone OTP Verification Flow */}
+                {tab === 'otp' && (
+                  <div className="space-y-4">
+                    {!otpSent ? (
+                      <form onSubmit={handleSendOtp} className="space-y-3">
+                        <p className="text-xs text-slate-600">
+                          We will send a 4-digit verification code via SMS to your mobile phone.
+                        </p>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            Mobile Phone Number *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="tel"
+                              value={otpPhone}
+                              onChange={(e) => setOtpPhone(e.target.value)}
+                              placeholder="01XXXXXXXXX"
+                              required
+                              className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 font-mono font-bold"
+                            />
+                            <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                          </div>
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="w-full py-2.5 bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <span>Send Verification Code</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </form>
+                    ) : (
+                      <form onSubmit={handleVerifyOtp} className="space-y-3">
+                        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1">
+                          <span className="text-slate-500 block">Code sent to:</span>
+                          <span className="font-mono font-bold text-slate-900 block text-sm">
+                            +88 {otpPhone}
+                          </span>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center justify-between">
+                            <span>Enter 4-Digit Code *</span>
+                            <span className="text-[10px] text-slate-400">
+                              Demo Code: <strong className="font-mono text-slate-900">{generatedOtp}</strong>
+                            </span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              maxLength={4}
+                              value={enteredOtp}
+                              onChange={(e) => setEnteredOtp(e.target.value)}
+                              placeholder="&bull; &bull; &bull; &bull;"
+                              required
+                              className="w-full pl-9 pr-3 py-2 text-center text-lg font-mono font-bold tracking-widest border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                            />
+                            <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                          </div>
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={loading || enteredOtp.length < 4}
+                          className="w-full py-2.5 bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                        >
+                          <Check className="w-4 h-4" />
+                          <span>{loading ? 'Verifying...' : 'Verify & Enter Store'}</span>
+                        </button>
+
+                        <div className="flex items-center justify-between text-xs pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setOtpSent(false)}
+                            className="text-slate-500 hover:underline"
+                          >
+                            Change Phone Number
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={otpCountdown > 0}
+                            onClick={handleSendOtp}
+                            className="text-blue-600 hover:underline font-semibold disabled:text-slate-400 disabled:no-underline"
+                          >
+                            {otpCountdown > 0 ? `Resend code in ${otpCountdown}s` : 'Resend Code'}
+                          </button>
+                        </div>
+                      </form>
+                    )}
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <button
-                      type="button"
-                      onClick={() => handleDemoSwitch('CUSTOMER')}
-                      className="rounded-none p-2 bg-[#F8F9FA] hover:bg-stone-200 border border-[#D4D4D4] text-[#2B2B2B] font-bold text-[11px] uppercase tracking-wider cursor-pointer text-center"
-                    >
-                      Customer (Karim)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDemoSwitch('ADMIN')}
-                      className="rounded-none p-2 bg-[#F8F9FA] hover:bg-stone-200 border border-[#D4D4D4] text-[#2B2B2B] font-bold text-[11px] uppercase tracking-wider cursor-pointer text-center"
-                    >
-                      Admin (Tahmid)
-                    </button>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           )}

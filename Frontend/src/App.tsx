@@ -11,16 +11,19 @@ import { ProductDetailView } from './views/ProductDetailView';
 import { CheckoutView } from './views/CheckoutView';
 import { OrderDetailView } from './views/OrderDetailView';
 import { AccountView } from './views/AccountView';
+import { WishlistView } from './views/WishlistView';
+import { ContactSupportModal } from './components/ContactSupportModal';
 import { AdminDashboard } from './views/admin/AdminDashboard';
+import { AdminLoginView } from './views/admin/AdminLoginView';
 
 const MainLayout: React.FC = () => {
-  const { currentView, isAdminRoute } = useApp();
+  const { currentView, isAdminRoute, isAdmin } = useApp();
 
-  // If URL path is /admin or subpaths, render isolated Admin Dashboard ONLY
+  // If URL path is /admin or subpaths, require Admin Sign In
   if (isAdminRoute) {
     return (
       <div className="min-h-screen flex flex-col bg-[#F8F9FA] text-[#2B2B2B] font-sans">
-        <AdminDashboard />
+        {isAdmin ? <AdminDashboard /> : <AdminLoginView />}
         <ToastContainer />
       </div>
     );
@@ -34,6 +37,7 @@ const MainLayout: React.FC = () => {
       <main className="flex-1">
         {currentView === 'home' && <CatalogView isLanding={true} />}
         {currentView === 'catalog' && <CatalogView isLanding={false} />}
+        {currentView === 'wishlist' && <WishlistView />}
         {currentView === 'product-detail' && <ProductDetailView />}
         {currentView === 'checkout' && <CheckoutView />}
         {currentView === 'order-detail' && <OrderDetailView />}
@@ -46,6 +50,7 @@ const MainLayout: React.FC = () => {
       {/* Global Overlays & Modals for Customer Storefront */}
       <CartDrawer />
       <AuthModal />
+      <ContactSupportModal />
       <ToastContainer />
       <MobileBottomNav />
     </div>

@@ -18,14 +18,14 @@ export const ToastContainer: React.FC = () => {
             key={toast.id}
             className={`pointer-events-auto p-3.5 rounded-none shadow-xl border flex items-start gap-3 transition-all animate-in slide-in-from-bottom-3 duration-200 ${
               isSuccess
-                ? 'bg-[#2B2B2B] text-white border-emerald-500'
+                ? 'bg-[#2B2B2B] text-white border-slate-600'
                 : isError
                 ? 'bg-[#2B2B2B] text-white border-[#E11D48]'
                 : 'bg-[#2B2B2B] text-white border-[#D4D4D4]'
             }`}
           >
             <div className="mt-0.5 shrink-0">
-              {isSuccess && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+              {isSuccess && <CheckCircle2 className="w-4 h-4 text-blue-400" />}
               {isError && <AlertCircle className="w-4 h-4 text-[#E11D48]" />}
               {!isSuccess && !isError && <Info className="w-4 h-4 text-[#E11D48]" />}
             </div>

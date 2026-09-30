@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, Cart, Order, Address } from '../types';
 import { apiService } from '../services/apiClient';
+import { translations, Language } from '../data/translations';
 
 interface ToastMessage {
   id: string;
@@ -48,14 +49,22 @@ interface AppContextType {
   // Language & Currency
   lang: 'en' | 'bn';
   toggleLang: () => void;
+  setLang: (lang: 'en' | 'bn') => void;
+  t: (key: string, defaultText?: string) => string;
 
   // Customer View routing & modals
-  currentView: 'home' | 'catalog' | 'product-detail' | 'checkout' | 'orders' | 'order-detail' | 'account';
-  setCurrentView: (view: 'home' | 'catalog' | 'product-detail' | 'checkout' | 'orders' | 'order-detail' | 'account') => void;
+  currentView: 'home' | 'catalog' | 'product-detail' | 'checkout' | 'orders' | 'order-detail' | 'account' | 'wishlist';
+  setCurrentView: (view: 'home' | 'catalog' | 'product-detail' | 'checkout' | 'orders' | 'order-detail' | 'account' | 'wishlist') => void;
   selectedProductSlug: string | null;
   viewProductDetail: (slug: string) => void;
   selectedOrderId: string | null;
   viewOrderDetail: (orderId: string) => void;
+
+  // Support Contact Modal
+  isSupportModalOpen: boolean;
+  setIsSupportModalOpen: (open: boolean) => void;
+  openSupportModal: () => void;
+  closeSupportModal: () => void;
 
   // Search
   searchQuery: string;
@@ -115,6 +124,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedCategorySlug, setSelectedCategorySlug] = useState('all');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   useEffect(() => {
@@ -189,6 +199,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const toggleLang = () => {
     setLang((prev) => (prev === 'en' ? 'bn' : 'en'));
   };
+
+  const t = useCallback(
+    (key: string, defaultText?: string): string => {
+      const currentDict = translations[lang] || translations.en;
+      if (currentDict && currentDict[key]) {
+        return currentDict[key];
+      }
+      const fallbackDict = translations.en;
+      if (fallbackDict && fallbackDict[key]) {
+        return fallbackDict[key];
+      }
+      return defaultText !== undefined ? defaultText : key;
+    },
+    [lang]
+  );
 
   const login = async (identifier: string) => {
     try {
@@ -335,6 +360,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedRegion,
         lang,
         toggleLang,
+        setLang,
+        t,
         currentView,
         setCurrentView,
         selectedProductSlug,
@@ -353,6 +380,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setIsAuthModalOpen(true);
         },
         closeAuthModal: () => setIsAuthModalOpen(false),
+        isSupportModalOpen,
+        setIsSupportModalOpen,
+        openSupportModal: () => setIsSupportModalOpen(true),
+        closeSupportModal: () => setIsSupportModalOpen(false),
         toasts,
         showToast,
         dismissToast,

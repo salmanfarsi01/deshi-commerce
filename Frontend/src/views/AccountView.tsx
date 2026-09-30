@@ -290,7 +290,7 @@ export const AccountView: React.FC = () => {
                       <span
                         className={`font-bold px-2 py-0.5 text-[10px] uppercase ${
                           ord.status === 'DELIVERED'
-                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                            ? 'bg-slate-900 text-white'
                             : ord.status === 'SHIPPED'
                             ? 'bg-blue-50 text-blue-800 border border-blue-200'
                             : ord.status === 'CANCELLED'
