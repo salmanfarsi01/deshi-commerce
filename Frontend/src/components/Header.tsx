@@ -17,6 +17,7 @@ import {
   Headphones,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import mainLogo from '../images/main_logo.png';
 
 export const Header: React.FC = () => {
   const {
@@ -62,7 +63,7 @@ export const Header: React.FC = () => {
       {/* Main Clean Header Bar (No cluttered sub-header) */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <div className="flex items-center justify-between gap-3 sm:gap-6">
-          {/* Brand Logo - Sleek Clean Emblem (No DC logo) */}
+          {/* Brand Logo - Official Deshi Ecommerce Logo */}
           <div className="flex items-center shrink-0">
             <button
               type="button"
@@ -70,14 +71,14 @@ export const Header: React.FC = () => {
                 setCurrentView('home');
                 setSelectedCategorySlug('all');
               }}
-              className="text-left cursor-pointer group flex items-center gap-2"
+              className="text-left cursor-pointer group flex items-center"
+              title="Deshi Commerce"
             >
-              <div className="w-8 h-8 rounded-lg bg-[#0F172A] text-white flex items-center justify-center shadow-xs group-hover:bg-slate-800 transition-colors">
-                <ShoppingBag className="w-4 h-4 text-rose-500" />
-              </div>
-              <span className="text-xl font-black tracking-tight text-[#0F172A] uppercase">
-                {t('brand.name', 'DESHI COMMERCE')}
-              </span>
+              <img
+                src={mainLogo}
+                alt="Deshi Commerce"
+                className="h-8 sm:h-9 w-auto object-contain hover:opacity-90 transition-opacity"
+              />
             </button>
           </div>
 
@@ -368,26 +369,26 @@ export const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Categories Navigation Bar */}
-      <div className="border-t border-[#E2E8F0] bg-white px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto no-scrollbar py-1.5 text-xs font-semibold">
+      {/* Categories Navigation Bar - Boxed buttons with zero border-radius */}
+      <div className="border-t border-[#E2E8F0] bg-[#FAFAFA] px-4 sm:px-6 lg:px-8 py-2">
+        <div className="max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto no-scrollbar text-xs font-semibold">
           <button
             type="button"
             onClick={() => {
               setSelectedCategorySlug('all');
               if (currentView !== 'catalog') setCurrentView('catalog');
             }}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
+            className={`rounded-none border px-3.5 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 uppercase tracking-wider text-[11px] font-bold ${
               selectedCategorySlug === 'all'
-                ? 'bg-[#0F172A] text-white font-bold'
-                : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                ? 'bg-[#0F172A] border-[#0F172A] text-white shadow-2xs'
+                : 'bg-white border-slate-300 text-slate-800 hover:border-slate-500 hover:bg-slate-50'
             }`}
           >
             <Menu className="w-3.5 h-3.5" />
             <span>{t('header.categories.all', 'All Categories')}</span>
           </button>
 
-          <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap pl-1">
+          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pl-0.5">
             {navCategories.slice(1).map((cat) => {
               const isActive = selectedCategorySlug === cat.slug;
               return (
@@ -398,10 +399,10 @@ export const Header: React.FC = () => {
                     setSelectedCategorySlug(cat.slug);
                     if (currentView !== 'catalog') setCurrentView('catalog');
                   }}
-                  className={`px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
+                  className={`rounded-none border px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer shrink-0 ${
                     isActive
-                      ? 'bg-slate-200 text-[#0F172A] font-bold'
-                      : 'text-slate-600 hover:text-[#0F172A] hover:bg-slate-50'
+                      ? 'bg-[#0F172A] border-[#0F172A] text-white font-bold shadow-2xs'
+                      : 'bg-white border-slate-300 text-slate-700 hover:border-slate-500 hover:text-[#0F172A] hover:bg-slate-50'
                   }`}
                 >
                   {t(cat.key, cat.label)}

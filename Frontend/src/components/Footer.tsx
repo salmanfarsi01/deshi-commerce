@@ -1,6 +1,7 @@
 import React from 'react';
-import { ShieldCheck, Truck, RotateCcw, Phone, Mail, MapPin, ShoppingBag, Headphones } from 'lucide-react';
+import { ShieldCheck, Truck, RotateCcw, Phone, Mail, MapPin, Headphones } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import mainLogo from '../images/main_logo.png';
 
 export const Footer: React.FC = () => {
   const { setCurrentView, setSelectedCategorySlug, openSupportModal, t, lang } = useApp();
@@ -71,13 +72,12 @@ export const Footer: React.FC = () => {
       {/* Main Footer Links */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid grid-cols-1 md:grid-cols-12 gap-8">
         <div className="md:col-span-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center shadow-xs">
-              <ShoppingBag className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-xl font-black text-white uppercase tracking-tight">
-              {t('brand.name', 'Deshi Commerce')}
-            </span>
+          <div className="inline-block bg-white px-3 py-1.5 rounded-lg shadow-sm">
+            <img
+              src={mainLogo}
+              alt="Deshi Commerce"
+              className="h-7 w-auto object-contain"
+            />
           </div>
           <p className="text-slate-400 leading-relaxed text-xs max-w-sm">
             {t('footer.about.text', 'Your trusted destination for authentic Bangladeshi products with verified courier delivery across all 64 districts.')}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { apiService } from '../../services/apiClient';
 import { ShieldCheck, Lock, Mail, ArrowLeft, KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
+import mainLogo from '../../images/main_logo.png';
 
 export const AdminLoginView: React.FC = () => {
   const { navigateTo, showToast, switchUserRole } = useApp();
@@ -31,12 +32,15 @@ export const AdminLoginView: React.FC = () => {
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 sm:p-6 text-slate-100 font-sans">
       {/* Top Brand Tag */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-400 mb-3">
+        <div className="inline-block bg-white px-4 py-2 rounded-xl mb-4 shadow-lg">
+          <img src={mainLogo} alt="Deshi Commerce" className="h-8 sm:h-9 w-auto object-contain" />
+        </div>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-400 mb-3 block w-fit mx-auto">
           <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
           <span>Restricted Access &bull; Administrative Route (/admin)</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white uppercase">
-          Deshi Commerce Portal
+        <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase">
+          Administrative Portal
         </h1>
         <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
           Please enter verified system administrator credentials to access inventory, orders, and sales analytics.

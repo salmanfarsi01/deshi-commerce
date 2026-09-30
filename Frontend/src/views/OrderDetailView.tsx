@@ -18,6 +18,7 @@ import { useApp } from '../context/AppContext';
 import { apiService } from '../services/apiClient';
 import { Order, OrderStatus } from '../types';
 import { formatBDT } from '../data/bangladeshGeo';
+import mainLogo from '../images/main_logo.png';
 
 export const OrderDetailView: React.FC = () => {
   const { selectedOrderId, setCurrentView, showToast, t } = useApp();
@@ -473,12 +474,11 @@ export const OrderDetailView: React.FC = () => {
         <div className="flex justify-between items-start border-b-2 border-slate-900 pb-3 mb-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-8 h-8 rounded bg-slate-900 text-white flex items-center justify-center">
-                <ShoppingBag className="w-4 h-4 text-white" />
-              </div>
-              <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase">
-                DESHI COMMERCE
-              </h1>
+              <img
+                src={mainLogo}
+                alt="Deshi Commerce"
+                className="h-8 w-auto object-contain"
+              />
             </div>
             <p className="text-[10px] text-slate-500 font-medium">
               Authentic Quality Delivered Nationwide &bull; Trade Lic: TRAD/DNCC/049210/2024
