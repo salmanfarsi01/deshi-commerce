@@ -58,6 +58,9 @@ public class Product {
     @Column(name = "brand", length = 100)
     private String brand;
 
+    @Column(name = "buying_price", precision = 12, scale = 2)
+    private BigDecimal buyingPrice;
+
     @Column(name = "tenant_id", length = 50)
     private String tenantId;
 
@@ -198,6 +201,14 @@ public class Product {
 
     public void setBrand(String brand) {
         this.brand = brand;
+    }
+
+    public BigDecimal getBuyingPrice() {
+        return buyingPrice;
+    }
+
+    public void setBuyingPrice(BigDecimal buyingPrice) {
+        this.buyingPrice = buyingPrice;
     }
 
     public Instant getCreatedAt() {

@@ -23,6 +23,7 @@ public class ProductResponse {
     private boolean available;
     private Double rating;
     private String brand;
+    private BigDecimal buyingPrice;
 
     public ProductResponse() {
     }
@@ -38,6 +39,7 @@ public class ProductResponse {
         dto.setDescription(product.getDescription());
         dto.setPrice(product.getPrice());
         dto.setDiscountPrice(product.getDiscountPrice());
+        dto.setBuyingPrice(product.getBuyingPrice());
         dto.setCurrency(product.getCurrency());
         dto.setStock(product.getStock());
         dto.setAvailable(product.isAvailable());
@@ -154,5 +156,13 @@ public class ProductResponse {
 
     public void setBrand(String brand) {
         this.brand = brand;
+    }
+
+    public BigDecimal getBuyingPrice() {
+        return buyingPrice;
+    }
+
+    public void setBuyingPrice(BigDecimal buyingPrice) {
+        this.buyingPrice = buyingPrice;
     }
 }

@@ -161,6 +161,10 @@ public class ProductService {
             product.setBrand("Deshi Commerce");
         }
 
+        if (request.getBuyingPrice() != null) {
+            product.setBuyingPrice(request.getBuyingPrice());
+        }
+
         productRepository.save(product);
         return toResponseDto(product);
     }
@@ -187,6 +191,10 @@ public class ProductService {
 
         if (request.getBrand() != null) {
             product.setBrand(request.getBrand().trim());
+        }
+
+        if (request.getBuyingPrice() != null) {
+            product.setBuyingPrice(request.getBuyingPrice());
         }
 
         if (request.getAvailable() != null) {

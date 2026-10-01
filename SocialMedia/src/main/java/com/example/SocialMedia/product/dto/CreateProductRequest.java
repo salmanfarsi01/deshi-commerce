@@ -26,6 +26,8 @@ public class CreateProductRequest {
 
     private BigDecimal discountPrice;
 
+    private BigDecimal buyingPrice;
+
     @NotNull(message = "Stock quantity is required")
     @Min(value = 0, message = "Stock cannot be negative")
     private Integer stock;
@@ -108,5 +110,13 @@ public class CreateProductRequest {
 
     public void setBrand(String brand) {
         this.brand = brand;
+    }
+
+    public BigDecimal getBuyingPrice() {
+        return buyingPrice;
+    }
+
+    public void setBuyingPrice(BigDecimal buyingPrice) {
+        this.buyingPrice = buyingPrice;
     }
 }
