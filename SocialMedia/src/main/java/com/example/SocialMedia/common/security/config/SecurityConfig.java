@@ -94,6 +94,8 @@ public class SecurityConfig {
                                 "/swagger-resources/**",
                                 "/webjars/**"
                         ).permitAll()
+                        // Public Uploaded Static Assets
+                        .requestMatchers("/uploads/**").permitAll()
                         // Public Auth APIs
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         // Public Catalog Browsing

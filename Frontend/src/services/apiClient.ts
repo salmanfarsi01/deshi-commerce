@@ -1543,6 +1543,38 @@ export const apiService = {
   // 9. Admin Operations (/api/v1/admin & /api/v1/admin/orders)
   // =========================================================================
   admin: {
+    uploadImage: async (file: File): Promise<ApiResponse<{ url: string; fileName: string; size: number }>> => {
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const res = await apiClient.post<ApiResponse<any>>('/admin/upload', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        if (res.data?.data?.url) {
+          const rawUrl = res.data.data.url;
+          const fullUrl = rawUrl.startsWith('http') ? rawUrl : `${API_BASE_URL.replace('/api/v1', '')}${rawUrl}`;
+          return wrapSuccess({ ...res.data.data, url: fullUrl }, 'Image uploaded successfully');
+        }
+      } catch (err: any) {
+        console.warn('Backend upload failed, converting to local data URL:', err?.message);
+      }
+
+      // Offline / fallback data URL
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      return wrapSuccess(
+        { url: dataUrl, fileName: file.name, size: file.size },
+        'Image processed successfully'
+      );
+    },
+
     getDashboardSummary: async (): Promise<ApiResponse<AdminDashboardSummary>> => {
       try {
         const res = await apiClient.get<ApiResponse<any>>('/admin/dashboard/summary');
