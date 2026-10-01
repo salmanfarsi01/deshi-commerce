@@ -22,6 +22,7 @@ public class ProductResponse {
     private CategoryResponse category;
     private boolean available;
     private Double rating;
+    private String brand;
 
     public ProductResponse() {
     }
@@ -42,6 +43,7 @@ public class ProductResponse {
         dto.setAvailable(product.isAvailable());
         dto.setRating(product.getRating());
         dto.setCategory(category);
+        dto.setBrand(product.getBrand());
         if (product.getImages() != null) {
             dto.setImages(product.getImages().stream()
                     .map(ProductImageDto::fromEntity)
@@ -144,5 +146,13 @@ public class ProductResponse {
 
     public void setRating(Double rating) {
         this.rating = rating;
+    }
+
+    public String getBrand() {
+        return brand;
+    }
+
+    public void setBrand(String brand) {
+        this.brand = brand;
     }
 }

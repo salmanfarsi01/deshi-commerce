@@ -155,6 +155,12 @@ public class ProductService {
                 Instant.now()
         );
 
+        if (request.getBrand() != null && !request.getBrand().isBlank()) {
+            product.setBrand(request.getBrand().trim());
+        } else {
+            product.setBrand("Deshi Commerce");
+        }
+
         productRepository.save(product);
         return toResponseDto(product);
     }
@@ -177,6 +183,10 @@ public class ProductService {
             product.setImages(request.getImages().stream()
                     .map(img -> new ProductImage(img.getUrl(), img.getAlt()))
                     .collect(Collectors.toList()));
+        }
+
+        if (request.getBrand() != null) {
+            product.setBrand(request.getBrand().trim());
         }
 
         if (request.getAvailable() != null) {

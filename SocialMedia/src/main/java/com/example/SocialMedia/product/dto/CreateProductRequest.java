@@ -16,6 +16,8 @@ public class CreateProductRequest {
 
     private String slug;
 
+    private String brand;
+
     private String description;
 
     @NotNull(message = "Price is required")
@@ -98,5 +100,13 @@ public class CreateProductRequest {
 
     public void setImages(List<ProductImageDto> images) {
         this.images = images;
+    }
+
+    public String getBrand() {
+        return brand;
+    }
+
+    public void setBrand(String brand) {
+        this.brand = brand;
     }
 }

@@ -55,6 +55,9 @@ public class Product {
     @Column(name = "rating")
     private Double rating = 4.5;
 
+    @Column(name = "brand", length = 100)
+    private String brand;
+
     @Column(name = "tenant_id", length = 50)
     private String tenantId;
 
@@ -187,6 +190,14 @@ public class Product {
 
     public void setRating(Double rating) {
         this.rating = rating;
+    }
+
+    public String getBrand() {
+        return brand;
+    }
+
+    public void setBrand(String brand) {
+        this.brand = brand;
     }
 
     public Instant getCreatedAt() {

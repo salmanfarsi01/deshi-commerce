@@ -13,6 +13,8 @@ public class UpdateProductRequest {
     @NotBlank(message = "Product name is required")
     private String name;
 
+    private String brand;
+
     private String description;
 
     @NotNull(message = "Price is required")
@@ -97,5 +99,13 @@ public class UpdateProductRequest {
 
     public void setAvailable(Boolean available) {
         this.available = available;
+    }
+
+    public String getBrand() {
+        return brand;
+    }
+
+    public void setBrand(String brand) {
+        this.brand = brand;
     }
 }
