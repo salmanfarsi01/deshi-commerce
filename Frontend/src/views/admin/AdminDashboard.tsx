@@ -321,20 +321,36 @@ export const AdminDashboard: React.FC = () => {
   ) => {
     try {
       const res = await apiService.admin.updateTracking(orderId, courierData);
-      showToast(`Courier assigned to #${res.data.orderNumber}! Customer SMS sent.`, 'success');
-      loadData();
-    } catch {
-      showToast('Failed to assign courier', 'error');
+      showToast(`Courier assigned to #${res.data?.orderNumber || orderId}! Customer SMS sent.`, 'success');
+      const ordRes = await apiService.admin.getOrders();
+      setOrders(ordRes.data);
+    } catch (err: any) {
+      console.error('Failed to assign courier:', err);
+      showToast(err?.message || 'Failed to assign courier', 'error');
     }
   };
 
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+    // Optimistic update: instantly reflect the change in table dropdown
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
+    );
+
     try {
       const res = await apiService.admin.updateStatus(orderId, newStatus);
-      showToast(`Order #${res.data.orderNumber} status changed to ${newStatus}`, 'success');
-      loadData();
-    } catch {
-      showToast('Failed to update status', 'error');
+      showToast(
+        res.message || `Order #${res.data?.orderNumber || orderId} status changed to ${newStatus}`,
+        'success'
+      );
+      // Sync fresh list in background
+      const ordRes = await apiService.admin.getOrders();
+      setOrders(ordRes.data);
+    } catch (err: any) {
+      console.error('Failed to update status:', err);
+      showToast(err?.message || 'Failed to update status', 'error');
+      // Revert if error
+      const ordRes = await apiService.admin.getOrders();
+      setOrders(ordRes.data);
     }
   };
 
