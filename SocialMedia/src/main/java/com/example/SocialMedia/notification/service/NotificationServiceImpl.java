@@ -6,6 +6,8 @@ import com.example.SocialMedia.notification.model.NotificationLog;
 import com.example.SocialMedia.notification.model.NotificationStatus;
 import com.example.SocialMedia.notification.repository.NotificationRepository;
 import com.example.SocialMedia.order.model.Order;
+import com.example.SocialMedia.order.model.OrderItem;
+import com.example.SocialMedia.order.model.OrderStatus;
 import com.example.SocialMedia.payment.model.PaymentRecord;
 import com.example.SocialMedia.user.model.User;
 import org.slf4j.Logger;
@@ -73,6 +75,69 @@ public class NotificationServiceImpl implements NotificationService {
 
             boolean sent = emailGatewayClient.sendEmail(email, subject, emailHtml);
             saveLog(NotificationChannel.EMAIL, NotificationEvent.ORDER_PLACED, email,
+                    subject, emailHtml,
+                    sent ? NotificationStatus.SENT : NotificationStatus.FAILED,
+                    order.getId(), user != null ? user.getId() : null);
+        }
+    }
+
+    @Override
+    public void notifyOrderConfirmed(Order order, User user) {
+        String customerName = user != null ? user.getName() : "Valued Customer";
+        String phone = resolvePhone(order, user);
+        String email = user != null ? user.getEmail() : null;
+
+        StringBuilder itemsList = new StringBuilder();
+        if (order.getItems() != null && !order.getItems().isEmpty()) {
+            for (OrderItem item : order.getItems()) {
+                itemsList.append(String.format("<li><strong>%s</strong> &times; %d &mdash; BDT %s</li>",
+                        item.getProductName(), item.getQuantity(), item.getUnitPrice()));
+            }
+        }
+
+        // 1. Send SMS to customer mobile
+        if (phone != null && !phone.isBlank()) {
+            String smsText = String.format(
+                    "Dear %s, your order #%s of BDT %s is CONFIRMED by Deshi Commerce! Your items are now being prepared for courier handover.",
+                    customerName, order.getOrderNumber(), order.getTotal()
+            );
+
+            boolean sent = smsGatewayClient.sendSms(phone, smsText);
+            saveLog(NotificationChannel.SMS, NotificationEvent.ORDER_CONFIRMED, phone,
+                    "Order Confirmed: #" + order.getOrderNumber(), smsText,
+                    sent ? NotificationStatus.SENT : NotificationStatus.FAILED,
+                    order.getId(), user != null ? user.getId() : null);
+        }
+
+        // 2. Send Email to customer
+        if (email != null && !email.isBlank()) {
+            String subject = "Order Confirmed - #" + order.getOrderNumber() + " | Deshi Commerce";
+            String emailHtml = String.format(
+                    "<div style=\"font-family: sans-serif; color: #1e293b; max-width: 600px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;\">" +
+                    "<div style=\"border-bottom: 2px solid #10b981; padding-bottom: 12px; margin-bottom: 16px;\">" +
+                    "<h2 style=\"color: #0f766e; margin: 0;\">Order Confirmed!</h2>" +
+                    "<p style=\"color: #64748b; font-size: 14px; margin-top: 4px;\">Order #%s &bull; Deshi Commerce Official Store</p>" +
+                    "</div>" +
+                    "<p>Dear <strong>%s</strong>,</p>" +
+                    "<p>We are delighted to confirm that your order <strong>#%s</strong> has been reviewed and accepted! We are now preparing your products for packaging and swift courier dispatch.</p>" +
+                    "<div style=\"background: #f8fafc; padding: 14px; border-radius: 6px; margin: 16px 0; border: 1px solid #e2e8f0;\">" +
+                    "<h4 style=\"margin: 0 0 10px 0; color: #0f172a;\">Verified Items:</h4>" +
+                    "<ul style=\"padding-left: 20px; margin: 0;\">%s</ul>" +
+                    "<hr style=\"border: none; border-top: 1px dashed #cbd5e1; margin: 12px 0;\"/>" +
+                    "<p style=\"margin: 4px 0;\"><strong>Total Amount:</strong> BDT %s (%s)</p>" +
+                    "<p style=\"margin: 4px 0;\"><strong>Delivery Address:</strong> %s</p>" +
+                    "</div>" +
+                    "<p style=\"font-size: 13px; color: #64748b;\">You can log in to your profile anytime to view your live status and track your parcel.</p>" +
+                    "<p style=\"margin-top: 24px; font-size: 13px; color: #94a3b8;\">Thank you for shopping with Deshi Commerce.<br/>Helpline: +880 9612-000000</p>" +
+                    "</div>",
+                    order.getOrderNumber(), customerName, order.getOrderNumber(),
+                    itemsList.length() > 0 ? itemsList.toString() : "<li>Selected Store Products</li>",
+                    order.getTotal(), order.getPaymentMethod(),
+                    order.getShippingAddress() != null ? order.getShippingAddress().getAddressLine() + ", " + order.getShippingAddress().getDistrict() : "Bangladesh"
+            );
+
+            boolean sent = emailGatewayClient.sendEmail(email, subject, emailHtml);
+            saveLog(NotificationChannel.EMAIL, NotificationEvent.ORDER_CONFIRMED, email,
                     subject, emailHtml,
                     sent ? NotificationStatus.SENT : NotificationStatus.FAILED,
                     order.getId(), user != null ? user.getId() : null);
@@ -203,6 +268,55 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public List<NotificationLog> getAllNotifications() {
         return notificationRepository.findAll();
+    }
+
+    @Override
+    public List<NotificationLog> getCustomerNotifications(String userId) {
+        return notificationRepository.findByUserId(userId);
+    }
+
+    @Override
+    public void notifyOrderStatusChanged(Order order, User user, OrderStatus newStatus, String comment) {
+        String customerName = user != null ? user.getName() : "Valued Customer";
+        String phone = resolvePhone(order, user);
+        String email = user != null ? user.getEmail() : null;
+
+        // 1. Send SMS
+        if (phone != null && !phone.isBlank()) {
+            String smsText = String.format(
+                    "Dear %s, your order #%s status has been updated to %s. %sDeshi Commerce.",
+                    customerName, order.getOrderNumber(), newStatus,
+                    (comment != null && !comment.isBlank()) ? "(" + comment + "). " : ""
+            );
+
+            boolean sent = smsGatewayClient.sendSms(phone, smsText);
+            saveLog(NotificationChannel.SMS, NotificationEvent.ORDER_CONFIRMED, phone,
+                    "Order #" + order.getOrderNumber() + " Status: " + newStatus, smsText,
+                    sent ? NotificationStatus.SENT : NotificationStatus.FAILED,
+                    order.getId(), user != null ? user.getId() : null);
+        }
+
+        // 2. Send Email
+        if (email != null && !email.isBlank()) {
+            String subject = "Order Status Update - #" + order.getOrderNumber() + " [" + newStatus + "]";
+            String emailHtml = String.format(
+                    "<div style=\"font-family: sans-serif; color: #1e293b; max-width: 600px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;\">" +
+                    "<h2 style=\"color: #2563eb; margin-top: 0;\">Order Status Updated</h2>" +
+                    "<p>Dear <strong>%s</strong>,</p>" +
+                    "<p>Your order <strong>#%s</strong> status has changed to: <span style=\"background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 4px; font-weight: bold;\">%s</span>.</p>" +
+                    "<p>%s</p>" +
+                    "<p>Log in to your customer dashboard to inspect your live order progress.</p>" +
+                    "</div>",
+                    customerName, order.getOrderNumber(), newStatus,
+                    (comment != null && !comment.isBlank()) ? "<strong>Note:</strong> " + comment : ""
+            );
+
+            boolean sent = emailGatewayClient.sendEmail(email, subject, emailHtml);
+            saveLog(NotificationChannel.EMAIL, NotificationEvent.ORDER_CONFIRMED, email,
+                    subject, emailHtml,
+                    sent ? NotificationStatus.SENT : NotificationStatus.FAILED,
+                    order.getId(), user != null ? user.getId() : null);
+        }
     }
 
     private void saveLog(NotificationChannel channel, NotificationEvent event, String recipient,

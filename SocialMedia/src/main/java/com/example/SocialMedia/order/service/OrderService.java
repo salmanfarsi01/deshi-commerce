@@ -314,10 +314,20 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order", "id", orderId));
 
+        // If status is identical, update comments if provided and return successfully (idempotent)
+        if (order.getStatus() == request.getStatus()) {
+            if (request.getComment() != null && !request.getComment().isBlank()) {
+                order.setNotes((order.getNotes() != null ? order.getNotes() + " | " : "") + request.getComment());
+                order.setUpdatedAt(Instant.now());
+                orderRepository.save(order);
+            }
+            return toOrderResponse(order);
+        }
+
         if (!order.getStatus().canTransitionTo(request.getStatus())) {
             throw new BadRequestException(
-                    String.format("Invalid order status transition from %s to %s. Allowed transitions: %s",
-                            order.getStatus(), request.getStatus(), order.getStatus())
+                    String.format("Invalid order status transition from %s to %s.",
+                            order.getStatus(), request.getStatus())
             );
         }
 
@@ -335,18 +345,23 @@ public class OrderService {
 
         order.setStatus(request.getStatus());
         order.setUpdatedAt(Instant.now());
-        if (request.getComment() != null) {
+        if (request.getComment() != null && !request.getComment().isBlank()) {
             order.setNotes((order.getNotes() != null ? order.getNotes() + " | " : "") + request.getComment());
         }
         orderRepository.save(order);
 
+        // Notify customer via SMS, Email, and in-app audit log
         User customer = userRepository.findById(order.getUserId()).orElse(null);
-        if (request.getStatus() == OrderStatus.SHIPPED) {
+        if (request.getStatus() == OrderStatus.CONFIRMED) {
+            notificationService.notifyOrderConfirmed(order, customer);
+        } else if (request.getStatus() == OrderStatus.SHIPPED) {
             notificationService.notifyOrderShipped(order, customer);
         } else if (request.getStatus() == OrderStatus.DELIVERED) {
             notificationService.notifyOrderDelivered(order, customer);
         } else if (request.getStatus() == OrderStatus.CANCELLED) {
             notificationService.notifyOrderCancelled(order, customer);
+        } else {
+            notificationService.notifyOrderStatusChanged(order, customer, request.getStatus(), request.getComment());
         }
 
         return toOrderResponse(order);

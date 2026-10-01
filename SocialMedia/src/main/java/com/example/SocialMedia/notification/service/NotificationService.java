@@ -11,6 +11,8 @@ public interface NotificationService {
 
     void notifyOrderPlaced(Order order, User user);
 
+    void notifyOrderConfirmed(Order order, User user);
+
     void notifyPaymentReceived(Order order, PaymentRecord payment, User user);
 
     void notifyOrderShipped(Order order, User user);
@@ -18,6 +20,10 @@ public interface NotificationService {
     void notifyOrderDelivered(Order order, User user);
 
     void notifyOrderCancelled(Order order, User user);
+
+    void notifyOrderStatusChanged(Order order, User user, com.example.SocialMedia.order.model.OrderStatus newStatus, String comment);
+
+    List<NotificationLog> getCustomerNotifications(String userId);
 
     List<NotificationLog> getOrderNotifications(String orderId);
 

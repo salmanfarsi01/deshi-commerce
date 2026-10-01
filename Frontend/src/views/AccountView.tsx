@@ -10,19 +10,25 @@ import {
   LogOut,
   ShieldCheck,
   CheckCircle2,
+  Bell,
+  Mail,
+  Smartphone,
+  ExternalLink,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/apiClient';
-import { Order, Address } from '../types';
+import { Order, Address, NotificationLog } from '../types';
 import { formatBDT } from '../data/bangladeshGeo';
 
 export const AccountView: React.FC = () => {
   const { user, setCurrentView, viewOrderDetail, showToast, openAuthModal, logout } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'addresses' | 'security'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'notifications' | 'addresses' | 'security'>('orders');
   const [orders, setOrders] = useState<Order[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
+  const [notifications, setNotifications] = useState<NotificationLog[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
 
   // Security tab
   const [oldPassword, setOldPassword] = useState('');
@@ -31,11 +37,24 @@ export const AccountView: React.FC = () => {
   const [passLoading, setPassLoading] = useState(false);
 
   useEffect(() => {
+    // Pre-fetch notifications count
+    apiService.notifications.getMyNotifications().then((res) => {
+      setNotifications(res.data);
+    });
+  }, []);
+
+  useEffect(() => {
     if (activeTab === 'orders') {
       setLoadingOrders(true);
       apiService.orders.getCustomerOrders().then((res) => {
         setOrders(res.data);
         setLoadingOrders(false);
+      });
+    } else if (activeTab === 'notifications') {
+      setLoadingNotifications(true);
+      apiService.notifications.getMyNotifications().then((res) => {
+        setNotifications(res.data);
+        setLoadingNotifications(false);
       });
     } else if (activeTab === 'addresses') {
       apiService.addresses.getAll().then((res) => {
@@ -224,6 +243,19 @@ export const AccountView: React.FC = () => {
 
           <button
             type="button"
+            onClick={() => setActiveTab('notifications')}
+            className={`rounded-none pb-3 border-b-2 flex items-center gap-2 transition-colors cursor-pointer ${
+              activeTab === 'notifications'
+                ? 'border-[#E11D48] text-[#E11D48]'
+                : 'border-transparent text-stone-500 hover:text-[#2B2B2B]'
+            }`}
+          >
+            <Bell className="w-4 h-4" />
+            <span>Updates &amp; Alerts ({notifications.length})</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('addresses')}
             className={`rounded-none pb-3 border-b-2 flex items-center gap-2 transition-colors cursor-pointer ${
               activeTab === 'addresses'
@@ -295,6 +327,8 @@ export const AccountView: React.FC = () => {
                             ? 'bg-blue-50 text-blue-800 border border-blue-200'
                             : ord.status === 'CANCELLED'
                             ? 'bg-red-50 text-red-800 border border-red-200'
+                            : ord.status === 'CONFIRMED'
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
                             : 'bg-stone-100 text-stone-800'
                         }`}
                       >
@@ -336,6 +370,112 @@ export const AccountView: React.FC = () => {
                       <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Tab 2: Notifications / Updates & Alerts */}
+        {activeTab === 'notifications' && (
+          <div className="space-y-4">
+            {loadingNotifications ? (
+              <div className="p-12 text-center text-stone-500 text-xs">Loading notifications...</div>
+            ) : notifications.length === 0 ? (
+              <div className="bg-white p-12 text-center border border-[#D4D4D4]">
+                <div className="w-14 h-14 bg-rose-50 flex items-center justify-center mx-auto mb-3 text-stone-400 border border-rose-200">
+                  <Bell className="w-7 h-7 text-[#E11D48]" />
+                </div>
+                <h4 className="font-bold text-[#2B2B2B] text-base mb-1 uppercase tracking-wider">No notifications yet</h4>
+                <p className="text-xs text-stone-500 mb-4">
+                  Order updates, SMS dispatches, and email alerts will appear here in real-time.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('orders')}
+                  className="rounded-none px-4 py-2 bg-[#2B2B2B] hover:bg-[#E11D48] text-white text-xs font-bold cursor-pointer uppercase tracking-wider transition-colors"
+                >
+                  View My Orders
+                </button>
+              </div>
+            ) : (
+              notifications.map((notif) => (
+                <div
+                  key={notif.id}
+                  className="bg-white p-5 sm:p-6 border border-[#D4D4D4] hover:border-[#2B2B2B] transition-colors flex flex-col md:flex-row md:items-start justify-between gap-4"
+                >
+                  <div className="space-y-2 flex-1">
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      {/* Channel Badge */}
+                      <span
+                        className={`inline-flex items-center gap-1 font-bold px-2 py-0.5 text-[10px] uppercase ${
+                          notif.channel === 'EMAIL'
+                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        }`}
+                      >
+                        {notif.channel === 'EMAIL' ? <Mail className="w-3 h-3" /> : <Smartphone className="w-3 h-3" />}
+                        {notif.channel}
+                      </span>
+
+                      {/* Event Badge */}
+                      <span
+                        className={`font-bold px-2 py-0.5 text-[10px] uppercase ${
+                          notif.event === 'ORDER_CONFIRMED'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : notif.event === 'ORDER_SHIPPED'
+                            ? 'bg-blue-100 text-blue-800'
+                            : notif.event === 'ORDER_DELIVERED'
+                            ? 'bg-slate-900 text-white'
+                            : notif.event === 'ORDER_CANCELLED'
+                            ? 'bg-rose-100 text-rose-800'
+                            : 'bg-stone-100 text-stone-800'
+                        }`}
+                      >
+                        {notif.event.replace('_', ' ')}
+                      </span>
+
+                      <span className="text-stone-400">·</span>
+                      <span className="text-stone-500 font-mono text-[11px]">
+                        {new Date(notif.timestamp).toLocaleString('en-GB')}
+                      </span>
+
+                      {notif.orderNumber && (
+                        <>
+                          <span className="text-stone-400">·</span>
+                          <span className="font-mono text-stone-700 font-bold text-[11px]">
+                            Order #{notif.orderNumber}
+                          </span>
+                        </>
+                      )}
+                    </div>
+
+                    {notif.subject && (
+                      <h4 className="text-sm font-bold text-[#2B2B2B]">{notif.subject}</h4>
+                    )}
+
+                    <div className="text-xs text-stone-600 bg-[#F8F9FA] p-3 border border-[#E5E7EB] font-mono whitespace-pre-wrap leading-relaxed">
+                      {notif.message}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[11px] text-stone-400">
+                      <span>Recipient:</span>
+                      <span className="font-mono text-stone-600">{notif.recipient}</span>
+                    </div>
+                  </div>
+
+                  {notif.orderId && (
+                    <div className="flex md:flex-col items-end shrink-0 pt-2 md:pt-0">
+                      <button
+                        type="button"
+                        onClick={() => viewOrderDetail(notif.orderId!)}
+                        className="rounded-none px-3 py-1.5 bg-[#2B2B2B] hover:bg-[#E11D48] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <span>View Order</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))
             )}
