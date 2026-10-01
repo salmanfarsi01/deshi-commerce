@@ -27,6 +27,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { apiService } from '../../services/apiClient';
 import footerLogo from '../../images/footer logo.png';
 import {
   AdminDashboardSummary,
