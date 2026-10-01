@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   KeyRound,
   Check,
+  RotateCcw,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { isValidBDPhone } from '../data/bangladeshGeo';
@@ -43,6 +44,7 @@ export const AuthModal: React.FC = () => {
     authModalTab,
     setAuthModalTab,
     login,
+    sendRegistrationOtp,
     register,
     loginWithGoogle,
     registerWithGoogle,
@@ -50,7 +52,7 @@ export const AuthModal: React.FC = () => {
     t,
   } = useApp();
 
-  const [tab, setTab] = useState<'login' | 'register' | 'otp'>('login');
+  const [tab, setTab] = useState<'login' | 'register'>('login');
 
   // Google Chooser State
   const [showGoogleChooser, setShowGoogleChooser] = useState(false);
@@ -60,23 +62,22 @@ export const AuthModal: React.FC = () => {
   const [isEnteringCustomGoogle, setIsEnteringCustomGoogle] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // Standard inputs
+  // Sign In inputs
   const [identifier, setIdentifier] = useState('01722222222');
   const [password, setPassword] = useState('123456');
 
+  // Registration inputs & step state
+  const [regStep, setRegStep] = useState<1 | 2>(1); // 1 = Details, 2 = Inline OTP Verification
   const [regName, setRegName] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPass, setRegPass] = useState('');
+  const [regOtp, setRegOtp] = useState('');
+  const [demoOtpHint, setDemoOtpHint] = useState('123456');
+  const [otpCountdown, setOtpCountdown] = useState(60);
+
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // Phone OTP Flow State
-  const [otpPhone, setOtpPhone] = useState('01722222222');
-  const [otpSent, setOtpSent] = useState(false);
-  const [enteredOtp, setEnteredOtp] = useState('');
-  const [generatedOtp, setGeneratedOtp] = useState('4829');
-  const [otpCountdown, setOtpCountdown] = useState(60);
 
   useEffect(() => {
     if (isAuthModalOpen) {
@@ -84,18 +85,18 @@ export const AuthModal: React.FC = () => {
       setShowGoogleChooser(false);
       setIsEnteringCustomGoogle(false);
       setErrorMsg('');
-      setOtpSent(false);
-      setEnteredOtp('');
+      setRegStep(1);
+      setRegOtp('');
     }
   }, [isAuthModalOpen, authModalTab]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (otpSent && otpCountdown > 0) {
+    if (regStep === 2 && otpCountdown > 0) {
       timer = setInterval(() => setOtpCountdown((c) => c - 1), 1000);
     }
     return () => clearInterval(timer);
-  }, [otpSent, otpCountdown]);
+  }, [regStep, otpCountdown]);
 
   if (!isAuthModalOpen) return null;
 
@@ -171,13 +172,14 @@ export const AuthModal: React.FC = () => {
     try {
       await login(identifier);
     } catch {
-      setErrorMsg('Invalid login credentials.');
+      setErrorMsg('Invalid login credentials. Please check your phone/email and password.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
+  // Step 1 of Account Creation: Submit details and trigger OTP dispatch
+  const handleInitiateRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     if (!regName.trim() || !regPhone.trim()) {
@@ -188,49 +190,66 @@ export const AuthModal: React.FC = () => {
       setErrorMsg('Please enter a valid 11-digit Bangladesh phone (e.g. 017XXXXXXXX).');
       return;
     }
+    if (regPass.length < 6) {
+      setErrorMsg('Password must be at least 6 characters long.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await sendRegistrationOtp(regPhone.trim(), regName.trim());
+      if (res.demoOtp) {
+        setDemoOtpHint(res.demoOtp);
+      }
+      setRegStep(2);
+      setOtpCountdown(60);
+      showToast(`Verification code sent to +88${regPhone}`, 'info');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Mobile number is already registered. Please sign in instead.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Resend Registration OTP
+  const handleResendOtp = async () => {
+    if (otpCountdown > 0) return;
+    setErrorMsg('');
+    setLoading(true);
+    try {
+      const res = await sendRegistrationOtp(regPhone.trim(), regName.trim());
+      if (res.demoOtp) {
+        setDemoOtpHint(res.demoOtp);
+      }
+      setOtpCountdown(60);
+      showToast(`Fresh verification code sent to +88${regPhone}`, 'info');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Could not resend OTP. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 2 of Account Creation: Verify OTP & complete account creation
+  const handleCompleteRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+    if (!regOtp.trim() || regOtp.trim().length < 4) {
+      setErrorMsg('Please enter the 6-digit verification code sent to your phone.');
+      return;
+    }
+
     setLoading(true);
     try {
       await register({
         name: regName.trim(),
         phone: regPhone.trim(),
         email: regEmail.trim() || undefined,
+        password: regPass,
+        otp: regOtp.trim(),
       });
-    } catch {
-      setErrorMsg('Could not register account. Phone number may already exist.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // OTP Handlers
-  const handleSendOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isValidBDPhone(otpPhone)) {
-      setErrorMsg('Please enter a valid 11-digit Bangladesh mobile number.');
-      return;
-    }
-    setErrorMsg('');
-    const code = `${Math.floor(1000 + Math.random() * 9000)}`;
-    setGeneratedOtp(code);
-    setOtpSent(true);
-    setOtpCountdown(60);
-    showToast(`Verification code sent to +88${otpPhone}: [ ${code} ]`, 'info');
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg('');
-    if (enteredOtp.trim() !== generatedOtp) {
-      setErrorMsg('Incorrect OTP code. Please check SMS and try again.');
-      return;
-    }
-    setLoading(true);
-    try {
-      await login(otpPhone);
-      showToast('Phone number verified! Welcome to Deshi Commerce.', 'success');
-      closeAuthModal();
-    } catch {
-      setErrorMsg('Authentication error. Please try again.');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Verification failed. Please check the code and try again.');
     } finally {
       setLoading(false);
     }
@@ -238,90 +257,85 @@ export const AuthModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-          <div>
-            <h3 className="font-bold text-slate-900 text-sm">
-              {showGoogleChooser
-                ? 'Sign In with Google Mail'
-                : tab === 'otp'
-                ? 'Instant Phone OTP Verification'
-                : tab === 'register'
-                ? 'Create Customer Account'
-                : 'Customer Sign In'}
-            </h3>
-            <p className="text-xs text-slate-500">
-              Deshi Commerce &bull; Nationwide Verified Shopping
-            </p>
+      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-100 my-8">
+        {/* Modal Top Header */}
+        <div className="bg-[#0F172A] text-white p-5 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-rose-600 flex items-center justify-center text-white">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold tracking-tight">Deshi Commerce</h2>
+              <p className="text-[11px] text-slate-400">Authentic Retail &bull; Verified Security</p>
+            </div>
           </div>
           <button
             type="button"
             onClick={closeAuthModal}
-            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
+            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+            aria-label="Close modal"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Content Body */}
         <div>
           {/* VIEW A: Google Account Chooser */}
           {showGoogleChooser ? (
             <div className="p-6 space-y-4">
-              <button
-                type="button"
-                onClick={() => setShowGoogleChooser(false)}
-                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 font-semibold cursor-pointer mb-2"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                <span>Back to sign in options</span>
-              </button>
-
-              <div className="text-center pb-2">
-                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-2 border border-slate-200">
-                  <GoogleGIcon className="w-6 h-6" />
-                </div>
-                <h4 className="text-sm font-bold text-slate-900">Choose a Google Account</h4>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  to continue to <strong className="text-slate-800">Deshi Commerce</strong>
-                </p>
+              <div className="flex items-center gap-2 text-slate-700 pb-2 border-b border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowGoogleChooser(false)}
+                  className="text-slate-500 hover:text-slate-800 p-1 cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-xs font-bold uppercase tracking-wider">
+                  {googleChooserMode === 'signup' ? 'Create account with Google' : 'Sign in with Google'}
+                </span>
               </div>
 
               {!isEnteringCustomGoogle ? (
                 <div className="space-y-3">
+                  <p className="text-xs text-slate-600">Choose an account to continue to Deshi Commerce</p>
+
                   <button
                     type="button"
                     onClick={handleSelectDefaultGoogle}
                     disabled={googleLoading}
-                    className="w-full p-3 rounded-xl border border-slate-200 hover:border-slate-400 hover:bg-slate-50 transition-all text-left flex items-center gap-3 cursor-pointer group"
+                    className="w-full p-3 rounded-xl border border-slate-200 hover:border-slate-400 hover:bg-slate-50 transition-all cursor-pointer flex items-center gap-3 text-left"
                   >
                     <img
                       src={defaultGoogleAccount.avatar}
                       alt={defaultGoogleAccount.name}
-                      className="w-9 h-9 rounded-full object-cover border border-slate-200"
+                      className="w-10 h-10 rounded-full border border-slate-200"
                     />
                     <div className="flex-1 min-w-0">
-                      <span className="font-bold text-xs text-slate-900 block truncate group-hover:text-blue-600">
+                      <div className="font-bold text-xs text-slate-900 truncate">
                         {defaultGoogleAccount.name}
-                      </span>
-                      <span className="text-[11px] text-slate-500 font-mono block truncate">
+                      </div>
+                      <div className="text-[11px] text-slate-500 truncate font-mono">
                         {defaultGoogleAccount.email}
-                      </span>
+                      </div>
                     </div>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setIsEnteringCustomGoogle(true)}
-                    className="w-full py-2.5 px-3 border border-dashed border-slate-300 hover:border-slate-500 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    onClick={() => {
+                      setIsEnteringCustomGoogle(true);
+                      setErrorMsg('');
+                    }}
+                    className="w-full p-3 rounded-xl border border-dashed border-slate-300 hover:border-slate-500 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
-                    <Mail className="w-4 h-4 text-slate-500" />
-                    <span>Use another Google Mail account</span>
+                    <GoogleGIcon className="w-4 h-4" />
+                    <span>Use another Google account</span>
                   </button>
                 </div>
               ) : (
                 <form onSubmit={handleCustomGoogleSubmit} className="space-y-3">
+                  <p className="text-xs text-slate-600">Enter your Google email address</p>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                       Full Name
@@ -331,21 +345,20 @@ export const AuthModal: React.FC = () => {
                       value={customGoogleName}
                       onChange={(e) => setCustomGoogleName(e.target.value)}
                       placeholder="e.g. Tanvir Hasan"
-                      required
                       className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      Google Mail Address
+                      Google Mail Address *
                     </label>
                     <input
                       type="email"
+                      required
                       value={customGoogleEmail}
                       onChange={(e) => setCustomGoogleEmail(e.target.value)}
-                      placeholder="yourname@gmail.com"
-                      required
+                      placeholder="username@gmail.com"
                       className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 font-mono"
                     />
                   </div>
@@ -371,7 +384,7 @@ export const AuthModal: React.FC = () => {
               )}
             </div>
           ) : (
-            /* VIEW B: Standard Tabs (Sign In / Register / OTP) */
+            /* VIEW B: Standard Tabs (Sign In / Create Account with Inline OTP) */
             <div>
               {/* Tab Switcher */}
               <div className="flex border-b border-slate-200 text-xs font-bold bg-slate-50">
@@ -381,6 +394,7 @@ export const AuthModal: React.FC = () => {
                     setTab('login');
                     setAuthModalTab('login');
                     setErrorMsg('');
+                    setRegStep(1);
                   }}
                   className={`flex-1 py-3 text-center border-b-2 transition-colors cursor-pointer uppercase tracking-wider ${
                     tab === 'login'
@@ -396,6 +410,7 @@ export const AuthModal: React.FC = () => {
                     setTab('register');
                     setAuthModalTab('register');
                     setErrorMsg('');
+                    setRegStep(1);
                   }}
                   className={`flex-1 py-3 text-center border-b-2 transition-colors cursor-pointer uppercase tracking-wider ${
                     tab === 'register'
@@ -403,21 +418,7 @@ export const AuthModal: React.FC = () => {
                       : 'border-transparent text-slate-500 hover:text-slate-800'
                   }`}
                 >
-                  Register
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTab('otp');
-                    setErrorMsg('');
-                  }}
-                  className={`flex-1 py-3 text-center border-b-2 transition-colors cursor-pointer uppercase tracking-wider ${
-                    tab === 'otp'
-                      ? 'border-[#0F172A] text-[#0F172A] bg-white font-extrabold'
-                      : 'border-transparent text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  Phone OTP
+                  Create Account
                 </button>
               </div>
 
@@ -430,7 +431,7 @@ export const AuthModal: React.FC = () => {
 
               <div className="p-6 space-y-4">
                 {/* 1-Click Google Mail */}
-                {tab !== 'otp' && (
+                {!(tab === 'register' && regStep === 2) && (
                   <>
                     <button
                       type="button"
@@ -446,7 +447,7 @@ export const AuthModal: React.FC = () => {
                         <div className="w-full border-t border-slate-200"></div>
                       </div>
                       <span className="relative bg-white px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        Or with Credentials
+                        Or with Mobile Number
                       </span>
                     </div>
                   </>
@@ -499,94 +500,29 @@ export const AuthModal: React.FC = () => {
                   </form>
                 )}
 
-                {/* TAB 2: Register Form */}
+                {/* TAB 2: Register Flow with Integrated OTP Verification */}
                 {tab === 'register' && (
-                  <form onSubmit={handleRegisterSubmit} className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        Full Name *
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={regName}
-                          onChange={(e) => setRegName(e.target.value)}
-                          placeholder="e.g. Tanvir Hasan"
-                          required
-                          className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                        />
-                        <UserIcon className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                      </div>
-                    </div>
+                  <div>
+                    {/* Step 1: User fills in account credentials */}
+                    {regStep === 1 ? (
+                      <form onSubmit={handleInitiateRegistration} className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            Full Name *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={regName}
+                              onChange={(e) => setRegName(e.target.value)}
+                              placeholder="e.g. Tanvir Hasan"
+                              required
+                              className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                            />
+                            <UserIcon className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                          </div>
+                        </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        Mobile Phone Number *
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="tel"
-                          value={regPhone}
-                          onChange={(e) => setRegPhone(e.target.value)}
-                          placeholder="017XXXXXXXX"
-                          required
-                          className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 font-mono"
-                        />
-                        <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        Email Address (Optional)
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="email"
-                          value={regEmail}
-                          onChange={(e) => setRegEmail(e.target.value)}
-                          placeholder="name@example.com"
-                          className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 font-mono"
-                        />
-                        <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        Create Password
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="password"
-                          value={regPass}
-                          onChange={(e) => setRegPass(e.target.value)}
-                          placeholder="Min 6 characters"
-                          required
-                          className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                        />
-                        <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full mt-2 py-2.5 bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow-sm transition-colors cursor-pointer"
-                    >
-                      {loading ? 'Creating Account...' : 'Register Account'}
-                    </button>
-                  </form>
-                )}
-
-                {/* TAB 3: Phone OTP Verification Flow */}
-                {tab === 'otp' && (
-                  <div className="space-y-4">
-                    {!otpSent ? (
-                      <form onSubmit={handleSendOtp} className="space-y-3">
-                        <p className="text-xs text-slate-600">
-                          We will send a 4-digit verification code via SMS to your mobile phone.
-                        </p>
                         <div>
                           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                             Mobile Phone Number *
@@ -594,79 +530,135 @@ export const AuthModal: React.FC = () => {
                           <div className="relative">
                             <input
                               type="tel"
-                              value={otpPhone}
-                              onChange={(e) => setOtpPhone(e.target.value)}
+                              value={regPhone}
+                              onChange={(e) => setRegPhone(e.target.value)}
                               placeholder="01XXXXXXXXX"
                               required
-                              className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 font-mono font-bold"
+                              className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 font-mono font-semibold"
                             />
                             <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                          </div>
+                          <span className="text-[10px] text-slate-400 mt-0.5 block">
+                            We will send a 6-digit SMS verification code to this number.
+                          </span>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            Email Address (Optional)
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="email"
+                              value={regEmail}
+                              onChange={(e) => setRegEmail(e.target.value)}
+                              placeholder="name@example.com"
+                              className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 font-mono"
+                            />
+                            <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            Create Password *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="password"
+                              value={regPass}
+                              onChange={(e) => setRegPass(e.target.value)}
+                              placeholder="Min 6 characters"
+                              required
+                              className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                            />
+                            <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                           </div>
                         </div>
 
                         <button
                           type="submit"
-                          className="w-full py-2.5 bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                          disabled={loading}
+                          className="w-full mt-2 py-2.5 bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                         >
-                          <span>Send Verification Code</span>
+                          <span>{loading ? 'Sending Verification Code...' : 'Continue to Phone Verification'}</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </button>
                       </form>
                     ) : (
-                      <form onSubmit={handleVerifyOtp} className="space-y-3">
-                        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1">
-                          <span className="text-slate-500 block">Code sent to:</span>
+                      /* Step 2: Inline OTP Verification */
+                      <form onSubmit={handleCompleteRegistration} className="space-y-4">
+                        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-500 font-medium">Verification Code Sent To:</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRegStep(1);
+                                setErrorMsg('');
+                              }}
+                              className="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer"
+                            >
+                              Edit Phone
+                            </button>
+                          </div>
                           <span className="font-mono font-bold text-slate-900 block text-sm">
-                            +88 {otpPhone}
+                            +88 {regPhone}
                           </span>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center justify-between">
-                            <span>Enter 4-Digit Code *</span>
-                            <span className="text-[10px] text-slate-400">
-                              Demo Code: <strong className="font-mono text-slate-900">{generatedOtp}</strong>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                            <span>Enter 6-Digit OTP Code *</span>
+                            <span className="text-[10px] text-slate-500 font-normal">
+                              Demo Code: <strong className="font-mono font-bold text-slate-900">{demoOtpHint}</strong>
                             </span>
                           </label>
                           <div className="relative">
                             <input
                               type="text"
-                              maxLength={4}
-                              value={enteredOtp}
-                              onChange={(e) => setEnteredOtp(e.target.value)}
-                              placeholder="&bull; &bull; &bull; &bull;"
+                              maxLength={6}
+                              autoFocus
+                              value={regOtp}
+                              onChange={(e) => setRegOtp(e.target.value.replace(/[^0-9]/g, ''))}
+                              placeholder="&bull; &bull; &bull; &bull; &bull; &bull;"
                               required
-                              className="w-full pl-9 pr-3 py-2 text-center text-lg font-mono font-bold tracking-widest border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                              className="w-full pl-9 pr-3 py-2.5 text-center text-xl font-mono font-bold tracking-widest border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
                             />
-                            <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                            <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
                           </div>
                         </div>
 
                         <button
                           type="submit"
-                          disabled={loading || enteredOtp.length < 4}
-                          className="w-full py-2.5 bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                          disabled={loading || regOtp.length < 4}
+                          className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
                         >
                           <Check className="w-4 h-4" />
-                          <span>{loading ? 'Verifying...' : 'Verify & Enter Store'}</span>
+                          <span>{loading ? 'Verifying & Creating Account...' : 'Verify & Complete Account'}</span>
                         </button>
 
                         <div className="flex items-center justify-between text-xs pt-1">
                           <button
                             type="button"
-                            onClick={() => setOtpSent(false)}
-                            className="text-slate-500 hover:underline"
+                            onClick={() => {
+                              setRegStep(1);
+                              setErrorMsg('');
+                            }}
+                            className="text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
                           >
-                            Change Phone Number
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                            <span>Back to Details</span>
                           </button>
 
                           <button
                             type="button"
-                            disabled={otpCountdown > 0}
-                            onClick={handleSendOtp}
-                            className="text-blue-600 hover:underline font-semibold disabled:text-slate-400 disabled:no-underline"
+                            disabled={otpCountdown > 0 || loading}
+                            onClick={handleResendOtp}
+                            className="text-blue-600 hover:underline font-semibold disabled:text-slate-400 disabled:no-underline cursor-pointer flex items-center gap-1"
                           >
-                            {otpCountdown > 0 ? `Resend code in ${otpCountdown}s` : 'Resend Code'}
+                            <RotateCcw className="w-3 h-3" />
+                            <span>{otpCountdown > 0 ? `Resend code (${otpCountdown}s)` : 'Resend Code'}</span>
                           </button>
                         </div>
                       </form>

@@ -20,7 +20,8 @@ interface AppContextType {
   user: User | null;
   isAdmin: boolean;
   login: (identifier: string) => Promise<void>;
-  register: (payload: { name: string; phone: string; email?: string }) => Promise<void>;
+  sendRegistrationOtp: (phone: string, name?: string) => Promise<{ success: boolean; demoOtp?: string; message?: string }>;
+  register: (payload: { name: string; phone: string; email?: string; password?: string; otp?: string }) => Promise<void>;
   loginWithGoogle: (payload: { email: string; name: string; avatarUrl?: string; googleId?: string }) => Promise<void>;
   registerWithGoogle: (payload: { email: string; name: string; avatarUrl?: string; googleId?: string }) => Promise<void>;
   logout: () => void;
@@ -227,14 +228,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const register = async (payload: { name: string; phone: string; email?: string }) => {
+  const sendRegistrationOtp = async (phone: string, name?: string) => {
+    try {
+      const res = await apiService.auth.sendRegistrationOtp({ phone, name });
+      return { success: true, demoOtp: res.data.demoOtp, message: res.data.message };
+    } catch (e: any) {
+      showToast(e.message || 'Could not dispatch verification code', 'error');
+      throw e;
+    }
+  };
+
+  const register = async (payload: { name: string; phone: string; email?: string; password?: string; otp?: string }) => {
     try {
       const res = await apiService.auth.register(payload);
       setUser(res.data.user);
       setIsAuthModalOpen(false);
-      showToast('Account registered successfully!', 'success');
-    } catch (e) {
-      showToast('Registration failed. Please check inputs.', 'error');
+      showToast('Account registered and verified successfully!', 'success');
+    } catch (e: any) {
+      showToast(e.message || 'Registration failed. Please check inputs.', 'error');
+      throw e;
     }
   };
 
@@ -339,6 +351,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         user,
         isAdmin: user?.role === 'ADMIN',
         login,
+        sendRegistrationOtp,
         register,
         loginWithGoogle,
         registerWithGoogle,

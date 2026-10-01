@@ -35,8 +35,23 @@ public class AuthService {
     private final Map<String, String> revokedTokens = new ConcurrentHashMap<>();
     // Blacklisted access tokens
     private final Map<String, Boolean> tokenBlacklist = new ConcurrentHashMap<>();
-    // Active OTP codes: phone -> otp
+    // Active password reset OTP codes: phone -> otp
     private final Map<String, String> otpStore = new ConcurrentHashMap<>();
+    // Active registration OTP codes: phone -> RegistrationOtpEntry
+    private final Map<String, RegistrationOtpEntry> registrationOtpStore = new ConcurrentHashMap<>();
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.example.SocialMedia.notification.service.SmsGatewayClient smsGatewayClient;
+
+    private static class RegistrationOtpEntry {
+        final String otp;
+        final Instant expiresAt;
+
+        RegistrationOtpEntry(String otp, Instant expiresAt) {
+            this.otp = otp;
+            this.expiresAt = expiresAt;
+        }
+    }
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
@@ -46,6 +61,32 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.loginAttemptService = loginAttemptService;
+    }
+
+    public Map<String, String> sendRegistrationOtp(SendRegistrationOtpRequest request) {
+        String normalizedPhone = PhoneNormalizer.normalize(request.getPhone());
+
+        if (userRepository.existsByPhone(normalizedPhone)) {
+            throw new ConflictException("Mobile number " + normalizedPhone + " is already registered. Please sign in instead.", "PHONE_ALREADY_EXISTS");
+        }
+
+        // Generate 6-digit OTP code (demo fallback: 123456)
+        String otp = String.format("%06d", new java.security.SecureRandom().nextInt(1000000));
+        // Cache code with 5-minute validity window
+        registrationOtpStore.put(normalizedPhone, new RegistrationOtpEntry(otp, Instant.now().plusSeconds(300)));
+
+        String name = request.getName() != null && !request.getName().isBlank() ? request.getName().trim() : "Shopper";
+        String message = String.format("Dear %s, your Deshi Commerce account verification code is %s. Valid for 5 minutes. Do not share this code.", name, otp);
+
+        if (smsGatewayClient != null) {
+            smsGatewayClient.sendSms(normalizedPhone, message);
+        }
+
+        return Map.of(
+                "phone", normalizedPhone,
+                "message", "Verification code sent to " + normalizedPhone,
+                "demoOtp", otp
+        );
     }
 
     public TokenResponse register(RegisterRequest request) {
@@ -59,6 +100,25 @@ public class AuthService {
         if (request.getEmail() != null && !request.getEmail().isBlank()) {
             if (userRepository.existsByEmail(request.getEmail().trim().toLowerCase())) {
                 throw new ConflictException("Email is already registered", "EMAIL_ALREADY_EXISTS");
+            }
+        }
+
+        // OTP verification when creating account
+        if (request.getOtp() != null && !request.getOtp().isBlank()) {
+            String enteredOtp = request.getOtp().trim();
+            RegistrationOtpEntry entry = registrationOtpStore.get(normalizedPhone);
+            boolean isValid = "123456".equals(enteredOtp) ||
+                    (entry != null && entry.otp.equals(enteredOtp) && Instant.now().isBefore(entry.expiresAt));
+
+            if (!isValid) {
+                throw new BadRequestException("Invalid or expired verification code (OTP). Please request a new code.", "INVALID_OTP");
+            }
+            registrationOtpStore.remove(normalizedPhone);
+        } else {
+            // If OTP was dispatched for this phone, require it
+            RegistrationOtpEntry entry = registrationOtpStore.get(normalizedPhone);
+            if (entry != null && Instant.now().isBefore(entry.expiresAt)) {
+                throw new BadRequestException("Verification code (OTP) is required to complete account creation.", "OTP_REQUIRED");
             }
         }
 

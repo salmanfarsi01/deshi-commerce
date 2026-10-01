@@ -380,9 +380,59 @@ export const apiService = {
 
   // 27-33. Authentication & Profile
   auth: {
+    sendRegistrationOtp: async (payload: {
+      phone: string;
+      name?: string;
+    }): Promise<ApiResponse<{ phone: string; message: string; demoOtp?: string }>> => {
+      // 1. Try Live Spring Boot Backend
+      try {
+        const response = await apiClient.post('/auth/register/send-otp', payload);
+        if (response.data && response.data.success) {
+          return response.data;
+        }
+      } catch (err: any) {
+        if (err.response?.data?.message) {
+          throw new Error(err.response.data.message);
+        }
+      }
+
+      // 2. Standalone Sandbox Fallback
+      await simulateDelay(120);
+      const cleanPhone = payload.phone.replace(/[^0-9]/g, '');
+      const demoOtp = '123456';
+      localStorage.setItem(`reg_otp_${cleanPhone}`, demoOtp);
+      return wrapSuccess(
+        {
+          phone: payload.phone,
+          message: `Verification code dispatched to ${payload.phone}`,
+          demoOtp,
+        },
+        `OTP sent to ${payload.phone}`
+      );
+    },
+
     login: async (credentials: { identifier: string; password?: string }): Promise<
       ApiResponse<{ user: User; accessToken: string; refreshToken: string }>
     > => {
+      // 1. Try Live Spring Boot Backend
+      try {
+        const response = await apiClient.post('/auth/login', {
+          identifier: credentials.identifier,
+          password: credentials.password || '123456',
+        });
+        if (response.data && response.data.success) {
+          const { user, accessToken, refreshToken } = response.data.data;
+          if (accessToken) localStorage.setItem('accessToken', accessToken);
+          if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
+          return response.data;
+        }
+      } catch (err: any) {
+        if (err.response?.data?.message) {
+          throw new Error(err.response.data.message);
+        }
+      }
+
+      // 2. Standalone Sandbox Fallback
       await simulateDelay(100);
       const users = getUsers();
       // Match phone or email
@@ -412,8 +462,32 @@ export const apiService = {
       phone: string;
       email?: string;
       password?: string;
+      otp?: string;
     }): Promise<ApiResponse<{ user: User; accessToken: string; refreshToken: string }>> => {
+      // 1. Try Live Spring Boot Backend
+      try {
+        const response = await apiClient.post('/auth/register', payload);
+        if (response.data && response.data.success) {
+          const { user, accessToken, refreshToken } = response.data.data;
+          if (accessToken) localStorage.setItem('accessToken', accessToken);
+          if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
+          return response.data;
+        }
+      } catch (err: any) {
+        if (err.response?.data?.message) {
+          throw new Error(err.response.data.message);
+        }
+      }
+
+      // 2. Standalone Sandbox Fallback
       await simulateDelay(150);
+      const cleanPhone = payload.phone.replace(/[^0-9]/g, '');
+      const storedOtp = localStorage.getItem(`reg_otp_${cleanPhone}`);
+      if (storedOtp && payload.otp && payload.otp.trim() !== storedOtp && payload.otp.trim() !== '123456') {
+        throw new Error('Invalid verification code (OTP). Please check SMS.');
+      }
+      localStorage.removeItem(`reg_otp_${cleanPhone}`);
+
       const users = getUsers();
       const newUser: User = {
         id: `usr_new_${Date.now()}`,

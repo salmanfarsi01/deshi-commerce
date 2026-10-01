@@ -20,6 +20,12 @@ public class AuthController {
         this.authService = authService;
     }
 
+    @PostMapping("/register/send-otp")
+    public ResponseEntity<ApiResponse<Map<String, String>>> sendRegistrationOtp(@Valid @RequestBody SendRegistrationOtpRequest request) {
+        Map<String, String> response = authService.sendRegistrationOtp(request);
+        return ResponseEntity.ok(ApiResponse.success(response.get("message"), response));
+    }
+
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<TokenResponse>> register(@Valid @RequestBody RegisterRequest request) {
         TokenResponse response = authService.register(request);
