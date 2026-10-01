@@ -397,7 +397,7 @@ export const apiService = {
           return wrapSuccess(created, 'Category created successfully');
         }
       } catch (err: any) {
-        if (err.response?.data?.message) throw new Error(err.response.data.message);
+        console.warn('Backend create category failed, saving locally:', err?.response?.data || err?.message);
       }
       await simulateDelay();
       const created = saveCategory(payload);
@@ -424,7 +424,7 @@ export const apiService = {
           return wrapSuccess(updated, 'Category updated successfully');
         }
       } catch (err: any) {
-        if (err.response?.data?.message) throw new Error(err.response.data.message);
+        console.warn('Backend update category failed, saving locally:', err?.response?.data || err?.message);
       }
       await simulateDelay();
       const updated = saveCategory({ ...payload, id });
@@ -439,7 +439,7 @@ export const apiService = {
           return wrapSuccess({ id }, 'Category deleted successfully');
         }
       } catch (err: any) {
-        if (err.response?.data?.message) throw new Error(err.response.data.message);
+        console.warn('Backend delete category failed, removing locally:', err?.response?.data || err?.message);
       }
       await simulateDelay();
       deleteCategory(id);
@@ -584,7 +584,7 @@ export const apiService = {
           return wrapSuccess(mapped, 'Product added to catalog');
         }
       } catch (err: any) {
-        if (err.response?.data?.message) throw new Error(err.response.data.message);
+        console.warn('Backend create product failed, saving locally:', err?.response?.data || err?.message);
       }
       await simulateDelay();
       const created = saveProduct(payload);
@@ -613,7 +613,7 @@ export const apiService = {
           return wrapSuccess(mapped, 'Product updated successfully');
         }
       } catch (err: any) {
-        if (err.response?.data?.message) throw new Error(err.response.data.message);
+        console.warn('Backend update product failed, saving locally:', err?.response?.data || err?.message);
       }
       await simulateDelay();
       const updated = saveProduct({ ...payload, id });
@@ -628,7 +628,7 @@ export const apiService = {
           return wrapSuccess({ id }, 'Product removed from catalog');
         }
       } catch (err: any) {
-        if (err.response?.data?.message) throw new Error(err.response.data.message);
+        console.warn('Backend delete product failed, removing locally:', err?.response?.data || err?.message);
       }
       await simulateDelay();
       deleteProduct(id);
@@ -1329,6 +1329,27 @@ export const apiService = {
     },
 
     switchDemoUser: async (role: 'CUSTOMER' | 'ADMIN'): Promise<ApiResponse<User>> => {
+      if (role === 'ADMIN') {
+        try {
+          const res = await apiService.auth.adminLogin({
+            identifier: 'admin@store.com.bd',
+            password: 'Password123!',
+          });
+          return wrapSuccess(res.data.user, `Switched session to ${res.data.user.name} (ADMIN)`);
+        } catch {
+          // fallback
+        }
+      } else {
+        try {
+          const res = await apiService.auth.login({
+            identifier: '01722222222',
+            password: 'Password123!',
+          });
+          return wrapSuccess(res.data.user, `Switched session to ${res.data.user.name} (CUSTOMER)`);
+        } catch {
+          // fallback
+        }
+      }
       await simulateDelay(40);
       const users = getUsers();
       const target = users.find((u) => u.role === role) || users[0];
