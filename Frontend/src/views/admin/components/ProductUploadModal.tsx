@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Product, Category } from '../../../types';
-import { X, Plus, Trash2, Image, Sparkles, AlertCircle, Check, Upload, UploadCloud, Loader2, Star } from 'lucide-react';
+import { X, Plus, Trash2, Image, Sparkles, AlertCircle, Check, Upload, UploadCloud, Loader2, Star, TrendingUp, TrendingDown, DollarSign, Calculator } from 'lucide-react';
 import { formatBDT } from '../../../data/bangladeshGeo';
 import { apiService } from '../../../services/apiClient';
 
@@ -33,6 +33,7 @@ export const ProductUploadModal: React.FC<Props> = ({
     nameBn: '',
     brand: 'Deshi Commerce',
     categoryId: categories[0]?.id || 'cat_mobile',
+    buyingPrice: undefined,
     price: 1500,
     discountPrice: undefined,
     stock: 20,
@@ -57,6 +58,8 @@ export const ProductUploadModal: React.FC<Props> = ({
     if (initialProduct) {
       setFormData({
         ...initialProduct,
+        brand: initialProduct.brand || '',
+        buyingPrice: initialProduct.buyingPrice,
         images: initialProduct.images?.length
           ? initialProduct.images
           : ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80'],
@@ -66,8 +69,9 @@ export const ProductUploadModal: React.FC<Props> = ({
       setFormData({
         name: '',
         nameBn: '',
-        brand: 'Deshi Commerce',
+        brand: '',
         categoryId: categories[0]?.id || 'cat_mobile',
+        buyingPrice: undefined,
         price: 1500,
         discountPrice: undefined,
         stock: 20,
@@ -181,12 +185,26 @@ export const ProductUploadModal: React.FC<Props> = ({
     }
   };
 
-  const regularPrice = formData.price || 0;
-  const discountPrice = formData.discountPrice;
+  const regularPrice = Number(formData.price) || 0;
+  const discountPrice = formData.discountPrice !== undefined && formData.discountPrice !== null ? Number(formData.discountPrice) : undefined;
+  const buyingPrice = formData.buyingPrice !== undefined && formData.buyingPrice !== null ? Number(formData.buyingPrice) : 0;
+  const stock = Number(formData.stock) || 0;
+
   const hasDiscount = discountPrice !== undefined && discountPrice > 0 && discountPrice < regularPrice;
+  const effectivePrice = hasDiscount ? discountPrice! : regularPrice;
   const discountPercentage = hasDiscount
     ? Math.round(((regularPrice - discountPrice!) / regularPrice) * 100)
     : 0;
+
+  // Real-time calculations requested by user:
+  const unitProfit = buyingPrice > 0 ? (effectivePrice - buyingPrice) : 0;
+  const profitMarginPct = (buyingPrice > 0 && effectivePrice > 0)
+    ? ((unitProfit / effectivePrice) * 100)
+    : 0;
+  const totalInventoryCost = buyingPrice * stock;
+  const totalProjectedRevenue = effectivePrice * stock;
+  const totalProjectedProfit = unitProfit * stock;
+  const isLoss = buyingPrice > 0 && effectivePrice < buyingPrice;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
@@ -225,7 +243,7 @@ export const ProductUploadModal: React.FC<Props> = ({
                 value={formData.name || ''}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="e.g. Samsung Galaxy A55 5G (8GB/128GB)"
-                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-none focus:outline-none focus:ring-2 focus:ring-slate-900"
               />
             </div>
 
@@ -238,7 +256,7 @@ export const ProductUploadModal: React.FC<Props> = ({
                 value={formData.brand || ''}
                 onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
                 placeholder="e.g. Samsung / Aarong"
-                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-none focus:outline-none focus:ring-2 focus:ring-slate-900"
               />
             </div>
           </div>
@@ -253,7 +271,7 @@ export const ProductUploadModal: React.FC<Props> = ({
               value={formData.nameBn || ''}
               onChange={(e) => setFormData({ ...formData, nameBn: e.target.value })}
               placeholder="e.g. স্যামসাং গ্যালাক্সি এ৫৫"
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-none focus:outline-none focus:ring-2 focus:ring-slate-900"
             />
           </div>
 
@@ -273,7 +291,7 @@ export const ProductUploadModal: React.FC<Props> = ({
                     categoryName: cat?.name || 'General',
                   });
                 }}
-                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-none focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
               >
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -303,75 +321,201 @@ export const ProductUploadModal: React.FC<Props> = ({
                 type="text"
                 value={formData.sku || ''}
                 onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                className="w-full px-3 py-2 text-xs font-mono border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                className="w-full px-3 py-2 text-xs font-mono border border-slate-300 rounded-none focus:outline-none focus:ring-2 focus:ring-slate-900"
               />
             </div>
           </div>
 
-          {/* 3. Pricing & Stock */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Regular Price (৳) *
-              </label>
-              <input
-                type="number"
-                required
-                min="1"
-                value={formData.price || ''}
-                onChange={(e) =>
-                  setFormData({ ...formData, price: Number(e.target.value) })
-                }
-                className="w-full px-3 py-2 text-xs font-mono font-bold border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
-              />
+          {/* 3. Pricing, Cost & Stock Management */}
+          <div className="space-y-3 p-4 bg-slate-50 rounded-none border border-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-800">
+                <Calculator className="w-4 h-4 text-emerald-600" />
+                <span>Pricing, Buying Cost &amp; Profit Margins</span>
+              </div>
+              <span className="text-[11px] font-mono text-slate-500">
+                All amounts in BDT (৳)
+              </span>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Discount Price (৳)
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={formData.discountPrice ?? ''}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    discountPrice: e.target.value ? Number(e.target.value) : undefined,
-                  })
-                }
-                placeholder="Leave blank if no sale"
-                className="w-full px-3 py-2 text-xs font-mono border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
-              />
-              {hasDiscount && (
-                <span className="text-[10px] font-bold text-emerald-600 mt-1 block">
-                  {discountPercentage}% OFF (Customer saves {formatBDT(regularPrice - discountPrice!)})
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-start">
+              {/* 1. Buying Price */}
+              <div className="flex flex-col">
+                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 h-8 flex items-end leading-tight">
+                  Buying Price / Cost (৳)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.buyingPrice ?? ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      buyingPrice: e.target.value ? Number(e.target.value) : undefined,
+                    })
+                  }
+                  placeholder="e.g. 1000"
+                  className="w-full h-10 px-3 py-2 text-xs font-mono font-bold border border-slate-300 rounded-none focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Your purchase cost
                 </span>
-              )}
+              </div>
+
+              {/* 2. Regular Selling Price */}
+              <div className="flex flex-col">
+                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 h-8 flex items-end leading-tight">
+                  Selling Price / MRP (৳) *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  value={formData.price || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, price: Number(e.target.value) })
+                  }
+                  className="w-full h-10 px-3 py-2 text-xs font-mono font-bold border border-slate-300 rounded-none focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Store listed price
+                </span>
+              </div>
+
+              {/* 3. Discount Price */}
+              <div className="flex flex-col">
+                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 h-8 flex items-end leading-tight">
+                  Discount Price (৳)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.discountPrice ?? ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      discountPrice: e.target.value ? Number(e.target.value) : undefined,
+                    })
+                  }
+                  placeholder="Leave empty if no sale"
+                  className="w-full h-10 px-3 py-2 text-xs font-mono border border-slate-300 rounded-none focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
+                />
+                {hasDiscount ? (
+                  <span className="text-[10px] font-bold text-emerald-600 mt-1 block truncate">
+                    {discountPercentage}% OFF (Saves {formatBDT(regularPrice - discountPrice!)})
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Optional sale price
+                  </span>
+                )}
+              </div>
+
+              {/* 4. Stock Quantity */}
+              <div className="flex flex-col">
+                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 h-8 flex items-end leading-tight">
+                  Stock Quantity *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  value={formData.stock ?? 0}
+                  onChange={(e) =>
+                    setFormData({ ...formData, stock: Number(e.target.value) })
+                  }
+                  className={`w-full h-10 px-3 py-2 text-xs font-mono font-bold border rounded-none focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white ${
+                    (formData.stock || 0) <= 5 ? 'border-amber-400 text-amber-700' : 'border-slate-300'
+                  }`}
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Available inventory
+                </span>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Stock Quantity *
-              </label>
-              <input
-                type="number"
-                required
-                min="0"
-                value={formData.stock ?? 0}
-                onChange={(e) =>
-                  setFormData({ ...formData, stock: Number(e.target.value) })
-                }
-                className={`w-full px-3 py-2 text-xs font-mono font-bold border rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white ${
-                  (formData.stock || 0) <= 5 ? 'border-amber-400 text-amber-700' : 'border-slate-300'
-                }`}
-              />
-              {(formData.stock || 0) <= 5 && (
-                <span className="text-[10px] text-amber-700 font-semibold mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  Low stock badge triggered
+            {/* REAL-TIME PROFIT & REVENUE CALCULATOR CARD */}
+            <div className="mt-3 p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Real-Time Profit &amp; Margin Analysis</span>
                 </span>
+                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                  Effective Sale: {formatBDT(effectivePrice)}
+                </span>
+              </div>
+
+              {/* Loss Warning Banner */}
+              {isLoss && (
+                <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 flex items-center gap-2 font-medium">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>
+                    Warning: Selling price ({formatBDT(effectivePrice)}) is lower than buying price ({formatBDT(buyingPrice)})! You will lose {formatBDT(buyingPrice - effectivePrice)} per unit sold.
+                  </span>
+                </div>
               )}
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center font-mono">
+                {/* 1. Unit Profit */}
+                <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block font-sans">
+                    Per Unit Profit
+                  </span>
+                  <span className={`text-sm font-extrabold block mt-0.5 ${
+                    unitProfit > 0 ? 'text-emerald-600' : unitProfit < 0 ? 'text-rose-600' : 'text-slate-500'
+                  }`}>
+                    {buyingPrice > 0 ? (unitProfit >= 0 ? `+${formatBDT(unitProfit)}` : `-${formatBDT(Math.abs(unitProfit))}`) : '—'}
+                  </span>
+                </div>
+
+                {/* 2. Profit Margin % */}
+                <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block font-sans">
+                    Profit Margin
+                  </span>
+                  <span className={`text-sm font-extrabold block mt-0.5 ${
+                    profitMarginPct >= 25 ? 'text-emerald-600' : profitMarginPct > 0 ? 'text-blue-600' : profitMarginPct < 0 ? 'text-rose-600' : 'text-slate-500'
+                  }`}>
+                    {buyingPrice > 0 ? `${profitMarginPct.toFixed(1)}%` : '—'}
+                  </span>
+                </div>
+
+                {/* 3. Total Inventory Cost */}
+                <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block font-sans">
+                    Total Cost
+                  </span>
+                  <span className="text-sm font-extrabold text-slate-800 block mt-0.5">
+                    {buyingPrice > 0 ? formatBDT(totalInventoryCost) : '—'}
+                  </span>
+                </div>
+
+                {/* 4. Total Potential Profit */}
+                <div className="p-2.5 rounded-lg bg-emerald-50/60 border border-emerald-100">
+                  <span className="text-[10px] uppercase font-bold text-emerald-800 tracking-wider block font-sans">
+                    Total Profit ({stock} units)
+                  </span>
+                  <span className={`text-sm font-extrabold block mt-0.5 ${
+                    totalProjectedProfit >= 0 ? 'text-emerald-700' : 'text-rose-600'
+                  }`}>
+                    {buyingPrice > 0 ? (totalProjectedProfit >= 0 ? `+${formatBDT(totalProjectedProfit)}` : `-${formatBDT(Math.abs(totalProjectedProfit))}`) : '—'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Total Revenue Summary Line */}
+              <div className="flex items-center justify-between pt-1 text-[11px] text-slate-500 border-t border-slate-100 font-sans">
+                <span>
+                  Projected Gross Revenue: <strong className="text-slate-900 font-mono">{formatBDT(totalProjectedRevenue)}</strong> ({stock} units &times; {formatBDT(effectivePrice)})
+                </span>
+                {buyingPrice === 0 && (
+                  <span className="text-amber-600 text-[10px] font-medium">
+                    &bull; Enter buying price above to unlock profit calculation
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -532,7 +676,7 @@ export const ProductUploadModal: React.FC<Props> = ({
               value={formData.description || ''}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Detailed description of features, materials, warranty, packaging..."
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-none focus:outline-none focus:ring-2 focus:ring-slate-900"
             />
           </div>
 
@@ -547,19 +691,19 @@ export const ProductUploadModal: React.FC<Props> = ({
                 value={specKey}
                 onChange={(e) => setSpecKey(e.target.value)}
                 placeholder="Spec (e.g. Origin, Battery)"
-                className="w-1/3 px-3 py-1.5 text-xs border border-slate-300 rounded-lg"
+                className="w-1/3 px-3 py-1.5 text-xs border border-slate-300 rounded-none"
               />
               <input
                 type="text"
                 value={specValue}
                 onChange={(e) => setSpecValue(e.target.value)}
                 placeholder="Value (e.g. Bangladesh, 5000mAh)"
-                className="flex-1 px-3 py-1.5 text-xs border border-slate-300 rounded-lg"
+                className="flex-1 px-3 py-1.5 text-xs border border-slate-300 rounded-none"
               />
               <button
                 type="button"
                 onClick={handleAddSpec}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-lg cursor-pointer"
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-none cursor-pointer"
               >
                 + Add
               </button>

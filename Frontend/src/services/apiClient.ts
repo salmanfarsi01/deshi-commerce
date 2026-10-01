@@ -31,6 +31,15 @@ import {
   addNotificationLog,
   getAdminDashboardSummary,
   getCustomer360Profile,
+  getHeroShowcase,
+  saveHeroShowcase,
+  HeroShowcaseItem,
+  deleteUser,
+  getFaqs,
+  saveFaqs,
+  saveFaq,
+  deleteFaq,
+  INITIAL_FAQS,
 } from './dbStorage';
 import {
   Category,
@@ -46,6 +55,7 @@ import {
   NotificationLog,
   User,
   OrderStatus,
+  FAQItem,
 } from '../types';
 
 // Initialize localStorage on module load
@@ -251,6 +261,7 @@ export function mapBackendProductToFrontend(p: any): Product {
     description: p.description || '',
     price: Number(p.price || 0),
     discountPrice: p.discountPrice !== undefined && p.discountPrice !== null ? Number(p.discountPrice) : undefined,
+    buyingPrice: p.buyingPrice !== undefined && p.buyingPrice !== null ? Number(p.buyingPrice) : undefined,
     stock: Number(p.stock || 0),
     sku: p.sku || `SKU-${p.id}`,
     images,
@@ -643,12 +654,14 @@ export const apiService = {
       try {
         const reqBody = {
           name: payload.name || 'New Product',
+          brand: payload.brand || 'Deshi Commerce',
           slug:
             payload.slug ||
             (payload.name ? payload.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : `prod-${Date.now()}`),
           description: payload.description || '',
           price: payload.price !== undefined ? Number(payload.price) : 100,
           discountPrice: payload.discountPrice !== undefined && payload.discountPrice !== null ? Number(payload.discountPrice) : undefined,
+          buyingPrice: payload.buyingPrice !== undefined && payload.buyingPrice !== null ? Number(payload.buyingPrice) : undefined,
           stock: payload.stock !== undefined ? Number(payload.stock) : 10,
           categoryId: normalizedCategoryId,
           images: (payload.images || []).map((img: any) =>
@@ -675,12 +688,18 @@ export const apiService = {
 
       const reqBody = {
         name: payload.name || existing?.name || 'Product',
+        brand: payload.brand || existing?.brand || 'Deshi Commerce',
         description: payload.description !== undefined ? payload.description : existing?.description || '',
         price: payload.price !== undefined ? Number(payload.price) : Number(existing?.price || 1),
         discountPrice: payload.discountPrice !== undefined && payload.discountPrice !== null
           ? Number(payload.discountPrice)
           : existing?.discountPrice !== undefined && existing?.discountPrice !== null
           ? Number(existing.discountPrice)
+          : undefined,
+        buyingPrice: payload.buyingPrice !== undefined && payload.buyingPrice !== null
+          ? Number(payload.buyingPrice)
+          : existing?.buyingPrice !== undefined && existing?.buyingPrice !== null
+          ? Number(existing.buyingPrice)
           : undefined,
         stock: payload.stock !== undefined ? Number(payload.stock) : Number(existing?.stock || 0),
         categoryId: normalizedCategoryId,
@@ -1792,5 +1811,58 @@ export const apiService = {
       if (target) return wrapSuccess(target);
       throw new Error('User not found');
     },
+
+    deleteUser: async (userId: string): Promise<ApiResponse<void>> => {
+      try {
+        await apiClient.delete(`/admin/users/${userId}`);
+      } catch (err: any) {
+        console.warn('Backend delete user failed, deleting locally:', err?.message);
+      }
+      await simulateDelay(40);
+      deleteUser(userId);
+      return wrapSuccess(undefined, 'User account deleted successfully');
+    },
+  },
+
+  // =========================================================================
+  // 10. Hero Banner & Showcase Management
+  // =========================================================================
+  hero: {
+    getShowcase: async (): Promise<ApiResponse<HeroShowcaseItem[]>> => {
+      await simulateDelay(20);
+      return wrapSuccess(getHeroShowcase());
+    },
+    updateShowcase: async (items: HeroShowcaseItem[]): Promise<ApiResponse<HeroShowcaseItem[]>> => {
+      await simulateDelay(40);
+      const saved = saveHeroShowcase(items);
+      return wrapSuccess(saved, 'Hero showcase updated successfully');
+    },
+  },
+
+  // =========================================================================
+  // 11. FAQ Management (/api/v1/faqs)
+  // =========================================================================
+  faq: {
+    getAll: async (): Promise<ApiResponse<FAQItem[]>> => {
+      await simulateDelay(20);
+      return wrapSuccess(getFaqs());
+    },
+    updateAll: async (items: FAQItem[]): Promise<ApiResponse<FAQItem[]>> => {
+      await simulateDelay(40);
+      const saved = saveFaqs(items);
+      return wrapSuccess(saved, 'FAQs updated successfully');
+    },
+    save: async (item: Partial<FAQItem>): Promise<ApiResponse<FAQItem>> => {
+      await simulateDelay(30);
+      const saved = saveFaq(item);
+      return wrapSuccess(saved, 'FAQ saved successfully');
+    },
+    delete: async (id: string): Promise<ApiResponse<void>> => {
+      await simulateDelay(30);
+      deleteFaq(id);
+      return wrapSuccess(undefined, 'FAQ deleted successfully');
+    },
   },
 };
+
+

@@ -369,26 +369,26 @@ export const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Categories Navigation Bar - Boxed buttons with zero border-radius */}
+      {/* Categories Navigation Bar - Boxed buttons with zero border-radius centered in middle */}
       <div className="border-t border-[#E2E8F0] bg-[#FAFAFA] px-4 sm:px-6 lg:px-8 py-2">
-        <div className="max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto no-scrollbar text-xs font-semibold">
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedCategorySlug('all');
-              if (currentView !== 'catalog') setCurrentView('catalog');
-            }}
-            className={`rounded-none border px-3.5 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 uppercase tracking-wider text-[11px] font-bold ${
-              selectedCategorySlug === 'all'
-                ? 'bg-[#0F172A] border-[#0F172A] text-white shadow-2xs'
-                : 'bg-white border-slate-300 text-slate-800 hover:border-slate-500 hover:bg-slate-50'
-            }`}
-          >
-            <Menu className="w-3.5 h-3.5" />
-            <span>{t('header.categories.all', 'All Categories')}</span>
-          </button>
+        <div className="max-w-7xl mx-auto overflow-x-auto no-scrollbar">
+          <div className="flex items-center justify-start lg:justify-center gap-1.5 sm:gap-2 text-xs font-semibold w-max lg:w-full min-w-full">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCategorySlug('all');
+                if (currentView !== 'catalog') setCurrentView('catalog');
+              }}
+              className={`rounded-none border px-3.5 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 uppercase tracking-wider text-[11px] font-bold ${
+                selectedCategorySlug === 'all'
+                  ? 'bg-[#0F172A] border-[#0F172A] text-white shadow-2xs'
+                  : 'bg-white border-slate-300 text-slate-800 hover:border-slate-500 hover:bg-slate-50'
+              }`}
+            >
+              <Menu className="w-3.5 h-3.5" />
+              <span>{t('header.categories.all', 'All Categories')}</span>
+            </button>
 
-          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pl-0.5">
             {navCategories.slice(1).map((cat) => {
               const isActive = selectedCategorySlug === cat.slug;
               return (

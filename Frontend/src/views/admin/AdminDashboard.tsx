@@ -25,6 +25,15 @@ import {
   TrendingUp,
   CreditCard,
   Eye,
+  Sparkles,
+  UploadCloud,
+  ChevronUp,
+  ChevronDown,
+  Image as ImageIcon,
+  Users,
+  HelpCircle,
+  Shield,
+  DollarSign,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { apiService } from '../../services/apiClient';
@@ -40,7 +49,11 @@ import {
   TimeframeSlicer,
   TrendDataPoint,
   DonutSlice,
+  HeroShowcaseItem,
+  User,
+  FAQItem,
 } from '../../types';
+import { INITIAL_HERO_SHOWCASE } from '../../services/dbStorage';
 import { formatBDT } from '../../data/bangladeshGeo';
 import { AdminKpiCards } from './components/AdminKpiCards';
 import { AdminSalesTrendChart } from './components/AdminSalesTrendChart';
@@ -53,7 +66,7 @@ export const AdminDashboard: React.FC = () => {
   const { showToast, navigateTo } = useApp();
 
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'orders' | 'products' | 'categories' | 'notifications'
+    'overview' | 'orders' | 'products' | 'hero' | 'categories' | 'users' | 'faqs' | 'notifications'
   >('overview');
 
   // Summary & Datasets
@@ -62,7 +75,23 @@ export const AdminDashboard: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [notifications, setNotifications] = useState<NotificationLog[]>([]);
+  const [heroSlides, setHeroSlides] = useState<HeroShowcaseItem[]>([]);
+  const [isHeroSaving, setIsHeroSaving] = useState(false);
+  const [uploadingHeroIndex, setUploadingHeroIndex] = useState<number | null>(null);
+  const [previewSlideIndex, setPreviewSlideIndex] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  // User Management State
+  const [usersList, setUsersList] = useState<User[]>([]);
+  const [inspectingUser, setInspectingUser] = useState<User | null>(null);
+  const [userSearch, setUserSearch] = useState<string>('');
+
+  // FAQ Management State
+  const [faqsList, setFaqsList] = useState<FAQItem[]>([]);
+  const [editingFaq, setEditingFaq] = useState<Partial<FAQItem> | null>(null);
+  const [isFaqModalOpen, setIsFaqModalOpen] = useState(false);
+  const [isFaqSaving, setIsFaqSaving] = useState(false);
+  const [faqCategoryFilter, setFaqCategoryFilter] = useState<string>('ALL');
 
   // Timeframe slicer for Sales Trend & KPI
   const [timeframe, setTimeframe] = useState<TimeframeSlicer>('month');
@@ -89,18 +118,24 @@ export const AdminDashboard: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [sumRes, ordRes, prdRes, catRes, notRes] = await Promise.all([
+      const [sumRes, ordRes, prdRes, catRes, notRes, heroRes, usersRes, faqsRes] = await Promise.all([
         apiService.admin.getDashboardSummary(),
         apiService.admin.getOrders(),
         apiService.products.getAll({ size: 100 }),
         apiService.categories.getAll(),
         apiService.admin.getNotifications(),
+        apiService.hero.getShowcase(),
+        apiService.admin.getUsers(),
+        apiService.faq.getAll(),
       ]);
       setSummary(sumRes.data);
       setOrders(ordRes.data);
       setProducts(prdRes.data.products);
       setCategories(catRes.data);
       setNotifications(notRes.data);
+      setHeroSlides(heroRes.data?.length ? heroRes.data : INITIAL_HERO_SHOWCASE);
+      setUsersList(usersRes.data || []);
+      setFaqsList(faqsRes.data || []);
     } catch (err) {
       console.error(err);
       showToast('Error syncing admin metrics', 'error');
@@ -112,6 +147,7 @@ export const AdminDashboard: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
 
   // 1. Dynamic Trend Data based on Timeframe Slicer
   const trendData: TrendDataPoint[] = useMemo(() => {
@@ -308,7 +344,74 @@ export const AdminDashboard: React.FC = () => {
     });
   }, [products, productCategoryFilter, productStockFilter, productSearch]);
 
+  // 8. Filtered Users list
+  const filteredUsers = useMemo(() => {
+    return usersList.filter((u) => {
+      if (!userSearch.trim()) return true;
+      const q = userSearch.toLowerCase();
+      return (
+        (u.name && u.name.toLowerCase().includes(q)) ||
+        (u.email && u.email.toLowerCase().includes(q)) ||
+        (u.phone && u.phone.includes(q)) ||
+        (u.id && u.id.toLowerCase().includes(q))
+      );
+    });
+  }, [usersList, userSearch]);
+
+  // 9. Filtered FAQs list
+  const filteredFaqs = useMemo(() => {
+    return faqsList.filter((f) => {
+      if (faqCategoryFilter !== 'ALL' && f.category !== faqCategoryFilter) return false;
+      return true;
+    });
+  }, [faqsList, faqCategoryFilter]);
+
   // Handlers
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!confirm(`Are you sure you want to permanently delete user "${userName}"? This will erase their account.`)) return;
+    try {
+      await apiService.admin.deleteUser(userId);
+      setUsersList((prev) => prev.filter((u) => u.id !== userId));
+      showToast(`User account "${userName}" has been deleted`, 'success');
+      if (inspectingUser?.id === userId) {
+        setInspectingUser(null);
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to delete user', 'error');
+    }
+  };
+
+  const handleSaveFaq = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingFaq?.question?.trim() || !editingFaq?.answer?.trim()) {
+      showToast('Question and Answer are required', 'error');
+      return;
+    }
+    try {
+      setIsFaqSaving(true);
+      const res = await apiService.faq.save(editingFaq);
+      showToast(res.message || 'FAQ saved successfully. Customer storefront updated.', 'success');
+      setIsFaqModalOpen(false);
+      setEditingFaq(null);
+      const updated = await apiService.faq.getAll();
+      setFaqsList(updated.data || []);
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to save FAQ', 'error');
+    } finally {
+      setIsFaqSaving(false);
+    }
+  };
+
+  const handleDeleteFaq = async (id: string, question: string) => {
+    if (!confirm(`Delete FAQ: "${question}"?`)) return;
+    try {
+      await apiService.faq.delete(id);
+      setFaqsList((prev) => prev.filter((f) => f.id !== id));
+      showToast('FAQ deleted. Customer storefront updated automatically.', 'success');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to delete FAQ', 'error');
+    }
+  };
   const handleAssignCourier = async (
     orderId: string,
     courierData: {
@@ -450,6 +553,92 @@ export const AdminDashboard: React.FC = () => {
     showToast('Orders report exported to CSV', 'success');
   };
 
+  // Hero Showcase Handlers
+  const handleHeroImageUpload = async (index: number, file: File) => {
+    try {
+      setUploadingHeroIndex(index);
+      const res = await apiService.admin.uploadImage(file);
+      const uploadedUrl = res.data.url;
+      setHeroSlides((prev) => {
+        const updated = [...prev];
+        updated[index] = { ...updated[index], image: uploadedUrl };
+        return updated;
+      });
+      showToast('Hero image uploaded successfully!', 'success');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to upload hero image', 'error');
+    } finally {
+      setUploadingHeroIndex(null);
+    }
+  };
+
+  const handleHeroFieldChange = (index: number, field: keyof HeroShowcaseItem, value: any) => {
+    setHeroSlides((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const handleSaveHeroSlides = async () => {
+    try {
+      setIsHeroSaving(true);
+      await apiService.hero.updateShowcase(heroSlides);
+      showToast('Hero section showcase updated! Storefront now reflects the new images & products.', 'success');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to save hero showcase', 'error');
+    } finally {
+      setIsHeroSaving(false);
+    }
+  };
+
+  const handleAddHeroSlide = () => {
+    const newSlide: HeroShowcaseItem = {
+      id: `hero_${Date.now()}`,
+      title: 'New Featured Product',
+      slug: 'featured-product',
+      store: 'Official Flagship Store',
+      price: 2999,
+      image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
+    };
+    setHeroSlides((prev) => [...prev, newSlide]);
+    setPreviewSlideIndex(heroSlides.length);
+    showToast('New slide added. Configure details and click Save.', 'info');
+  };
+
+  const handleDeleteHeroSlide = (index: number) => {
+    if (heroSlides.length <= 1) {
+      showToast('At least one hero slide must remain in the showcase', 'error');
+      return;
+    }
+    setHeroSlides((prev) => prev.filter((_, i) => i !== index));
+    if (previewSlideIndex >= heroSlides.length - 1) {
+      setPreviewSlideIndex(Math.max(0, heroSlides.length - 2));
+    }
+    showToast('Slide removed from showcase list', 'info');
+  };
+
+  const handleMoveHeroSlide = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= heroSlides.length) return;
+    setHeroSlides((prev) => {
+      const copy = [...prev];
+      const temp = copy[index];
+      copy[index] = copy[targetIndex];
+      copy[targetIndex] = temp;
+      return copy;
+    });
+    setPreviewSlideIndex(targetIndex);
+  };
+
+  const handleResetHeroSlides = () => {
+    if (confirm('Reset hero showcase to original defaults?')) {
+      setHeroSlides(INITIAL_HERO_SHOWCASE);
+      setPreviewSlideIndex(0);
+      showToast('Reset to default slides. Click Save to persist.', 'info');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-24 text-slate-900 font-sans">
       {/* 1. TOP EXECUTIVE HEADER */}
@@ -566,6 +755,19 @@ export const AdminDashboard: React.FC = () => {
 
           <button
             type="button"
+            onClick={() => setActiveTab('hero')}
+            className={`py-3.5 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
+              activeTab === 'hero'
+                ? 'border-slate-900 text-slate-900 font-extrabold'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-amber-500" />
+            <span>Hero Showcase ({heroSlides.length})</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('categories')}
             className={`py-3.5 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
               activeTab === 'categories'
@@ -575,6 +777,32 @@ export const AdminDashboard: React.FC = () => {
           >
             <Layers className="w-4 h-4 text-purple-600" />
             <span>Categories ({categories.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('users')}
+            className={`py-3.5 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
+              activeTab === 'users'
+                ? 'border-slate-900 text-slate-900 font-extrabold'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Users className="w-4 h-4 text-sky-600" />
+            <span>Users &amp; Accounts ({usersList.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('faqs')}
+            className={`py-3.5 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
+              activeTab === 'faqs'
+                ? 'border-slate-900 text-slate-900 font-extrabold'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <HelpCircle className="w-4 h-4 text-teal-600" />
+            <span>Store FAQs ({faqsList.length})</span>
           </button>
 
           <button
@@ -1024,7 +1252,9 @@ export const AdminDashboard: React.FC = () => {
                     <tr>
                       <th className="py-3 px-4">Item &amp; Image</th>
                       <th className="py-3 px-4">Category &amp; Brand</th>
-                      <th className="py-3 px-4">Price / Discount</th>
+                      <th className="py-3 px-4">Buying Cost</th>
+                      <th className="py-3 px-4">Selling / Offer Price</th>
+                      <th className="py-3 px-4">Profit / Unit (Margin)</th>
                       <th className="py-3 px-4">Stock Level (Quick Adjust)</th>
                       <th className="py-3 px-4">Status &amp; Rating</th>
                       <th className="py-3 px-4 text-right">Actions</th>
@@ -1033,13 +1263,19 @@ export const AdminDashboard: React.FC = () => {
                   <tbody className="divide-y divide-slate-100">
                     {filteredProducts.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-12 text-center text-slate-400">
+                        <td colSpan={8} className="py-12 text-center text-slate-400">
                           No catalog items found matching your filters.
                         </td>
                       </tr>
                     ) : (
                       filteredProducts.map((p) => {
                         const hasDiscount = p.discountPrice && p.discountPrice < p.price;
+                        const sellingPrice = hasDiscount ? p.discountPrice! : p.price;
+                        const buyingCost = p.buyingPrice || 0;
+                        const unitProfit = sellingPrice - buyingCost;
+                        const profitMargin = sellingPrice > 0 && buyingCost > 0 ? Math.round((unitProfit / sellingPrice) * 100) : null;
+                        const isLoss = buyingCost > 0 && unitProfit < 0;
+
                         return (
                           <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
                             <td className="py-3 px-4">
@@ -1052,7 +1288,7 @@ export const AdminDashboard: React.FC = () => {
                                   />
                                 </div>
                                 <div className="min-w-0">
-                                  <span className="font-bold text-slate-900 block truncate max-w-[240px]">
+                                  <span className="font-bold text-slate-900 block truncate max-w-[220px]">
                                     {p.name}
                                   </span>
                                   <span className="font-mono text-[10px] text-slate-400">
@@ -1071,14 +1307,44 @@ export const AdminDashboard: React.FC = () => {
                               </span>
                             </td>
 
+                            {/* Buying Cost */}
+                            <td className="py-3 px-4">
+                              {buyingCost > 0 ? (
+                                <span className="font-mono font-semibold text-slate-700 block">
+                                  {formatBDT(buyingCost)}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 font-mono text-[11px]">Not set</span>
+                              )}
+                            </td>
+
+                            {/* Selling Price / Offer */}
                             <td className="py-3 px-4">
                               <span className="font-mono font-bold text-slate-900 block">
-                                {formatBDT(hasDiscount ? p.discountPrice! : p.price)}
+                                {formatBDT(sellingPrice)}
                               </span>
                               {hasDiscount && (
-                                <span className="font-mono text-[10px] text-slate-400 line-through">
+                                <span className="font-mono text-[10px] text-slate-400 line-through block">
                                   {formatBDT(p.price)}
                                 </span>
+                              )}
+                            </td>
+
+                            {/* Profit / Unit (Margin %) */}
+                            <td className="py-3 px-4">
+                              {buyingCost > 0 ? (
+                                <div>
+                                  <span className={`font-mono font-bold block ${isLoss ? 'text-rose-600' : 'text-emerald-700'}`}>
+                                    {isLoss ? '-' : '+'}{formatBDT(Math.abs(unitProfit))}
+                                  </span>
+                                  <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold mt-0.5 ${
+                                    isLoss ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-800'
+                                  }`}>
+                                    {profitMargin !== null ? `${profitMargin}% margin` : '0%'}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 font-mono text-[11px]">—</span>
                               )}
                             </td>
 
@@ -1287,6 +1553,707 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* ========================================================================= */}
+        {/* TAB 4: HERO SECTION SHOWCASE & BANNER MANAGEMENT */}
+        {/* ========================================================================= */}
+        {activeTab === 'hero' && (
+          <div className="space-y-6">
+            {/* Header Actions */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+                    <Sparkles className="w-5 h-5" />
+                  </span>
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900">
+                      Hero Section Product Showcase
+                    </h2>
+                    <p className="text-xs text-slate-500">
+                      Upload and manage the featured product photos, titles, prices, and links rotating on the homepage hero banner.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+                <button
+                  type="button"
+                  onClick={handleResetHeroSlides}
+                  className="px-3 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                >
+                  Reset Defaults
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddHeroSlide}
+                  className="px-3.5 py-2 text-xs font-bold text-slate-900 bg-amber-400 hover:bg-amber-300 rounded-lg shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Slide</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveHeroSlides}
+                  disabled={isHeroSaving}
+                  className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg shadow-sm transition-colors cursor-pointer flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isHeroSaving ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4" />
+                  )}
+                  <span>{isHeroSaving ? 'Saving Changes...' : 'Save Showcase Changes'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Main Content Layout: Slides Editor + Live Storefront Preview */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* Left Column: Slide Cards (7 cols) */}
+              <div className="lg:col-span-7 space-y-4">
+                {heroSlides.map((slide, idx) => (
+                  <div
+                    key={slide.id || idx}
+                    className={`bg-white rounded-2xl border transition-all duration-200 p-5 shadow-xs ${
+                      previewSlideIndex === idx
+                        ? 'border-amber-400 ring-2 ring-amber-400/20'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    {/* Slide Top Bar */}
+                    <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full bg-slate-900 text-white text-[11px] font-bold flex items-center justify-center font-mono">
+                          {idx + 1}
+                        </span>
+                        <span className="text-xs font-bold text-slate-800">
+                          Slide #{idx + 1}
+                        </span>
+                        {idx === 0 && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                            Default First
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewSlideIndex(idx)}
+                          className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors cursor-pointer flex items-center gap-1 ${
+                            previewSlideIndex === idx
+                              ? 'bg-amber-100 text-amber-900 font-bold'
+                              : 'text-slate-500 hover:bg-slate-100'
+                          }`}
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Preview</span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => handleMoveHeroSlide(idx, 'up')}
+                          className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md disabled:opacity-30 cursor-pointer"
+                          title="Move Up"
+                        >
+                          <ChevronUp className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={idx === heroSlides.length - 1}
+                          onClick={() => handleMoveHeroSlide(idx, 'down')}
+                          className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md disabled:opacity-30 cursor-pointer"
+                          title="Move Down"
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteHeroSlide(idx)}
+                          className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-md cursor-pointer ml-1"
+                          title="Delete Slide"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Slide Body: Image Picker on Left, Fields on Right */}
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+                      {/* Image Preview & Upload (5 cols) */}
+                      <div className="sm:col-span-5 flex flex-col gap-2.5">
+                        <div className="relative aspect-4/3 w-full bg-slate-100 rounded-xl overflow-hidden border border-slate-200 group">
+                          {slide.image ? (
+                            <img
+                              src={slide.image}
+                              alt={slide.title}
+                              className="w-full h-full object-cover object-center"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
+                              <ImageIcon className="w-8 h-8 mb-1" />
+                              <span className="text-[11px]">No Image Selected</span>
+                            </div>
+                          )}
+                          {uploadingHeroIndex === idx && (
+                            <div className="absolute inset-0 bg-slate-950/70 flex flex-col items-center justify-center text-white text-xs gap-1.5 backdrop-blur-xs">
+                              <RefreshCw className="w-5 h-5 animate-spin text-amber-400" />
+                              <span>Uploading image...</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Upload Button */}
+                        <label className="w-full py-2 px-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-xs">
+                          <UploadCloud className="w-4 h-4 text-amber-400" />
+                          <span>Upload From PC</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleHeroImageUpload(idx, file);
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
+
+                        {/* Or URL input */}
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                            Or Image URL / Link
+                          </label>
+                          <input
+                            type="text"
+                            value={slide.image || ''}
+                            placeholder="https://images.unsplash.com/..."
+                            onChange={(e) => handleHeroFieldChange(idx, 'image', e.target.value)}
+                            className="w-full px-2.5 py-1.5 text-[11px] font-mono border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-900 bg-slate-50/60"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Text Fields (7 cols) */}
+                      <div className="sm:col-span-7 space-y-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            Product Title *
+                          </label>
+                          <input
+                            type="text"
+                            value={slide.title || ''}
+                            placeholder="e.g. Aarong Festive Embroidered Panjabi"
+                            onChange={(e) => handleHeroFieldChange(idx, 'title', e.target.value)}
+                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 font-medium"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            Store / Seller Badge *
+                          </label>
+                          <input
+                            type="text"
+                            value={slide.store || ''}
+                            placeholder="e.g. Feminine & Heritage Store"
+                            onChange={(e) => handleHeroFieldChange(idx, 'store', e.target.value)}
+                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                              Price (BDT ৳) *
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              value={slide.price || 0}
+                              onChange={(e) => handleHeroFieldChange(idx, 'price', Number(e.target.value) || 0)}
+                              className="w-full px-3 py-2 text-xs font-mono font-bold border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                              Product Slug / Link
+                            </label>
+                            <input
+                              type="text"
+                              value={slide.slug || ''}
+                              placeholder="e.g. aarong-festive-panjabi"
+                              onChange={(e) => handleHeroFieldChange(idx, 'slug', e.target.value)}
+                              className="w-full px-3 py-2 text-xs font-mono border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="pt-2 flex items-center justify-between text-[11px] text-slate-500">
+                          <span className="font-mono text-slate-400">ID: {slide.id}</span>
+                          <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Ready to publish
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Add Slide Bottom Action */}
+                <button
+                  type="button"
+                  onClick={handleAddHeroSlide}
+                  className="w-full py-4 border-2 border-dashed border-slate-300 hover:border-slate-500 rounded-2xl text-slate-600 hover:text-slate-900 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer bg-slate-50/50 hover:bg-slate-100/50"
+                >
+                  <Plus className="w-4 h-4 text-emerald-600" />
+                  <span>Add Another Slide to Hero Showcase</span>
+                </button>
+              </div>
+
+              {/* Right Column: Live Storefront Preview (5 cols) */}
+              <div className="lg:col-span-5 sticky top-24 space-y-4">
+                <div className="bg-slate-950 text-white rounded-3xl p-6 border border-slate-800 shadow-xl relative overflow-hidden">
+                  {/* Glowing background halo */}
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800/80">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                        Live Storefront Preview
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-mono text-slate-400">
+                      Slide {previewSlideIndex + 1} of {heroSlides.length}
+                    </span>
+                  </div>
+
+                  {/* Render exact Hero Showcase Widget as seen on customer home */}
+                  {heroSlides[previewSlideIndex] && (
+                    <div className="space-y-4">
+                      <div className="relative rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-900/90 shadow-2xl aspect-4/3 flex items-center justify-center group">
+                        {/* Slide Image */}
+                        <img
+                          src={heroSlides[previewSlideIndex].image}
+                          alt={heroSlides[previewSlideIndex].title}
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                        />
+
+                        {/* Top Store Badge */}
+                        <div className="absolute top-3.5 left-3.5 z-10 flex items-center gap-1.5 px-3 py-1 bg-slate-950/75 backdrop-blur-md border border-white/10 rounded-full text-[11px] font-medium text-slate-200">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span className="truncate max-w-[160px]">
+                            {heroSlides[previewSlideIndex].store || 'Featured Store'}
+                          </span>
+                        </div>
+
+                        {/* Carousel Arrows */}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewSlideIndex((prev) =>
+                              prev === 0 ? heroSlides.length - 1 : prev - 1
+                            )
+                          }
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-950/70 hover:bg-slate-950 text-white flex items-center justify-center backdrop-blur-xs transition-colors cursor-pointer border border-white/10"
+                        >
+                          <ChevronUp className="w-4 h-4 -rotate-90" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewSlideIndex((prev) =>
+                              (prev + 1) % heroSlides.length
+                            )
+                          }
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-950/70 hover:bg-slate-950 text-white flex items-center justify-center backdrop-blur-xs transition-colors cursor-pointer border border-white/10"
+                        >
+                          <ChevronUp className="w-4 h-4 rotate-90" />
+                        </button>
+
+                        {/* Bottom Floating Card */}
+                        <div className="absolute bottom-3 left-3 right-3 p-3 bg-slate-950/85 backdrop-blur-md rounded-xl border border-white/10 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-white truncate">
+                              {heroSlides[previewSlideIndex].title}
+                            </p>
+                            <p className="text-xs font-bold text-emerald-400 font-mono">
+                              {formatBDT(heroSlides[previewSlideIndex].price)}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            className="shrink-0 px-3 py-1.5 bg-white text-slate-950 hover:bg-slate-100 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            <span>View</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Pagination Dots */}
+                      <div className="flex items-center justify-center gap-2 pt-1">
+                        {heroSlides.map((_, dotIdx) => (
+                          <button
+                            key={dotIdx}
+                            type="button"
+                            onClick={() => setPreviewSlideIndex(dotIdx)}
+                            className={`h-2 rounded-full transition-all cursor-pointer ${
+                              previewSlideIndex === dotIdx
+                                ? 'w-6 bg-white'
+                                : 'w-2 bg-slate-700 hover:bg-slate-500'
+                            }`}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Bottom Info Tip */}
+                      <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
+                        <p className="font-semibold text-slate-300">
+                          &bull; Auto-slides on customer storefront every 4.5 seconds.
+                        </p>
+                        <p>
+                          &bull; When visitors click "View &rarr;", they are taken directly to the product details page.
+                        </p>
+                      </div>
+
+                      {/* Save Button in Sidebar as well */}
+                      <button
+                        type="button"
+                        onClick={handleSaveHeroSlides}
+                        disabled={isHeroSaving}
+                        className="w-full py-3 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {isHeroSaving ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4" />
+                        )}
+                        <span>{isHeroSaving ? 'Saving...' : 'Save Showcase Changes'}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 6: USERS & SIGN-UP INFO MANAGEMENT */}
+        {/* ========================================================================= */}
+        {activeTab === 'users' && (
+          <div className="space-y-4">
+            {/* Header and Search */}
+            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="p-2 bg-sky-50 text-sky-600 rounded-lg">
+                    <Users className="w-5 h-5" />
+                  </span>
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm">
+                      Customer Accounts &amp; Sign-Up Directory
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      View registered users, inspect their sign-up information, and manage or delete customer accounts.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Search */}
+              <div className="relative flex-1 max-w-sm">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  placeholder="Search by name, email, phone, or ID..."
+                  className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+            </div>
+
+            {/* Users Table */}
+            <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-600 uppercase font-semibold text-[10px] border-b border-slate-200">
+                    <tr>
+                      <th className="py-3 px-4">User</th>
+                      <th className="py-3 px-4">Contact Info</th>
+                      <th className="py-3 px-4">Auth Method</th>
+                      <th className="py-3 px-4">Role</th>
+                      <th className="py-3 px-4">Sign-Up Date</th>
+                      <th className="py-3 px-4">Orders &amp; Spend</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-slate-400">
+                          No users found matching your search.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredUsers.map((u) => {
+                        const userOrders = orders.filter((o) => o.userId === u.id);
+                        const userSpend = userOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+                        const formattedDate = u.createdAt
+                          ? new Date(u.createdAt).toLocaleDateString('en-GB', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })
+                          : 'Recent';
+
+                        return (
+                          <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-sky-100 text-sky-800 font-bold flex items-center justify-center shrink-0 uppercase text-xs">
+                                  {u.avatarUrl ? (
+                                    <img src={u.avatarUrl} alt={u.name} className="w-full h-full rounded-full object-cover" />
+                                  ) : (
+                                    u.name?.charAt(0) || 'U'
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <span className="font-bold text-slate-900 block truncate max-w-[200px]">
+                                    {u.name || 'Anonymous User'}
+                                  </span>
+                                  <span className="font-mono text-[10px] text-slate-400">
+                                    ID: {u.id?.slice(0, 8)}...
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+
+                            <td className="py-3 px-4">
+                              <span className="text-slate-800 font-semibold block">{u.email || 'No email provided'}</span>
+                              <span className="text-slate-500 font-mono text-[11px] block mt-0.5">
+                                {u.phone || 'No phone provided'}
+                              </span>
+                            </td>
+
+                            <td className="py-3 px-4">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 capitalize">
+                                {u.authProvider || 'Phone OTP'}
+                              </span>
+                            </td>
+
+                            <td className="py-3 px-4">
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  u.role === 'ADMIN'
+                                    ? 'bg-rose-100 text-rose-800'
+                                    : 'bg-emerald-100 text-emerald-800'
+                                }`}
+                              >
+                                {u.role || 'CUSTOMER'}
+                              </span>
+                            </td>
+
+                            <td className="py-3 px-4 font-mono text-slate-600 text-[11px]">
+                              {formattedDate}
+                            </td>
+
+                            <td className="py-3 px-4">
+                              <span className="font-bold text-slate-900 block">
+                                {userOrders.length} orders
+                              </span>
+                              <span className="font-mono text-slate-500 text-[10px]">
+                                {formatBDT(userSpend)}
+                              </span>
+                            </td>
+
+                            <td className="py-3 px-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setInspectingUser(u)}
+                                  className="px-2.5 py-1 text-sky-600 hover:bg-sky-50 rounded-md cursor-pointer flex items-center gap-1 font-semibold text-xs border border-sky-200"
+                                  title="View full sign-up information"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>View Info</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteUser(u.id, u.name)}
+                                  className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-md cursor-pointer border border-rose-200"
+                                  title="Delete user account"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 7: STORE FAQ MANAGEMENT */}
+        {/* ========================================================================= */}
+        {activeTab === 'faqs' && (
+          <div className="space-y-4">
+            {/* Header */}
+            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="p-2 bg-teal-50 text-teal-600 rounded-lg">
+                    <HelpCircle className="w-5 h-5" />
+                  </span>
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm">
+                      Store FAQs &amp; Help Center
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Add, update, or delete FAQ questions. Any change saved here immediately updates on the customer storefront.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingFaq({
+                    category: 'general',
+                    question: '',
+                    questionBn: '',
+                    answer: '',
+                    answerBn: '',
+                  });
+                  setIsFaqModalOpen(true);
+                }}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1.5 shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Add FAQ Question</span>
+              </button>
+            </div>
+
+            {/* Category Filter Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              {[
+                { key: 'ALL', label: `All FAQs (${faqsList.length})` },
+                { key: 'delivery', label: 'Delivery & Shipping' },
+                { key: 'payment', label: 'Payment & COD' },
+                { key: 'returns', label: 'Returns & Replacement' },
+                { key: 'warranty', label: 'Warranty & Guarantee' },
+                { key: 'general', label: 'General' },
+              ].map((pill) => (
+                <button
+                  key={pill.key}
+                  type="button"
+                  onClick={() => setFaqCategoryFilter(pill.key)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors ${
+                    faqCategoryFilter === pill.key
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {pill.label}
+                </button>
+              ))}
+            </div>
+
+            {/* FAQs Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredFaqs.length === 0 ? (
+                <div className="col-span-2 py-12 text-center text-slate-400 bg-white border border-slate-200 rounded-xl">
+                  No FAQ questions found in this category. Click "+ Add FAQ Question" to create one.
+                </div>
+              ) : (
+                filteredFaqs.map((faq) => {
+                  const categoryBadgeColor: Record<string, string> = {
+                    delivery: 'bg-blue-100 text-blue-800',
+                    payment: 'bg-emerald-100 text-emerald-800',
+                    returns: 'bg-amber-100 text-amber-800',
+                    warranty: 'bg-purple-100 text-purple-800',
+                    general: 'bg-slate-100 text-slate-800',
+                  };
+
+                  return (
+                    <div
+                      key={faq.id}
+                      className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              categoryBadgeColor[faq.category] || 'bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            {faq.category}
+                          </span>
+                          <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">
+                            Active on storefront
+                          </span>
+                        </div>
+
+                        <h4 className="font-bold text-slate-900 text-sm">{faq.question}</h4>
+                        {faq.questionBn && (
+                          <p className="text-xs text-slate-500 font-medium mt-0.5">{faq.questionBn}</p>
+                        )}
+
+                        <p className="text-xs text-slate-600 mt-2 leading-relaxed whitespace-pre-line">
+                          {faq.answer}
+                        </p>
+                        {faq.answerBn && (
+                          <p className="text-xs text-slate-500 mt-1 leading-relaxed whitespace-pre-line border-t border-slate-100 pt-1.5">
+                            {faq.answerBn}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
+                        <span className="font-mono text-[10px] text-slate-400">ID: {faq.id}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingFaq(faq);
+                              setIsFaqModalOpen(true);
+                            }}
+                            className="px-2.5 py-1 text-blue-600 hover:bg-blue-50 rounded-md font-semibold text-xs cursor-pointer flex items-center gap-1 border border-blue-200"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteFaq(faq.id, faq.question)}
+                            className="p-1 text-rose-600 hover:bg-rose-50 rounded-md cursor-pointer border border-rose-200"
+                            title="Delete FAQ question"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
       </main>
 
       {/* ========================================================================= */}
@@ -1486,6 +2453,333 @@ export const AdminDashboard: React.FC = () => {
                   className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg cursor-pointer"
                 >
                   Save Category
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 6. User Sign-Up Information Dossier Modal */}
+      {inspectingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden border border-slate-200">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 bg-sky-100 text-sky-700 rounded-lg">
+                  <UserCheck className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">
+                    Customer Profile &amp; Sign-Up Dossier
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-mono">
+                    ID: {inspectingUser.id}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInspectingUser(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto text-xs">
+              {/* Profile Card Summary */}
+              <div className="p-4 bg-gradient-to-r from-sky-50 to-indigo-50/40 rounded-xl border border-sky-100 flex items-center justify-between">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-14 h-14 rounded-full bg-sky-200 text-sky-900 font-bold text-lg flex items-center justify-center shrink-0 uppercase border-2 border-white shadow-xs">
+                    {inspectingUser.avatarUrl ? (
+                      <img src={inspectingUser.avatarUrl} alt={inspectingUser.name} className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      inspectingUser.name?.charAt(0) || 'U'
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-base">
+                      {inspectingUser.name || 'Anonymous User'}
+                    </h4>
+                    <p className="text-slate-600 font-medium text-xs mt-0.5">
+                      {inspectingUser.email || 'No email registered'}
+                    </p>
+                    <p className="text-slate-500 font-mono text-[11px]">
+                      {inspectingUser.phone || 'No phone registered'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-end gap-1.5">
+                  <span
+                    className={`px-3 py-1 rounded-full text-[11px] font-bold ${
+                      inspectingUser.role === 'ADMIN'
+                        ? 'bg-rose-100 text-rose-800'
+                        : 'bg-emerald-100 text-emerald-800'
+                    }`}
+                  >
+                    {inspectingUser.role || 'CUSTOMER'}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-medium capitalize">
+                    Via {inspectingUser.authProvider || 'Phone OTP'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Sign-Up & Account Details Grid */}
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                  Registration &amp; Security Attributes
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <span className="text-[10px] text-slate-400 block font-medium">Full Name</span>
+                    <span className="font-bold text-slate-800">{inspectingUser.name || 'N/A'}</span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <span className="text-[10px] text-slate-400 block font-medium">Sign-Up Timestamp</span>
+                    <span className="font-mono font-semibold text-slate-800">
+                      {inspectingUser.createdAt
+                        ? new Date(inspectingUser.createdAt).toLocaleString('en-GB')
+                        : 'Pre-existing Account'}
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <span className="text-[10px] text-slate-400 block font-medium">Verified Phone</span>
+                    <span className="font-mono font-semibold text-slate-800">
+                      {inspectingUser.phone || 'Not verified'}
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <span className="text-[10px] text-slate-400 block font-medium">Verified Email</span>
+                    <span className="font-semibold text-slate-800">
+                      {inspectingUser.email || 'Not verified'}
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <span className="text-[10px] text-slate-400 block font-medium">Authentication Method</span>
+                    <span className="font-semibold text-slate-800 capitalize">
+                      {inspectingUser.authProvider === 'google'
+                        ? 'Google OAuth 2.0 Single Sign-On'
+                        : inspectingUser.authProvider === 'email'
+                        ? 'Email & Password'
+                        : 'Phone OTP Authentication'}
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <span className="text-[10px] text-slate-400 block font-medium">Total Lifetime Spend</span>
+                    <span className="font-mono font-bold text-emerald-700">
+                      {formatBDT(
+                        orders
+                          .filter((o) => o.userId === inspectingUser.id)
+                          .reduce((s, o) => s + (o.totalAmount || 0), 0)
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Order History */}
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                  Order History ({orders.filter((o) => o.userId === inspectingUser.id).length} Orders)
+                </span>
+                {orders.filter((o) => o.userId === inspectingUser.id).length === 0 ? (
+                  <div className="p-4 bg-slate-50 rounded-lg text-slate-400 text-center text-xs">
+                    This customer has not placed any orders yet.
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {orders
+                      .filter((o) => o.userId === inspectingUser.id)
+                      .map((ord) => (
+                        <div
+                          key={ord.id}
+                          className="flex items-center justify-between p-2.5 bg-slate-50 hover:bg-slate-100/70 rounded-lg border border-slate-100 transition-colors"
+                        >
+                          <div>
+                            <span className="font-bold text-slate-900 block font-mono">
+                              #{ord.orderNumber}
+                            </span>
+                            <span className="text-[10px] text-slate-500">
+                              {ord.items.length} items &bull; {ord.paymentMethod}
+                            </span>
+                          </div>
+
+                          <div className="text-right">
+                            <span className="font-mono font-bold text-slate-900 block">
+                              {formatBDT(ord.totalAmount)}
+                            </span>
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">
+                              {ord.status}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer with Delete and Close */}
+            <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => handleDeleteUser(inspectingUser.id, inspectingUser.name)}
+                className="px-3.5 py-2 text-xs font-bold text-rose-600 hover:text-white hover:bg-rose-600 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 border border-rose-300"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete User Account</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setInspectingUser(null)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold cursor-pointer"
+              >
+                Close Dossier
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 7. Add / Edit Store FAQ Modal */}
+      {isFaqModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden border border-slate-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 bg-teal-50 text-teal-700 rounded-lg">
+                  <HelpCircle className="w-4 h-4" />
+                </span>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  {editingFaq?.id ? 'Edit FAQ Question' : 'Add New FAQ Question'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsFaqModalOpen(false);
+                  setEditingFaq(null);
+                }}
+                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveFaq} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  FAQ Category *
+                </label>
+                <select
+                  value={editingFaq?.category || 'general'}
+                  onChange={(e) =>
+                    setEditingFaq({
+                      ...editingFaq,
+                      category: e.target.value as any,
+                    })
+                  }
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
+                >
+                  <option value="delivery">Delivery &amp; Shipping</option>
+                  <option value="payment">Payment &amp; COD</option>
+                  <option value="returns">Returns &amp; Replacement</option>
+                  <option value="warranty">Warranty &amp; Guarantee</option>
+                  <option value="general">General Inquiry</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Question (English) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. How long does delivery take inside Dhaka?"
+                  value={editingFaq?.question || ''}
+                  onChange={(e) =>
+                    setEditingFaq({ ...editingFaq, question: e.target.value })
+                  }
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Question (Bengali)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. ঢাকা সিটির ভেতরে ডেলিভারি হতে কত দিন সময় লাগে?"
+                  value={editingFaq?.questionBn || ''}
+                  onChange={(e) =>
+                    setEditingFaq({ ...editingFaq, questionBn: e.target.value })
+                  }
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Answer (English) *
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Detailed answer shown to customers..."
+                  value={editingFaq?.answer || ''}
+                  onChange={(e) =>
+                    setEditingFaq({ ...editingFaq, answer: e.target.value })
+                  }
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Answer (Bengali)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="বাংলায় বিস্তারিত উত্তর..."
+                  value={editingFaq?.answerBn || ''}
+                  onChange={(e) =>
+                    setEditingFaq({ ...editingFaq, answerBn: e.target.value })
+                  }
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsFaqModalOpen(false);
+                    setEditingFaq(null);
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isFaqSaving}
+                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {isFaqSaving && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{isFaqSaving ? 'Saving...' : 'Save FAQ Question'}</span>
                 </button>
               </div>
             </form>

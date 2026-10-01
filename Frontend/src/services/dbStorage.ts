@@ -10,6 +10,7 @@ import {
   Cart,
   CartItem,
   OrderStatus,
+  FAQItem,
 } from '../types';
 import {
   INITIAL_USERS,
@@ -30,6 +31,8 @@ const STORAGE_KEYS = {
   NOTIFICATIONS: 'deshi_notifications_v1',
   CURRENT_USER_ID: 'deshi_current_user_id_v1',
   CART: 'deshi_cart_v1',
+  HERO_SHOWCASE: 'deshi_hero_showcase_v1',
+  FAQS: 'deshi_faqs_v1',
 };
 
 // Initialize default state
@@ -53,6 +56,12 @@ export function initDatabase() {
   }
   if (!localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS)) {
     localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(INITIAL_NOTIFICATIONS));
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.HERO_SHOWCASE)) {
+    localStorage.setItem(STORAGE_KEYS.HERO_SHOWCASE, JSON.stringify(INITIAL_HERO_SHOWCASE));
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.FAQS)) {
+    localStorage.setItem(STORAGE_KEYS.FAQS, JSON.stringify(INITIAL_FAQS));
   }
 }
 
@@ -105,6 +114,13 @@ export function setCurrentUser(userId: string): User {
     localStorage.setItem('refreshToken', 'mock-refresh-customer-token-deshi-4912');
   }
   return user;
+}
+
+export function deleteUser(userId: string): boolean {
+  const users = getUsers();
+  const updated = users.filter((u) => u.id !== userId);
+  setItem(STORAGE_KEYS.USERS, updated);
+  return true;
 }
 
 // Categories
@@ -176,6 +192,7 @@ export function saveProduct(product: Partial<Product>): Product {
     description: product.description || '',
     price: Number(product.price) || 0,
     discountPrice: product.discountPrice ? Number(product.discountPrice) : undefined,
+    buyingPrice: product.buyingPrice ? Number(product.buyingPrice) : undefined,
     stock: Number(product.stock) || 0,
     sku: product.sku || `DS-${Date.now().toString().slice(-6)}`,
     images: product.images && product.images.length > 0 ? product.images : [
@@ -766,3 +783,163 @@ export function getCustomer360Profile(userId: string): Customer360Profile {
     orders,
   };
 }
+
+// Hero Showcase Management
+export interface HeroShowcaseItem {
+  id: string;
+  title: string;
+  slug: string;
+  store: string;
+  price: number;
+  image: string;
+}
+
+export const INITIAL_HERO_SHOWCASE: HeroShowcaseItem[] = [
+  {
+    id: 'hero_1',
+    title: 'Aarong Festive Embroidered Panjabi',
+    slug: 'aarong-festive-panjabi',
+    store: 'Feminine & Heritage Store',
+    price: 3999,
+    image: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 'hero_2',
+    title: 'Samsung Galaxy A55 5G (8GB/128GB)',
+    slug: 'samsung-galaxy-a55-5g',
+    store: 'Official Samsung Flagship',
+    price: 41999,
+    image: 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 'hero_3',
+    title: 'Authentic Handloom Dhakai Jamdani Saree',
+    slug: 'dhakai-jamdani-saree',
+    store: 'Demra Heritage Weavers',
+    price: 8200,
+    image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80',
+  },
+];
+
+export function getHeroShowcase(): HeroShowcaseItem[] {
+  return getItem<HeroShowcaseItem[]>(STORAGE_KEYS.HERO_SHOWCASE, INITIAL_HERO_SHOWCASE);
+}
+
+export function saveHeroShowcase(items: HeroShowcaseItem[]): HeroShowcaseItem[] {
+  setItem(STORAGE_KEYS.HERO_SHOWCASE, items);
+  return items;
+}
+
+// =========================================================================
+// FAQ Storage Management
+// =========================================================================
+export const INITIAL_FAQS: FAQItem[] = [
+  {
+    id: 'faq_1',
+    category: 'delivery',
+    question: 'How does Cash on Delivery (COD) work across Bangladesh?',
+    questionBn: 'সারা বাংলাদেশে ক্যাশ অন ডেলিভারি (COD) কীভাবে কাজ করে?',
+    answer:
+      'You can place your order without any advance payment. Our logistics partner (Steadfast Courier or Pathao) delivers the parcel directly to your doorstep in all 64 districts. You pay cash to the courier representative only after receiving your package and an official SMS delivery receipt.',
+    answerBn:
+      'কোনো অগ্রিম পেমেন্ট ছাড়াই অর্ডার করতে পারেন। আমাদের কুরিয়ার পার্টনার (স্টিডফাস্ট বা পাঠাও) দেশের ৬৪টি জেলার যে কোনো প্রান্তে আপনার ঠিকানায় পার্সেল পৌঁছে দেবে। পার্সেল বুঝে পেয়ে ডেলিভারিম্যানের কাছে মূল্য পরিশোধ করবেন।',
+    order: 1,
+  },
+  {
+    id: 'faq_2',
+    category: 'delivery',
+    question: 'What are the delivery fees for inside Dhaka vs outside Dhaka?',
+    questionBn: 'ঢাকার ভেতর ও ঢাকার বাইরের ডেলিভারি চার্জ কত?',
+    answer:
+      'Delivery charges are automated by delivery address: Inside Dhaka is ৳60 (24-48 hours delivery), and Outside Dhaka is ৳120 (3-5 business days). Any order with a subtotal of ৳5,000 or greater qualifies for 100% FREE delivery nationwide!',
+    answerBn:
+      'ঠিকানার ওপর ভিত্তি করে ডেলিভারি চার্জ স্বয়ংক্রিয়ভাবে নির্ধারিত হয়: ঢাকার ভেতরে ৳৬০ (২৪-৪৮ ঘণ্টা) এবং ঢাকার বাইরে ৳১২০ (৩-৫ দিন)। ৳৫,০০০ টাকার বেশি পণ্য কিনলে সারা বাংলাদেশে সম্পূর্ণ ফ্রি ডেলিভারি!',
+    order: 2,
+  },
+  {
+    id: 'faq_3',
+    category: 'payment',
+    question: 'Which online payment methods are supported through SSLCommerz?',
+    questionBn: 'এসএসএল কমার্জের মাধ্যমে কী কী মাধ্যমে পেমেন্ট করা যায়?',
+    answer:
+      'We support instant digital payment via bKash, Nagad, Rocket, Upay, Visa, Mastercard, American Express, and internet banking (City Touch, CellFin, EBL Skybanking). All transactions are encrypted with 256-bit bank-level escrow security.',
+    answerBn:
+      'বিকাশ, নগদ, রকেট, ভিসা, মাস্টারকার্ড, অ্যামেক্স এবং সকল ব্যাংকের কার্ড বা ইন্টারনেট ব্যাংকিং-এর মাধ্যমে নিরাপদে পেমেন্ট করা যায়।',
+    order: 3,
+  },
+  {
+    id: 'faq_4',
+    category: 'returns',
+    question: 'What is the 7-Day Replacement & Return Guarantee?',
+    questionBn: '৭ দিনের রিপ্লেসমেন্ট এবং রিটার্ন পলিসি কীভাবে কাজ করে?',
+    answer:
+      'If your received product has any physical defect, manufacturing fault, or does not match specifications, contact our hotline within 7 calendar days. Our courier partner will pick up the item from your location at zero return charge and deliver a replacement or full refund.',
+    answerBn:
+      'পণ্য হাতে পাওয়ার ৭ দিনের মধ্যে কোনো ত্রুটি দেখা দিলে আমাদের হটলাইনে যোগাযোগ করুন। আমাদের কুরিয়ার আপনার বাসা থেকে পণ্য তুলে নেবে এবং নতুন পণ্য পাঠানো হবে।',
+    order: 4,
+  },
+  {
+    id: 'faq_5',
+    category: 'delivery',
+    question: 'How do I track my order live on the Steadfast portal?',
+    questionBn: 'স্টিডফাস্ট পোর্টালে অর্ডার কীভাবে ট্র্যাক করব?',
+    answer:
+      'Once your order is packaged and dispatched from our Dhaka fulfillment center, you will receive an automated SMS containing your consignment number (e.g. ST-889900) and live tracking URL. You can also view live hub-by-hub tracking updates directly on our Track Order page.',
+    answerBn:
+      'পার্সেল প্রেরণের সাথে সাথে আপনার মোবাইলে ট্র্যাকিং নম্বর সহ এসএমএস চলে যাবে। লিংকে ক্লিক করে রিয়েল-টাইমে কুরিয়ার লোকেশন দেখতে পারবেন।',
+    order: 5,
+  },
+  {
+    id: 'faq_6',
+    category: 'warranty',
+    question: 'Are mobile phones and electronics covered by official Bangladesh warranty?',
+    questionBn: 'স্মার্টফোন এবং গ্যাজেট কি অফিসিয়াল ওয়ারেন্টিযুক্ত?',
+    answer:
+      'Yes, 100%. All smartphones, laptops, and home appliances are BTRC approved and backed by verified manufacturer warranties (Samsung Bangladesh, Walton BD, Xiaomi Official, Sony BD). Warranty cards are stamped and verified prior to shipping.',
+    answerBn:
+      'হ্যাঁ, শতভাগ। সকল মোবাইল ও গ্যাজেট বিটিআরসি অনুমোদিত এবং ব্র্যান্ডের অফিসিয়াল ওয়ারেন্টি কার্ড সহ সরবরাহ করা হয়।',
+    order: 6,
+  },
+];
+
+export function getFaqs(): FAQItem[] {
+  return getItem<FAQItem[]>(STORAGE_KEYS.FAQS, INITIAL_FAQS);
+}
+
+export function saveFaqs(items: FAQItem[]): FAQItem[] {
+  setItem(STORAGE_KEYS.FAQS, items);
+  return items;
+}
+
+export function saveFaq(faq: Partial<FAQItem>): FAQItem {
+  const list = getFaqs();
+  if (faq.id) {
+    const idx = list.findIndex((f) => f.id === faq.id);
+    if (idx !== -1) {
+      list[idx] = { ...list[idx], ...faq } as FAQItem;
+      setItem(STORAGE_KEYS.FAQS, list);
+      return list[idx];
+    }
+  }
+  const newFaq: FAQItem = {
+    id: `faq_${Date.now()}`,
+    question: faq.question || '',
+    questionBn: faq.questionBn || '',
+    answer: faq.answer || '',
+    answerBn: faq.answerBn || '',
+    category: faq.category || 'general',
+    order: list.length + 1,
+  };
+  list.push(newFaq);
+  setItem(STORAGE_KEYS.FAQS, list);
+  return newFaq;
+}
+
+export function deleteFaq(id: string): boolean {
+  const list = getFaqs();
+  const updated = list.filter((f) => f.id !== id);
+  setItem(STORAGE_KEYS.FAQS, updated);
+  return true;
+}
+
+

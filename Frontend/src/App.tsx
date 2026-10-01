@@ -13,6 +13,7 @@ import { OrderDetailView } from './views/OrderDetailView';
 import { AccountView } from './views/AccountView';
 import { WishlistView } from './views/WishlistView';
 import { ContactSupportModal } from './components/ContactSupportModal';
+import { WhatsAppChatWidget } from './components/WhatsAppChatWidget';
 import { AdminDashboard } from './views/admin/AdminDashboard';
 import { AdminLoginView } from './views/admin/AdminLoginView';
 
@@ -52,6 +53,7 @@ const MainLayout: React.FC = () => {
       <AuthModal />
       <ContactSupportModal />
       <ToastContainer />
+      <WhatsAppChatWidget />
       <MobileBottomNav />
     </div>
   );

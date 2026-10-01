@@ -58,6 +58,7 @@ export interface Product {
   description: string;
   price: number;
   discountPrice?: number;
+  buyingPrice?: number;
   stock: number;
   sku: string;
   images: string[];
@@ -205,3 +206,24 @@ export interface DonutSlice {
   color: string;
   formattedValue?: string;
 }
+
+export interface HeroShowcaseItem {
+  id: string;
+  title: string;
+  slug: string;
+  store: string;
+  price: number;
+  image: string;
+}
+
+export interface FAQItem {
+  id: string;
+  question: string;
+  questionBn?: string;
+  answer: string;
+  answerBn?: string;
+  category: 'delivery' | 'payment' | 'returns' | 'warranty' | 'general';
+  order?: number;
+}
+
+
