@@ -4,7 +4,7 @@ import { ShieldCheck, Lock, Mail, ArrowLeft, KeyRound, AlertCircle } from 'lucid
 import footerLogo from '../../images/footer logo.png';
 
 export const AdminLoginView: React.FC = () => {
-  const { navigateTo, showToast, switchUserRole } = useApp();
+  const { navigateTo, showToast, adminLogin } = useApp();
   const [identifier, setIdentifier] = useState('admin@store.com.bd');
   const [password, setPassword] = useState('Password123!');
   const [loading, setLoading] = useState(false);
@@ -16,12 +16,10 @@ export const AdminLoginView: React.FC = () => {
     setLoading(true);
 
     try {
-      // Authenticate with admin credentials
-      await switchUserRole('ADMIN');
-      showToast('Admin access granted. Welcome to Executive Portal.', 'success');
-    } catch (err) {
-      setError('Invalid admin credentials. Access denied.');
-      showToast('Admin authentication failed', 'error');
+      // Authenticate with live Spring Boot backend
+      await adminLogin(identifier, password);
+    } catch (err: any) {
+      setError(err?.message || 'Invalid admin credentials. Access denied.');
     } finally {
       setLoading(false);
     }

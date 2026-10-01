@@ -19,7 +19,8 @@ interface AppContextType {
   // Auth
   user: User | null;
   isAdmin: boolean;
-  login: (identifier: string) => Promise<void>;
+  login: (identifier: string, password?: string) => Promise<void>;
+  adminLogin: (identifier: string, password?: string) => Promise<void>;
   sendRegistrationOtp: (phone: string, name?: string) => Promise<{ success: boolean; demoOtp?: string; message?: string }>;
   register: (payload: { name: string; phone: string; email?: string; password?: string; otp?: string }) => Promise<void>;
   loginWithGoogle: (payload: { email: string; name: string; avatarUrl?: string; googleId?: string }) => Promise<void>;
@@ -216,15 +217,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     [lang]
   );
 
-  const login = async (identifier: string) => {
+  const login = async (identifier: string, password?: string) => {
     try {
-      const res = await apiService.auth.login({ identifier });
+      const res = await apiService.auth.login({ identifier, password });
       setUser(res.data.user);
       setIsAuthModalOpen(false);
       showToast(`Welcome back, ${res.data.user.name}!`, 'success');
       refreshCart();
-    } catch (e) {
-      showToast('Login failed. Please check your credentials.', 'error');
+    } catch (e: any) {
+      showToast(e?.message || 'Login failed. Please check your credentials.', 'error');
+      throw e;
+    }
+  };
+
+  const adminLogin = async (identifier: string, password?: string) => {
+    try {
+      const res = await apiService.auth.adminLogin({ identifier, password });
+      setUser(res.data.user);
+      showToast(`Admin access granted. Welcome, ${res.data.user.name}!`, 'success');
+      refreshCart();
+    } catch (e: any) {
+      showToast(e?.message || 'Admin login failed. Please check credentials.', 'error');
+      throw e;
     }
   };
 
@@ -351,6 +365,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         user,
         isAdmin: user?.role === 'ADMIN',
         login,
+        adminLogin,
         sendRegistrationOtp,
         register,
         loginWithGoogle,
