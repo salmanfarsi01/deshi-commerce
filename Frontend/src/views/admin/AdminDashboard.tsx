@@ -349,15 +349,19 @@ export const AdminDashboard: React.FC = () => {
   const handleSaveProduct = async (productData: Partial<Product>) => {
     try {
       if (productData.id) {
-        await apiService.products.update(productData.id, productData);
-        showToast(`Product "${productData.name}" updated successfully`, 'success');
+        const res = await apiService.products.update(productData.id, productData);
+        showToast(res.message || `Product "${productData.name}" updated successfully`, 'success');
       } else {
-        await apiService.products.create(productData);
-        showToast(`Product "${productData.name}" added to catalog`, 'success');
+        const res = await apiService.products.create(productData);
+        showToast(res.message || `Product "${productData.name}" added to catalog`, 'success');
       }
+      setIsProductModalOpen(false);
+      setEditingProduct(null);
+    } catch (err: any) {
+      console.error('Failed to save product:', err);
+      showToast(err?.message || 'Error saving product', 'error');
+    } finally {
       loadData();
-    } catch {
-      showToast('Error saving product', 'error');
     }
   };
 

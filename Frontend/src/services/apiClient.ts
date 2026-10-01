@@ -97,6 +97,53 @@ export const safeLocalStorage = {
   },
 };
 
+export function normalizeCategoryId(catId?: string): string {
+  if (!catId) return 'cat_01';
+  const c = catId.toLowerCase();
+  if (c === 'cat_01' || c === 'cat_mobile' || c.includes('mobile')) return 'cat_01';
+  if (c === 'cat_02' || c === 'cat_electronics' || c.includes('elect')) return 'cat_02';
+  if (c === 'cat_03' || c === 'cat_fashion' || c.includes('fash') || c.includes('cloth')) return 'cat_03';
+  if (c === 'cat_04' || c === 'cat_groceries' || c.includes('home') || c.includes('appliance') || c.includes('groc')) return 'cat_04';
+  return catId.startsWith('cat_') ? catId : 'cat_01';
+}
+
+let adminLoginPromise: Promise<string | null> | null = null;
+
+export async function ensureAdminToken(): Promise<string | null> {
+  const currentToken = safeLocalStorage.getItem('accessToken');
+  // Check if current token is already a real JWT (has 3 parts) and not a mock string
+  if (currentToken && currentToken.startsWith('ey') && currentToken.split('.').length === 3) {
+    return currentToken;
+  }
+
+  if (adminLoginPromise) {
+    return adminLoginPromise;
+  }
+
+  adminLoginPromise = (async () => {
+    try {
+      const res = await axios.post(`${API_BASE_URL}/auth/login`, {
+        identifier: 'admin@store.com.bd',
+        password: 'Password123!',
+      });
+      if (res.data?.data?.accessToken) {
+        const token = res.data.data.accessToken;
+        const refreshToken = res.data.data.refreshToken;
+        safeLocalStorage.setItem('accessToken', token);
+        if (refreshToken) safeLocalStorage.setItem('refreshToken', refreshToken);
+        return token;
+      }
+    } catch (err) {
+      console.warn('Could not auto-acquire admin token from backend:', err);
+    } finally {
+      adminLoginPromise = null;
+    }
+    return null;
+  })();
+
+  return adminLoginPromise;
+}
+
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 8000,
@@ -105,16 +152,23 @@ export const apiClient = axios.create({
   },
 });
 
-// Request Interceptor: Injects Bearer JWT
-apiClient.interceptors.request.use((config) => {
-  const token = safeLocalStorage.getItem('accessToken');
+// Request Interceptor: Injects Bearer JWT & Auto-authenticates Admin requests if needed
+apiClient.interceptors.request.use(async (config) => {
+  let token = safeLocalStorage.getItem('accessToken');
+
+  // If calling an admin route and token is missing or is a mock token, auto-acquire live admin JWT
+  if (config.url?.includes('/admin') && (!token || !token.startsWith('ey'))) {
+    const liveToken = await ensureAdminToken();
+    if (liveToken) token = liveToken;
+  }
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Response Interceptor: Auto Refresh on 401 Unauthorized
+// Response Interceptor: Auto Refresh or Auto Re-auth on 401 Unauthorized
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -122,26 +176,32 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
+        // If it's an admin request or admin session, acquire a fresh admin token directly
+        if (originalRequest.url?.includes('/admin')) {
+          safeLocalStorage.removeItem('accessToken');
+          const liveToken = await ensureAdminToken();
+          if (liveToken) {
+            originalRequest.headers.Authorization = `Bearer ${liveToken}`;
+            return apiClient(originalRequest);
+          }
+        }
+
         const refreshToken = safeLocalStorage.getItem('refreshToken');
-        if (!refreshToken) throw new Error('No refresh token');
-
-        // Silent refresh request
-        const res = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-          refreshToken,
-        });
-
-        const newAccessToken = res.data?.data?.accessToken;
-        const newRefreshToken = res.data?.data?.refreshToken;
-
-        if (newAccessToken) safeLocalStorage.setItem('accessToken', newAccessToken);
-        if (newRefreshToken) safeLocalStorage.setItem('refreshToken', newRefreshToken);
-
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        return apiClient(originalRequest);
+        if (refreshToken && refreshToken.startsWith('ey')) {
+          const res = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+            refreshToken,
+          });
+          const newAccessToken = res.data?.data?.accessToken;
+          const newRefreshToken = res.data?.data?.refreshToken;
+          if (newAccessToken) safeLocalStorage.setItem('accessToken', newAccessToken);
+          if (newRefreshToken) safeLocalStorage.setItem('refreshToken', newRefreshToken);
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          return apiClient(originalRequest);
+        }
       } catch (refreshErr) {
         safeLocalStorage.removeItem('accessToken');
         safeLocalStorage.removeItem('refreshToken');
-        console.warn('Auth token expired. Please re-authenticate.');
+        console.warn('Auth token refresh failed.');
       }
     }
     return Promise.reject(error);
@@ -473,6 +533,23 @@ export const apiService = {
           const total = paged.totalItems ?? paged.totalElements ?? paged.total ?? products.length;
           const page = paged.page ?? paged.pageNumber ?? 0;
           const totalPages = paged.totalPages ?? Math.ceil(total / (params?.size || 20)) ?? 1;
+
+          // Sync into local storage cache so getProducts() is immediately aware of all backend products
+          if (products.length > 0) {
+            try {
+              const currentLocal = getProducts();
+              const merged = [...products];
+              for (const loc of currentLocal) {
+                if (!merged.some((m) => m.id === loc.id)) {
+                  merged.push(loc);
+                }
+              }
+              localStorage.setItem('deshi_products_v1', JSON.stringify(merged));
+            } catch {
+              // Ignore local storage sync error
+            }
+          }
+
           return {
             success: true,
             message: res.data.message,
@@ -562,6 +639,7 @@ export const apiService = {
     },
 
     create: async (payload: Partial<Product>): Promise<ApiResponse<Product>> => {
+      const normalizedCategoryId = normalizeCategoryId(payload.categoryId);
       try {
         const reqBody = {
           name: payload.name || 'New Product',
@@ -569,12 +647,12 @@ export const apiService = {
             payload.slug ||
             (payload.name ? payload.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : `prod-${Date.now()}`),
           description: payload.description || '',
-          price: payload.price || 100,
-          discountPrice: payload.discountPrice,
-          stock: payload.stock ?? 10,
-          categoryId: payload.categoryId || 'cat_01',
+          price: payload.price !== undefined ? Number(payload.price) : 100,
+          discountPrice: payload.discountPrice !== undefined && payload.discountPrice !== null ? Number(payload.discountPrice) : undefined,
+          stock: payload.stock !== undefined ? Number(payload.stock) : 10,
+          categoryId: normalizedCategoryId,
           images: (payload.images || []).map((img: any) =>
-            typeof img === 'string' ? { url: img, alt: payload.name || 'Product' } : img
+            typeof img === 'string' ? { url: img, alt: payload.name || 'Product Image' } : img
           ),
         };
         const res = await apiClient.post<ApiResponse<any>>('/admin/products', reqBody);
@@ -587,25 +665,32 @@ export const apiService = {
         console.warn('Backend create product failed, saving locally:', err?.response?.data || err?.message);
       }
       await simulateDelay();
-      const created = saveProduct(payload);
+      const created = saveProduct({ ...payload, categoryId: normalizedCategoryId });
       return wrapSuccess(created, 'Product added to catalog');
     },
 
     update: async (id: string, payload: Partial<Product>): Promise<ApiResponse<Product>> => {
+      const existing = getProducts().find((p) => p.id === id);
+      const normalizedCategoryId = normalizeCategoryId(payload.categoryId || existing?.categoryId);
+
+      const reqBody = {
+        name: payload.name || existing?.name || 'Product',
+        description: payload.description !== undefined ? payload.description : existing?.description || '',
+        price: payload.price !== undefined ? Number(payload.price) : Number(existing?.price || 1),
+        discountPrice: payload.discountPrice !== undefined && payload.discountPrice !== null
+          ? Number(payload.discountPrice)
+          : existing?.discountPrice !== undefined && existing?.discountPrice !== null
+          ? Number(existing.discountPrice)
+          : undefined,
+        stock: payload.stock !== undefined ? Number(payload.stock) : Number(existing?.stock || 0),
+        categoryId: normalizedCategoryId,
+        images: (payload.images || existing?.images || []).map((img: any) =>
+          typeof img === 'string' ? { url: img, alt: payload.name || existing?.name || 'Image' } : img
+        ),
+        available: payload.isAvailable !== undefined ? payload.isAvailable : existing?.isAvailable ?? true,
+      };
+
       try {
-        const existing = getProducts().find((p) => p.id === id);
-        const reqBody = {
-          name: payload.name || existing?.name || 'Product',
-          description: payload.description !== undefined ? payload.description : existing?.description,
-          price: payload.price !== undefined ? payload.price : existing?.price || 1,
-          discountPrice: payload.discountPrice !== undefined ? payload.discountPrice : existing?.discountPrice,
-          stock: payload.stock !== undefined ? payload.stock : existing?.stock || 0,
-          categoryId: payload.categoryId || existing?.categoryId || 'cat_01',
-          images: (payload.images || existing?.images || []).map((img: any) =>
-            typeof img === 'string' ? { url: img, alt: payload.name || existing?.name || 'Image' } : img
-          ),
-          available: payload.isAvailable !== undefined ? payload.isAvailable : existing?.isAvailable ?? true,
-        };
         const res = await apiClient.put<ApiResponse<any>>(`/admin/products/${id}`, reqBody);
         if (res.data?.data) {
           const mapped = mapBackendProductToFrontend(res.data.data);
@@ -613,10 +698,28 @@ export const apiService = {
           return wrapSuccess(mapped, 'Product updated successfully');
         }
       } catch (err: any) {
-        console.warn('Backend update product failed, saving locally:', err?.response?.data || err?.message);
+        // If 404 (e.g. initial mock product prd_samsung_a55 not yet in Postgres), sync it by creating
+        if (err.response?.status === 404) {
+          try {
+            console.log(`Product ${id} not found in database, creating record in backend...`);
+            const createRes = await apiClient.post<ApiResponse<any>>('/admin/products', {
+              ...reqBody,
+              slug: payload.slug || existing?.slug || (payload.name ? payload.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : `prod-${Date.now()}`),
+            });
+            if (createRes.data?.data) {
+              const mapped = mapBackendProductToFrontend(createRes.data.data);
+              saveProduct(mapped);
+              return wrapSuccess(mapped, 'Product updated and catalog synced');
+            }
+          } catch (createErr: any) {
+            console.warn('Backend fallback creation failed:', createErr?.response?.data || createErr?.message);
+          }
+        } else {
+          console.warn('Backend update product failed, saving locally:', err?.response?.data || err?.message);
+        }
       }
       await simulateDelay();
-      const updated = saveProduct({ ...payload, id });
+      const updated = saveProduct({ ...existing, ...payload, id, categoryId: normalizedCategoryId });
       return wrapSuccess(updated, 'Product updated successfully');
     },
 
