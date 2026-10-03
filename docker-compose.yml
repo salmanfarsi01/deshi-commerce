@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  # ===================================================================
+  # 1. PostgreSQL 16 Database
+  # ===================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: deshi_commerce_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-deshi_commerce_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Admin@123}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: Asia/Dhaka
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - deshi_postgres_data:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-deshi_commerce_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - deshi-network
+
+  # ===================================================================
+  # 2. pgAdmin 4 Web GUI Interface (http://localhost:5050)
+  # ===================================================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: deshi_commerce_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@deshicommerce.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - deshi_pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - deshi-network
+
+  # ===================================================================
+  # 3. Spring Boot Backend API (Optional full-stack container)
+  #    Run with: docker compose --profile app up -d
+  # ===================================================================
+  backend:
+    profiles: ["app"]
+    build:
+      context: ./SocialMedia
+      dockerfile: Dockerfile
+    container_name: deshi_commerce_backend
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-deshi_commerce_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-Admin@123}
+      JWT_SECRET: ${JWT_SECRET:-DeshiCommerceSecretKeyForJwtSigningMustBeAtLeast256BitsLongForHMACSHA256}
+      SPRING_PROFILES_ACTIVE: prod
+    ports:
+      - "8080:8080"
+    volumes:
+      - deshi_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - deshi-network
+
+volumes:
+  deshi_postgres_data:
+    driver: local
+  deshi_pgadmin_data:
+    driver: local
+  deshi_uploads:
+    driver: local
+
+networks:
+  deshi-network:
+    driver: bridge

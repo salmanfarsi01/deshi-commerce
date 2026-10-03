@@ -8,6 +8,9 @@
     "build": "npm run build --prefix Frontend",
     "preview": "npm run preview --prefix Frontend",
     "lint": "npm run lint --prefix Frontend",
-    "backend": "cmd /c \"cd /d SocialMedia && mvnw.cmd spring-boot:run\""
+    "backend": "cmd /c \"cd /d SocialMedia && mvnw.cmd spring-boot:run\"",
+    "db:up": "docker compose up -d postgres pgadmin",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres"
   }
 }

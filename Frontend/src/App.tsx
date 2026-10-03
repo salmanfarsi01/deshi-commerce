@@ -1,14 +1,22 @@
 import React, { Suspense, lazy } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/Header';
-import { CartDrawer } from './components/CartDrawer';
-import { AuthModal } from './components/AuthModal';
 import { ToastContainer } from './components/ToastContainer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { Footer } from './components/Footer';
 import { CatalogView } from './views/CatalogView';
-import { ContactSupportModal } from './components/ContactSupportModal';
 import { WhatsAppChatWidget } from './components/WhatsAppChatWidget';
+
+// Code-split heavy customer modals
+const CartDrawer = lazy(() =>
+  import('./components/CartDrawer').then((m) => ({ default: m.CartDrawer }))
+);
+const AuthModal = lazy(() =>
+  import('./components/AuthModal').then((m) => ({ default: m.AuthModal }))
+);
+const ContactSupportModal = lazy(() =>
+  import('./components/ContactSupportModal').then((m) => ({ default: m.ContactSupportModal }))
+);
 
 // Code-split heavy views to keep initial bundle lean and fast
 const AdminDashboard = lazy(() =>
@@ -48,7 +56,14 @@ const AdminLoadingFallback = () => (
 );
 
 const MainLayout: React.FC = () => {
-  const { currentView, isAdminRoute, isAdmin } = useApp();
+  const {
+    currentView,
+    isAdminRoute,
+    isAdmin,
+    isCartOpen,
+    isAuthModalOpen,
+    isSupportModalOpen,
+  } = useApp();
 
   // If URL path is /admin or subpaths, require Admin Sign In
   if (isAdminRoute) {
@@ -82,10 +97,13 @@ const MainLayout: React.FC = () => {
 
       <Footer />
 
-      {/* Global Overlays & Modals for Customer Storefront */}
-      <CartDrawer />
-      <AuthModal />
-      <ContactSupportModal />
+      {/* Global Overlays & Modals for Customer Storefront (Loaded only on demand) */}
+      <Suspense fallback={null}>
+        {isCartOpen && <CartDrawer />}
+        {isAuthModalOpen && <AuthModal />}
+        {isSupportModalOpen && <ContactSupportModal />}
+      </Suspense>
+
       <ToastContainer />
       <WhatsAppChatWidget />
       <MobileBottomNav />

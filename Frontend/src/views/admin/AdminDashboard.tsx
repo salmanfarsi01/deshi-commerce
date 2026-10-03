@@ -58,9 +58,15 @@ import { formatBDT } from '../../data/bangladeshGeo';
 import { AdminKpiCards } from './components/AdminKpiCards';
 import { AdminSalesTrendChart } from './components/AdminSalesTrendChart';
 import { AdminPieChart } from './components/AdminPieChart';
-import { ProductUploadModal } from './components/ProductUploadModal';
-import { CourierDispatchModal } from './components/CourierDispatchModal';
-import { Customer360Modal } from './components/Customer360Modal';
+const ProductUploadModal = React.lazy(() =>
+  import('./components/ProductUploadModal').then((m) => ({ default: m.ProductUploadModal }))
+);
+const CourierDispatchModal = React.lazy(() =>
+  import('./components/CourierDispatchModal').then((m) => ({ default: m.CourierDispatchModal }))
+);
+const Customer360Modal = React.lazy(() =>
+  import('./components/Customer360Modal').then((m) => ({ default: m.Customer360Modal }))
+);
 
 export const AdminDashboard: React.FC = () => {
   const { showToast, navigateTo } = useApp();
@@ -2261,29 +2267,41 @@ export const AdminDashboard: React.FC = () => {
       {/* ========================================================================= */}
 
       {/* 1. Upload Product Modal */}
-      <ProductUploadModal
-        isOpen={isProductModalOpen}
-        onClose={() => {
-          setIsProductModalOpen(false);
-          setEditingProduct(null);
-        }}
-        onSave={handleSaveProduct}
-        initialProduct={editingProduct}
-        categories={categories}
-      />
+      {isProductModalOpen && (
+        <React.Suspense fallback={null}>
+          <ProductUploadModal
+            isOpen={isProductModalOpen}
+            onClose={() => {
+              setIsProductModalOpen(false);
+              setEditingProduct(null);
+            }}
+            onSave={handleSaveProduct}
+            initialProduct={editingProduct}
+            categories={categories}
+          />
+        </React.Suspense>
+      )}
 
       {/* 2. Courier Dispatch Modal */}
-      <CourierDispatchModal
-        order={selectedOrderForCourier}
-        onClose={() => setSelectedOrderForCourier(null)}
-        onAssign={handleAssignCourier}
-      />
+      {selectedOrderForCourier && (
+        <React.Suspense fallback={null}>
+          <CourierDispatchModal
+            order={selectedOrderForCourier}
+            onClose={() => setSelectedOrderForCourier(null)}
+            onAssign={handleAssignCourier}
+          />
+        </React.Suspense>
+      )}
 
       {/* 3. Customer 360 Profile Modal */}
-      <Customer360Modal
-        profile={selectedCustomerProfile}
-        onClose={() => setSelectedCustomerProfile(null)}
-      />
+      {selectedCustomerProfile && (
+        <React.Suspense fallback={null}>
+          <Customer360Modal
+            profile={selectedCustomerProfile}
+            onClose={() => setSelectedCustomerProfile(null)}
+          />
+        </React.Suspense>
+      )}
 
       {/* 4. Order Invoice Inspection Drawer / Modal */}
       {inspectingOrder && (
