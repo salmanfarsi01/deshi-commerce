@@ -40,6 +40,9 @@ import {
   saveFaq,
   deleteFaq,
   INITIAL_FAQS,
+  getFlashSaleCampaign,
+  saveFlashSaleCampaign,
+  applyFlashDiscountToProducts,
 } from './dbStorage';
 import {
   Category,
@@ -56,6 +59,7 @@ import {
   User,
   OrderStatus,
   FAQItem,
+  FlashSaleCampaign,
 } from '../types';
 
 // Initialize localStorage on module load
@@ -1863,6 +1867,26 @@ export const apiService = {
       await simulateDelay(30);
       deleteFaq(id);
       return wrapSuccess(undefined, 'FAQ deleted successfully');
+    },
+  },
+
+  // =========================================================================
+  // 12. Flash Sale Campaign Management
+  // =========================================================================
+  flashSale: {
+    getCampaign: async (): Promise<ApiResponse<FlashSaleCampaign>> => {
+      await simulateDelay(20);
+      return wrapSuccess(getFlashSaleCampaign());
+    },
+    updateCampaign: async (campaign: FlashSaleCampaign): Promise<ApiResponse<FlashSaleCampaign>> => {
+      await simulateDelay(40);
+      const saved = saveFlashSaleCampaign(campaign);
+      return wrapSuccess(saved, 'Flash Sale campaign updated successfully');
+    },
+    applyDiscount: async (productIds: string[], discountPercentage: number): Promise<ApiResponse<Product[]>> => {
+      await simulateDelay(40);
+      const updated = applyFlashDiscountToProducts(productIds, discountPercentage);
+      return wrapSuccess(updated, `Applied ${discountPercentage}% discount to selected products`);
     },
   },
 };

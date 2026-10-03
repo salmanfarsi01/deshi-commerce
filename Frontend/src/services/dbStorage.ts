@@ -11,6 +11,7 @@ import {
   CartItem,
   OrderStatus,
   FAQItem,
+  FlashSaleCampaign,
 } from '../types';
 import {
   INITIAL_USERS,
@@ -33,6 +34,7 @@ const STORAGE_KEYS = {
   CART: 'deshi_cart_v1',
   HERO_SHOWCASE: 'deshi_hero_showcase_v1',
   FAQS: 'deshi_faqs_v1',
+  FLASH_SALE: 'deshi_flash_sale_v1',
 };
 
 // Initialize default state
@@ -62,6 +64,9 @@ export function initDatabase() {
   }
   if (!localStorage.getItem(STORAGE_KEYS.FAQS)) {
     localStorage.setItem(STORAGE_KEYS.FAQS, JSON.stringify(INITIAL_FAQS));
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.FLASH_SALE)) {
+    localStorage.setItem(STORAGE_KEYS.FLASH_SALE, JSON.stringify(INITIAL_FLASH_SALE));
   }
 }
 
@@ -941,5 +946,51 @@ export function deleteFaq(id: string): boolean {
   setItem(STORAGE_KEYS.FAQS, updated);
   return true;
 }
+
+// Flash Sale Campaign Management
+export const INITIAL_FLASH_SALE: FlashSaleCampaign = {
+  enabled: true,
+  title: 'Flash Sale',
+  badge: 'LIMITED TIME · UP TO 30% OFF',
+  discountPercentage: 30,
+  endDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
+  durationDays: 3,
+  description: 'Curated picks at all-time-low prices. Stock updates continuously — once sold out, deals expire immediately.',
+  productIds: [],
+  includeMatchingDiscount: true,
+  updatedAt: new Date().toISOString(),
+};
+
+export function getFlashSaleCampaign(): FlashSaleCampaign {
+  return getItem<FlashSaleCampaign>(STORAGE_KEYS.FLASH_SALE, INITIAL_FLASH_SALE);
+}
+
+export function saveFlashSaleCampaign(campaign: FlashSaleCampaign): FlashSaleCampaign {
+  const updated: FlashSaleCampaign = {
+    ...campaign,
+    updatedAt: new Date().toISOString(),
+  };
+  setItem(STORAGE_KEYS.FLASH_SALE, updated);
+  return updated;
+}
+
+export function applyFlashDiscountToProducts(productIds: string[], discountPercentage: number): Product[] {
+  const products = getProducts();
+  const updated = products.map((p) => {
+    if (productIds.includes(p.id)) {
+      const discountPrice = Math.round(p.price * (1 - discountPercentage / 100));
+      return {
+        ...p,
+        discountPrice,
+        isFlashDeal: true,
+        flashDealDiscount: discountPercentage,
+      };
+    }
+    return p;
+  });
+  setItem(STORAGE_KEYS.PRODUCTS, updated);
+  return updated;
+}
+
 
 

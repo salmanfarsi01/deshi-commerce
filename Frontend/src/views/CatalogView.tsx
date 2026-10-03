@@ -21,7 +21,7 @@ import { ProductCard } from '../components/ProductCard';
 import { FAQSection } from '../components/FAQSection';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/apiClient';
-import { Product, Category } from '../types';
+import { Product, Category, FlashSaleCampaign } from '../types';
 import { formatBDT } from '../data/bangladeshGeo';
 import heroSmartWatch from '../images/hero_smart_watch.jpg';
 import heroFruitJuice from '../images/hero_fruit_juice.jpg';
@@ -53,28 +53,60 @@ export const CatalogView: React.FC<{ isLanding?: boolean }> = ({ isLanding = fal
   // Hero carousel mini index
   const [heroSlide, setHeroSlide] = useState(0);
 
-  // Live Flash Sale Countdown Timer (Hours, Minutes, Seconds)
+  // Dynamic Flash Sale Campaign State
+  const [flashCampaign, setFlashCampaign] = useState<FlashSaleCampaign | null>(null);
   const [timeLeft, setTimeLeft] = useState({
-    hours: 24,
-    minutes: 42,
-    seconds: 18,
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+    isExpired: false,
   });
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) {
-          return { ...prev, seconds: prev.seconds - 1 };
-        } else if (prev.minutes > 0) {
-          return { ...prev, minutes: 59, seconds: 59 };
-        } else if (prev.hours > 0) {
-          return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        }
-        return { hours: 24, minutes: 0, seconds: 0 };
-      });
-    }, 1000);
-    return () => clearInterval(timer);
+    apiService.flashSale.getCampaign().then((res) => {
+      if (res.data) setFlashCampaign(res.data);
+    });
   }, []);
+
+  useEffect(() => {
+    if (!flashCampaign || !flashCampaign.enabled || !flashCampaign.endDate) {
+      return;
+    }
+
+    const calculateTime = () => {
+      const diff = new Date(flashCampaign.endDate).getTime() - Date.now();
+      if (diff <= 0) {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, isExpired: true });
+        return;
+      }
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / 1000 / 60) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+      setTimeLeft({ days, hours, minutes, seconds, isExpired: false });
+    };
+
+    calculateTime();
+    const interval = setInterval(calculateTime, 1000);
+    return () => clearInterval(interval);
+  }, [flashCampaign]);
+
+  // Participating Flash Sale Products
+  const flashSaleProducts = React.useMemo(() => {
+    if (!flashCampaign || !flashCampaign.enabled || timeLeft.isExpired) return [];
+    return products.filter((p) => {
+      if (flashCampaign.productIds && flashCampaign.productIds.length > 0) {
+        return flashCampaign.productIds.includes(p.id);
+      }
+      if (p.isFlashDeal) return true;
+      if (flashCampaign.includeMatchingDiscount && p.price && p.discountPrice) {
+        const discountPct = Math.round(((p.price - p.discountPrice) / p.price) * 100);
+        return discountPct >= flashCampaign.discountPercentage;
+      }
+      return false;
+    });
+  }, [products, flashCampaign, timeLeft.isExpired]);
 
   // Fetch categories
   useEffect(() => {
@@ -386,70 +418,99 @@ export const CatalogView: React.FC<{ isLanding?: boolean }> = ({ isLanding = fal
         </section>
       )}
 
-      {/* 2. FLASH SALE / LIMITED TIME BANNER (Sleek Midnight Slate & Crisp Timer) */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <div className="bg-[#0F172A] text-white p-5 sm:p-6 rounded-xl border border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0">
-              <Zap className="w-5 h-5 fill-current" />
-            </div>
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
-                LIMITED TIME · UP TO 70% OFF
+      {/* 2. DYNAMIC FLASH SALE BANNER (Controlled by Admin Panel: On/Off, Dynamic %, Duration) */}
+      {flashCampaign?.enabled && !timeLeft.isExpired && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+          <div className="bg-[#0F172A] text-white p-5 sm:p-6 rounded-xl border border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0">
+                <Zap className="w-5 h-5 fill-current animate-pulse" />
               </div>
-              <h2 className="text-xl sm:text-2xl font-bold uppercase tracking-tight text-white">
-                Flash Sale
-              </h2>
-            </div>
-          </div>
-
-          <div className="hidden lg:block text-xs text-slate-300 max-w-sm font-normal">
-            Curated picks at all-time-low prices. Stock updates continuously — once sold out, deals expire immediately.
-          </div>
-
-          {/* Countdown Clock & View All Button */}
-          <div className="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-start gap-3 sm:gap-4 w-full sm:w-auto">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">ENDS IN</span>
-              <div className="flex items-center gap-1.5">
-                <div className="bg-[#1E293B] border border-slate-700/80 px-2.5 py-1.5 rounded-lg text-center min-w-[38px] sm:min-w-[42px]">
-                  <span className="font-mono font-bold text-xs sm:text-sm text-white tabular-nums">
-                    {String(timeLeft.hours).padStart(2, '0')}
-                  </span>
-                  <span className="block text-[7px] sm:text-[8px] uppercase text-slate-400 font-semibold tracking-wider">HR</span>
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
+                  {flashCampaign.badge || `LIMITED TIME · UP TO ${flashCampaign.discountPercentage}% OFF`}
                 </div>
-                <span className="font-bold text-slate-600">:</span>
-                <div className="bg-[#1E293B] border border-slate-700/80 px-2.5 py-1.5 rounded-lg text-center min-w-[38px] sm:min-w-[42px]">
-                  <span className="font-mono font-bold text-xs sm:text-sm text-white tabular-nums">
-                    {String(timeLeft.minutes).padStart(2, '0')}
-                  </span>
-                  <span className="block text-[7px] sm:text-[8px] uppercase text-slate-400 font-semibold tracking-wider">MIN</span>
-                </div>
-                <span className="font-bold text-slate-600">:</span>
-                <div className="bg-[#1E293B] border border-slate-700/80 px-2.5 py-1.5 rounded-lg text-center min-w-[38px] sm:min-w-[42px]">
-                  <span className="font-mono font-bold text-xs sm:text-sm text-white tabular-nums">
-                    {String(timeLeft.seconds).padStart(2, '0')}
-                  </span>
-                  <span className="block text-[7px] sm:text-[8px] uppercase text-slate-400 font-semibold tracking-wider">SEC</span>
-                </div>
+                <h2 className="text-xl sm:text-2xl font-bold uppercase tracking-tight text-white">
+                  {flashCampaign.title || 'Flash Sale'}
+                </h2>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedCategorySlug('all');
-                const el = document.getElementById('catalog-grid');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="rounded-lg px-3.5 sm:px-4 py-2 bg-slate-800/80 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-colors shrink-0"
-            >
-              <span>View all</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            <div className="hidden lg:block text-xs text-slate-300 max-w-sm font-normal">
+              {flashCampaign.description ||
+                'Curated picks at all-time-low prices. Stock updates continuously — once sold out, deals expire immediately.'}
+            </div>
+
+            {/* Countdown Clock & View All Button */}
+            <div className="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-start gap-3 sm:gap-4 w-full sm:w-auto">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">ENDS IN</span>
+                <div className="flex items-center gap-1.5">
+                  {timeLeft.days > 0 && (
+                    <>
+                      <div className="bg-[#1E293B] border border-amber-500/30 px-2.5 py-1.5 rounded-lg text-center min-w-[38px] sm:min-w-[42px]">
+                        <span className="font-mono font-bold text-xs sm:text-sm text-amber-400 tabular-nums">
+                          {String(timeLeft.days).padStart(2, '0')}
+                        </span>
+                        <span className="block text-[7px] sm:text-[8px] uppercase text-amber-400/80 font-semibold tracking-wider">DAY</span>
+                      </div>
+                      <span className="font-bold text-slate-600">:</span>
+                    </>
+                  )}
+                  <div className="bg-[#1E293B] border border-slate-700/80 px-2.5 py-1.5 rounded-lg text-center min-w-[38px] sm:min-w-[42px]">
+                    <span className="font-mono font-bold text-xs sm:text-sm text-white tabular-nums">
+                      {String(timeLeft.hours).padStart(2, '0')}
+                    </span>
+                    <span className="block text-[7px] sm:text-[8px] uppercase text-slate-400 font-semibold tracking-wider">HR</span>
+                  </div>
+                  <span className="font-bold text-slate-600">:</span>
+                  <div className="bg-[#1E293B] border border-slate-700/80 px-2.5 py-1.5 rounded-lg text-center min-w-[38px] sm:min-w-[42px]">
+                    <span className="font-mono font-bold text-xs sm:text-sm text-white tabular-nums">
+                      {String(timeLeft.minutes).padStart(2, '0')}
+                    </span>
+                    <span className="block text-[7px] sm:text-[8px] uppercase text-slate-400 font-semibold tracking-wider">MIN</span>
+                  </div>
+                  <span className="font-bold text-slate-600">:</span>
+                  <div className="bg-[#1E293B] border border-slate-700/80 px-2.5 py-1.5 rounded-lg text-center min-w-[38px] sm:min-w-[42px]">
+                    <span className="font-mono font-bold text-xs sm:text-sm text-white tabular-nums">
+                      {String(timeLeft.seconds).padStart(2, '0')}
+                    </span>
+                    <span className="block text-[7px] sm:text-[8px] uppercase text-slate-400 font-semibold tracking-wider">SEC</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCategorySlug('all');
+                  const el = document.getElementById('catalog-grid');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="rounded-lg px-3.5 sm:px-4 py-2 bg-slate-800/80 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-colors shrink-0"
+              >
+                <span>View all</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
-        </div>
-      </section>
+
+          {/* Flash Sale Featured Items Preview Row (If products available) */}
+          {flashSaleProducts.length > 0 && (
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {flashSaleProducts.slice(0, 4).map((fp) => (
+                <div key={fp.id} className="relative">
+                  <div className="absolute top-2 left-2 z-10 bg-amber-500 text-slate-950 font-black text-[10px] uppercase px-2 py-0.5 rounded-md shadow-sm flex items-center gap-1">
+                    <Zap className="w-2.5 h-2.5 fill-current" />
+                    <span>{flashCampaign.discountPercentage}% DEAL</span>
+                  </div>
+                  <ProductCard product={fp} />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* 3. CATALOG & PRODUCT GRID */}
       <div id="catalog-grid" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">

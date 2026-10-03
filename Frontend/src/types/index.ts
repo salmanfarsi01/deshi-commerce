@@ -67,6 +67,8 @@ export interface Product {
   reviewCount: number;
   isAvailable: boolean;
   isFeatured?: boolean;
+  isFlashDeal?: boolean;
+  flashDealDiscount?: number;
   tags?: string[];
   createdAt: string;
 }
@@ -227,5 +229,19 @@ export interface FAQItem {
   category: 'delivery' | 'payment' | 'returns' | 'warranty' | 'general';
   order?: number;
 }
+
+export interface FlashSaleCampaign {
+  enabled: boolean;
+  title: string;
+  badge: string; // e.g. "LIMITED TIME · UP TO 30% OFF"
+  discountPercentage: number; // e.g. 30
+  endDate: string; // ISO string e.g. 3 days from now
+  description: string;
+  productIds: string[]; // specific products included in flash sale
+  includeMatchingDiscount: boolean; // whether products uploaded with matching discount % are included
+  durationDays?: number;
+  updatedAt?: string;
+}
+
 
 

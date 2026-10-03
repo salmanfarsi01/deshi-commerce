@@ -34,6 +34,8 @@ import {
   HelpCircle,
   Shield,
   DollarSign,
+  Menu,
+  Zap,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { apiService } from '../../services/apiClient';
@@ -52,12 +54,14 @@ import {
   HeroShowcaseItem,
   User,
   FAQItem,
+  FlashSaleCampaign,
 } from '../../types';
 import { INITIAL_HERO_SHOWCASE } from '../../services/dbStorage';
 import { formatBDT } from '../../data/bangladeshGeo';
 import { AdminKpiCards } from './components/AdminKpiCards';
 import { AdminSalesTrendChart } from './components/AdminSalesTrendChart';
 import { AdminPieChart } from './components/AdminPieChart';
+import { AdminFlashSaleTab } from './components/AdminFlashSaleTab';
 const ProductUploadModal = React.lazy(() =>
   import('./components/ProductUploadModal').then((m) => ({ default: m.ProductUploadModal }))
 );
@@ -72,8 +76,11 @@ export const AdminDashboard: React.FC = () => {
   const { showToast, navigateTo } = useApp();
 
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'orders' | 'products' | 'hero' | 'categories' | 'users' | 'faqs' | 'notifications'
+    'overview' | 'orders' | 'products' | 'flash-sale' | 'hero' | 'categories' | 'users' | 'faqs' | 'notifications'
   >('overview');
+
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [flashCampaign, setFlashCampaign] = useState<FlashSaleCampaign | null>(null);
 
   // Summary & Datasets
   const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
@@ -124,7 +131,7 @@ export const AdminDashboard: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [sumRes, ordRes, prdRes, catRes, notRes, heroRes, usersRes, faqsRes] = await Promise.all([
+      const [sumRes, ordRes, prdRes, catRes, notRes, heroRes, usersRes, faqsRes, flashRes] = await Promise.all([
         apiService.admin.getDashboardSummary(),
         apiService.admin.getOrders(),
         apiService.products.getAll({ size: 100 }),
@@ -133,6 +140,7 @@ export const AdminDashboard: React.FC = () => {
         apiService.hero.getShowcase(),
         apiService.admin.getUsers(),
         apiService.faq.getAll(),
+        apiService.flashSale.getCampaign(),
       ]);
       setSummary(sumRes.data);
       setOrders(ordRes.data);
@@ -142,6 +150,7 @@ export const AdminDashboard: React.FC = () => {
       setHeroSlides(heroRes.data?.length ? heroRes.data : INITIAL_HERO_SHOWCASE);
       setUsersList(usersRes.data || []);
       setFaqsList(faqsRes.data || []);
+      if (flashRes.data) setFlashCampaign(flashRes.data);
     } catch (err) {
       console.error(err);
       showToast('Error syncing admin metrics', 'error');
@@ -646,27 +655,296 @@ export const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-24 text-slate-900 font-sans">
-      {/* 1. TOP EXECUTIVE HEADER */}
-      <header className="bg-slate-950 text-white px-4 sm:px-6 lg:px-8 py-3.5 border-b border-slate-800 sticky top-0 z-40 shadow-md">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="shrink-0 flex items-center">
-              <img src={footerLogo} alt="Deshi Commerce" className="h-8 w-auto object-contain" />
+    <div className="min-h-screen bg-[#F8FAFC] flex text-slate-900 font-sans">
+      {/* ========================================================================= */}
+      {/* 1. LEFT SIDEBAR NAVIGATION */}
+      {/* ========================================================================= */}
+      {/* Mobile Backdrop Overlay */}
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-xs"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-950 text-white flex flex-col border-r border-slate-800 transition-transform duration-200 lg:static lg:translate-x-0 ${
+          isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        {/* Brand & Portal Badge */}
+        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <img src={footerLogo} alt="Deshi Commerce" className="h-7 w-auto object-contain" />
+            <div>
+              <span className="font-bold text-sm tracking-tight text-white block">Deshi Admin</span>
+              <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Live Cloud Store
+              </span>
             </div>
-            <div className="border-l border-slate-800 pl-3">
-              <h1 className="text-base font-bold tracking-tight text-white">
-                Admin Portal
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="lg:hidden p-1 text-slate-400 hover:text-white"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Sidebar Nav Items */}
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+          {/* Dashboard & Analytics */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('overview');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'overview'
+                ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900'
+            }`}
+          >
+            <TrendingUp className="w-4 h-4 text-emerald-400" />
+            <span>Dashboard &amp; Analytics</span>
+          </button>
+
+          {/* Customer Orders */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('orders');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'orders'
+                ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900'
+            }`}
+          >
+            <Truck className="w-4 h-4 text-blue-400" />
+            <span className="flex-1 text-left">Customer Orders</span>
+            {pendingOrdersCount > 0 ? (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500/20 text-rose-300 font-black border border-rose-500/30">
+                {pendingOrdersCount}
+              </span>
+            ) : (
+              <span className="text-[10px] text-slate-500 font-mono">{orders.length}</span>
+            )}
+          </button>
+
+          {/* Product Inventory */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('products');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'products'
+                ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900'
+            }`}
+          >
+            <Package className="w-4 h-4 text-indigo-400" />
+            <span className="flex-1 text-left">Products &amp; Stock</span>
+            {lowStockCount > 0 ? (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500/20 text-amber-300 font-black border border-amber-500/30">
+                {lowStockCount} low
+              </span>
+            ) : (
+              <span className="text-[10px] text-slate-500 font-mono">{products.length}</span>
+            )}
+          </button>
+
+          {/* FLASH SALE CAMPAIGN (NEW!) */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('flash-sale');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'flash-sale'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900'
+            }`}
+          >
+            <Zap
+              className={`w-4 h-4 ${
+                flashCampaign?.enabled ? 'text-amber-400 fill-amber-400 animate-pulse' : 'text-slate-500'
+              }`}
+            />
+            <span className="flex-1 text-left">Flash Sale Deals</span>
+            {flashCampaign?.enabled ? (
+              <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/20 text-amber-300 font-black border border-amber-500/30">
+                LIVE {flashCampaign.discountPercentage}%
+              </span>
+            ) : (
+              <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-slate-800 text-slate-500 font-semibold">
+                OFF
+              </span>
+            )}
+          </button>
+
+          {/* Hero Showcase */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('hero');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'hero'
+                ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <span className="flex-1 text-left">Hero Showcase</span>
+            <span className="text-[10px] text-slate-500 font-mono">{heroSlides.length}</span>
+          </button>
+
+          {/* Categories */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('categories');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'categories'
+                ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900'
+            }`}
+          >
+            <Layers className="w-4 h-4 text-purple-400" />
+            <span className="flex-1 text-left">Categories</span>
+            <span className="text-[10px] text-slate-500 font-mono">{categories.length}</span>
+          </button>
+
+          {/* Users */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('users');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'users'
+                ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900'
+            }`}
+          >
+            <Users className="w-4 h-4 text-sky-400" />
+            <span className="flex-1 text-left">Registered Users</span>
+            <span className="text-[10px] text-slate-500 font-mono">{usersList.length}</span>
+          </button>
+
+          {/* FAQs */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('faqs');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'faqs'
+                ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900'
+            }`}
+          >
+            <HelpCircle className="w-4 h-4 text-teal-400" />
+            <span className="flex-1 text-left">Store FAQs</span>
+            <span className="text-[10px] text-slate-500 font-mono">{faqsList.length}</span>
+          </button>
+
+          {/* Notifications */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('notifications');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'notifications'
+                ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900'
+            }`}
+          >
+            <Mail className="w-4 h-4 text-rose-400" />
+            <span className="flex-1 text-left">Audit Log &amp; SMS</span>
+            <span className="text-[10px] text-slate-500 font-mono">{notifications.length}</span>
+          </button>
+        </nav>
+
+        {/* Sidebar Footer */}
+        <div className="p-3 border-t border-slate-800 space-y-2">
+          <button
+            type="button"
+            onClick={() => navigateTo('/')}
+            className="w-full px-3 py-2 bg-slate-900 hover:bg-slate-800 text-rose-300 hover:text-rose-200 text-xs font-bold rounded-lg border border-rose-500/30 transition-colors cursor-pointer flex items-center justify-between"
+          >
+            <span>View Storefront</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </aside>
+
+      {/* ========================================================================= */}
+      {/* 2. RIGHT MAIN VIEW AREA */}
+      {/* ========================================================================= */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Sticky Top Header Bar */}
+        <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 sticky top-0 z-30 shadow-xs flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="lg:hidden p-1.5 text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Deshi Admin</span>
+                <span className="text-slate-300 text-xs">&bull;</span>
+                <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  {activeTab === 'overview' && 'Executive Analytics'}
+                  {activeTab === 'orders' && 'Order Processing'}
+                  {activeTab === 'products' && 'Catalog & Inventory'}
+                  {activeTab === 'flash-sale' && '⚡ Flash Sale Campaign'}
+                  {activeTab === 'hero' && 'Hero Showcase'}
+                  {activeTab === 'categories' && 'Store Categories'}
+                  {activeTab === 'users' && 'Registered Users'}
+                  {activeTab === 'faqs' && 'Support FAQs'}
+                  {activeTab === 'notifications' && 'Notifications Audit'}
+                </span>
+              </div>
+              <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+                {activeTab === 'overview' && 'Dashboard Overview & Sales Trend'}
+                {activeTab === 'orders' && `Customer Orders (${orders.length})`}
+                {activeTab === 'products' && `Product Catalog (${products.length})`}
+                {activeTab === 'flash-sale' && `Flash Sale Campaign Deals`}
+                {activeTab === 'hero' && 'Hero Banner Carousel Showcase'}
+                {activeTab === 'categories' && 'Product Categories Management'}
+                {activeTab === 'users' && 'Customer & Staff Accounts'}
+                {activeTab === 'faqs' && 'Frequently Asked Questions'}
+                {activeTab === 'notifications' && 'Notification Dispatch Logs'}
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+          {/* Action buttons */}
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={loadData}
               disabled={loading}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer flex items-center gap-1.5"
+              className="p-2 sm:px-3 sm:py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-colors cursor-pointer flex items-center gap-1.5"
               title="Refresh all metrics"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -676,7 +954,7 @@ export const AdminDashboard: React.FC = () => {
             <button
               type="button"
               onClick={handleExportCSV}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer flex items-center gap-1.5"
+              className="hidden sm:flex px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-colors cursor-pointer items-center gap-1.5"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Export CSV</span>
@@ -693,141 +971,21 @@ export const AdminDashboard: React.FC = () => {
               <Plus className="w-4 h-4" />
               <span>+ Upload Product</span>
             </button>
-
-            <button
-              type="button"
-              onClick={() => navigateTo('/')}
-              className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-rose-400 text-xs font-bold rounded-lg border border-rose-500/40 transition-colors cursor-pointer flex items-center gap-1.5 ml-1"
-              title="Switch to customer storefront view"
-            >
-              <span>View Storefront</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* 2. NAVIGATION TABS */}
-      <nav className="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 shadow-xs">
-        <div className="max-w-7xl mx-auto flex gap-6 overflow-x-auto text-xs font-bold uppercase tracking-wider">
-          <button
-            type="button"
-            onClick={() => setActiveTab('overview')}
-            className={`py-3.5 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'overview'
-                ? 'border-slate-900 text-slate-900 font-extrabold'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <TrendingUp className="w-4 h-4 text-emerald-600" />
-            <span>Dashboard &amp; Analytics</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('orders')}
-            className={`py-3.5 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'orders'
-                ? 'border-slate-900 text-slate-900 font-extrabold'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Truck className="w-4 h-4 text-blue-600" />
-            <span>Customer Orders ({orders.length})</span>
-            {pendingOrdersCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-100 text-rose-700 font-bold">
-                {pendingOrdersCount}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('products')}
-            className={`py-3.5 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'products'
-                ? 'border-slate-900 text-slate-900 font-extrabold'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Package className="w-4 h-4 text-indigo-600" />
-            <span>Product Inventory ({products.length})</span>
-            {lowStockCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-100 text-amber-800 font-bold">
-                {lowStockCount} low
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('hero')}
-            className={`py-3.5 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'hero'
-                ? 'border-slate-900 text-slate-900 font-extrabold'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Sparkles className="w-4 h-4 text-amber-500" />
-            <span>Hero Showcase ({heroSlides.length})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('categories')}
-            className={`py-3.5 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'categories'
-                ? 'border-slate-900 text-slate-900 font-extrabold'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Layers className="w-4 h-4 text-purple-600" />
-            <span>Categories ({categories.length})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('users')}
-            className={`py-3.5 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'users'
-                ? 'border-slate-900 text-slate-900 font-extrabold'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Users className="w-4 h-4 text-sky-600" />
-            <span>Users &amp; Accounts ({usersList.length})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('faqs')}
-            className={`py-3.5 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'faqs'
-                ? 'border-slate-900 text-slate-900 font-extrabold'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <HelpCircle className="w-4 h-4 text-teal-600" />
-            <span>Store FAQs ({faqsList.length})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('notifications')}
-            className={`py-3.5 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'notifications'
-                ? 'border-slate-900 text-slate-900 font-extrabold'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Mail className="w-4 h-4 text-rose-600" />
-            <span>Audit Trail &amp; SMS ({notifications.length})</span>
-          </button>
-        </div>
-      </nav>
-
-      {/* 3. MAIN DASHBOARD CONTENT */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        {/* 3. MAIN DASHBOARD CONTENT */}
+        <main className="p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24">
+          {/* ========================================================================= */}
+          {/* TAB: FLASH SALE CAMPAIGN MANAGEMENT (NEW) */}
+          {/* ========================================================================= */}
+          {activeTab === 'flash-sale' && (
+            <AdminFlashSaleTab
+              products={products}
+              categories={categories}
+              onProductsUpdated={loadData}
+            />
+          )}
         {/* ========================================================================= */}
         {/* TAB 1: EXECUTIVE ANALYTICS DASHBOARD & SLICER */}
         {/* ========================================================================= */}
@@ -2261,6 +2419,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
         )}
       </main>
+    </div>
 
       {/* ========================================================================= */}
       {/* GLOBAL MODALS */}

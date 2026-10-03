@@ -409,6 +409,48 @@ export const ProductUploadModal: React.FC<Props> = ({
                     Optional sale price
                   </span>
                 )}
+
+                {/* Quick Flash Sale Discount Presets */}
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase">Quick Flash Deal:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const regular = formData.price || 0;
+                      if (regular > 0) {
+                        const disc = Math.round(regular * 0.7);
+                        setFormData({
+                          ...formData,
+                          discountPrice: disc,
+                          isFlashDeal: true,
+                          flashDealDiscount: 30,
+                        });
+                      }
+                    }}
+                    className="text-[10px] font-bold bg-amber-100 hover:bg-amber-200 text-amber-900 px-2 py-0.5 rounded cursor-pointer transition-colors"
+                    title="Apply 30% flash sale discount to this product"
+                  >
+                    ⚡ Set 30% Off
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const regular = formData.price || 0;
+                      if (regular > 0) {
+                        const disc = Math.round(regular * 0.5);
+                        setFormData({
+                          ...formData,
+                          discountPrice: disc,
+                          isFlashDeal: true,
+                          flashDealDiscount: 50,
+                        });
+                      }
+                    }}
+                    className="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded cursor-pointer transition-colors"
+                  >
+                    50% Off
+                  </button>
+                </div>
               </div>
 
               {/* 4. Stock Quantity */}
@@ -751,6 +793,16 @@ export const ProductUploadModal: React.FC<Props> = ({
                 className="rounded-xs text-slate-900 w-4 h-4"
               />
               <span>Visible in Store (Active)</span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200">
+              <input
+                type="checkbox"
+                checked={formData.isFlashDeal ?? false}
+                onChange={(e) => setFormData({ ...formData, isFlashDeal: e.target.checked })}
+                className="rounded-xs text-amber-600 w-4 h-4"
+              />
+              <span>⚡ Flash Sale Deal (30% Campaign)</span>
             </label>
           </div>
 
