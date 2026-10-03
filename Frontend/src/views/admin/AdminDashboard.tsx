@@ -675,14 +675,10 @@ export const AdminDashboard: React.FC = () => {
         {/* Brand & Portal Badge */}
         <div className="p-4 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <img src={footerLogo} alt="Deshi Commerce" className="h-7 w-auto object-contain" />
-            <div>
-              <span className="font-bold text-sm tracking-tight text-white block">Deshi Admin</span>
-              <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Live Cloud Store
-              </span>
-            </div>
+            <img src={footerLogo} alt="Deshi Commerce" className="h-6 w-auto object-contain" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 border-l border-slate-800 pl-2.5">
+              Admin
+            </span>
           </div>
           <button
             type="button"
@@ -695,40 +691,40 @@ export const AdminDashboard: React.FC = () => {
 
         {/* Sidebar Nav Items */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {/* Dashboard & Analytics */}
+          {/* Dashboard */}
           <button
             type="button"
             onClick={() => {
               setActiveTab('overview');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'overview'
                 ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
             <TrendingUp className="w-4 h-4 text-emerald-400" />
-            <span>Dashboard &amp; Analytics</span>
+            <span>Dashboard</span>
           </button>
 
-          {/* Customer Orders */}
+          {/* Orders */}
           <button
             type="button"
             onClick={() => {
               setActiveTab('orders');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'orders'
                 ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
             <Truck className="w-4 h-4 text-blue-400" />
-            <span className="flex-1 text-left">Customer Orders</span>
+            <span className="flex-1 text-left">Orders</span>
             {pendingOrdersCount > 0 ? (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500/20 text-rose-300 font-black border border-rose-500/30">
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30">
                 {pendingOrdersCount}
               </span>
             ) : (
@@ -736,23 +732,23 @@ export const AdminDashboard: React.FC = () => {
             )}
           </button>
 
-          {/* Product Inventory */}
+          {/* Products */}
           <button
             type="button"
             onClick={() => {
               setActiveTab('products');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'products'
                 ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
             <Package className="w-4 h-4 text-indigo-400" />
-            <span className="flex-1 text-left">Products &amp; Stock</span>
+            <span className="flex-1 text-left">Products</span>
             {lowStockCount > 0 ? (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500/20 text-amber-300 font-black border border-amber-500/30">
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
                 {lowStockCount} low
               </span>
             ) : (
@@ -760,14 +756,14 @@ export const AdminDashboard: React.FC = () => {
             )}
           </button>
 
-          {/* FLASH SALE CAMPAIGN (NEW!) */}
+          {/* FLASH SALE CAMPAIGN */}
           <button
             type="button"
             onClick={() => {
               setActiveTab('flash-sale');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'flash-sale'
                 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
@@ -778,13 +774,13 @@ export const AdminDashboard: React.FC = () => {
                 flashCampaign?.enabled ? 'text-amber-400 fill-amber-400 animate-pulse' : 'text-slate-500'
               }`}
             />
-            <span className="flex-1 text-left">Flash Sale Deals</span>
+            <span className="flex-1 text-left">Flash Sale</span>
             {flashCampaign?.enabled ? (
-              <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/20 text-amber-300 font-black border border-amber-500/30">
-                LIVE {flashCampaign.discountPercentage}%
+              <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                {flashCampaign.discountPercentage}% OFF
               </span>
             ) : (
-              <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-slate-800 text-slate-500 font-semibold">
+              <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-slate-800 text-slate-500 font-medium">
                 OFF
               </span>
             )}
@@ -797,14 +793,14 @@ export const AdminDashboard: React.FC = () => {
               setActiveTab('hero');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'hero'
                 ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
             <Sparkles className="w-4 h-4 text-amber-400" />
-            <span className="flex-1 text-left">Hero Showcase</span>
+            <span className="flex-1 text-left">Hero Banners</span>
             <span className="text-[10px] text-slate-500 font-mono">{heroSlides.length}</span>
           </button>
 
@@ -815,7 +811,7 @@ export const AdminDashboard: React.FC = () => {
               setActiveTab('categories');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'categories'
                 ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
@@ -833,14 +829,14 @@ export const AdminDashboard: React.FC = () => {
               setActiveTab('users');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'users'
                 ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
             <Users className="w-4 h-4 text-sky-400" />
-            <span className="flex-1 text-left">Registered Users</span>
+            <span className="flex-1 text-left">Users</span>
             <span className="text-[10px] text-slate-500 font-mono">{usersList.length}</span>
           </button>
 
@@ -851,14 +847,14 @@ export const AdminDashboard: React.FC = () => {
               setActiveTab('faqs');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'faqs'
                 ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
             <HelpCircle className="w-4 h-4 text-teal-400" />
-            <span className="flex-1 text-left">Store FAQs</span>
+            <span className="flex-1 text-left">FAQs</span>
             <span className="text-[10px] text-slate-500 font-mono">{faqsList.length}</span>
           </button>
 
@@ -869,14 +865,14 @@ export const AdminDashboard: React.FC = () => {
               setActiveTab('notifications');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'notifications'
                 ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
             <Mail className="w-4 h-4 text-rose-400" />
-            <span className="flex-1 text-left">Audit Log &amp; SMS</span>
+            <span className="flex-1 text-left">Notifications</span>
             <span className="text-[10px] text-slate-500 font-mono">{notifications.length}</span>
           </button>
         </nav>
@@ -886,7 +882,7 @@ export const AdminDashboard: React.FC = () => {
           <button
             type="button"
             onClick={() => navigateTo('/')}
-            className="w-full px-3 py-2 bg-slate-900 hover:bg-slate-800 text-rose-300 hover:text-rose-200 text-xs font-bold rounded-lg border border-rose-500/30 transition-colors cursor-pointer flex items-center justify-between"
+            className="w-full px-3 py-2 bg-slate-900 hover:bg-slate-800 text-rose-300 hover:text-rose-200 text-xs font-semibold rounded-lg border border-rose-500/30 transition-colors cursor-pointer flex items-center justify-between"
           >
             <span>View Storefront</span>
             <ExternalLink className="w-3.5 h-3.5" />
@@ -908,34 +904,17 @@ export const AdminDashboard: React.FC = () => {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Deshi Admin</span>
-                <span className="text-slate-300 text-xs">&bull;</span>
-                <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                  {activeTab === 'overview' && 'Executive Analytics'}
-                  {activeTab === 'orders' && 'Order Processing'}
-                  {activeTab === 'products' && 'Catalog & Inventory'}
-                  {activeTab === 'flash-sale' && '⚡ Flash Sale Campaign'}
-                  {activeTab === 'hero' && 'Hero Showcase'}
-                  {activeTab === 'categories' && 'Store Categories'}
-                  {activeTab === 'users' && 'Registered Users'}
-                  {activeTab === 'faqs' && 'Support FAQs'}
-                  {activeTab === 'notifications' && 'Notifications Audit'}
-                </span>
-              </div>
-              <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
-                {activeTab === 'overview' && 'Dashboard Overview & Sales Trend'}
-                {activeTab === 'orders' && `Customer Orders (${orders.length})`}
-                {activeTab === 'products' && `Product Catalog (${products.length})`}
-                {activeTab === 'flash-sale' && `Flash Sale Campaign Deals`}
-                {activeTab === 'hero' && 'Hero Banner Carousel Showcase'}
-                {activeTab === 'categories' && 'Product Categories Management'}
-                {activeTab === 'users' && 'Customer & Staff Accounts'}
-                {activeTab === 'faqs' && 'Frequently Asked Questions'}
-                {activeTab === 'notifications' && 'Notification Dispatch Logs'}
-              </h1>
-            </div>
+            <h1 className="text-base sm:text-lg font-semibold text-slate-900 tracking-tight">
+              {activeTab === 'overview' && 'Dashboard'}
+              {activeTab === 'orders' && `Orders (${orders.length})`}
+              {activeTab === 'products' && `Products (${products.length})`}
+              {activeTab === 'flash-sale' && 'Flash Sale'}
+              {activeTab === 'hero' && 'Hero Banners'}
+              {activeTab === 'categories' && 'Categories'}
+              {activeTab === 'users' && 'Users'}
+              {activeTab === 'faqs' && 'FAQs'}
+              {activeTab === 'notifications' && 'Notifications'}
+            </h1>
           </div>
 
           {/* Action buttons */}
@@ -966,10 +945,10 @@ export const AdminDashboard: React.FC = () => {
                 setEditingProduct(null);
                 setIsProductModalOpen(true);
               }}
-              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer flex items-center gap-1.5"
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Upload Product</span>
+              <span>Add Product</span>
             </button>
           </div>
         </header>
