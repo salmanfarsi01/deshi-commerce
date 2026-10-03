@@ -622,14 +622,14 @@ export function updateOrderTracking(
   // Trigger dispatch SMS
   addNotificationLog({
     orderId: targetOrder.id,
-    orderNumber: all[idx].orderNumber,
+    orderNumber: targetOrder.orderNumber,
     channel: 'SMS',
     event: 'ORDER_SHIPPED',
-    recipient: `88${all[idx].customerPhone}`,
-    message: `Dear ${all[idx].customerName}, your order #${all[idx].orderNumber} has been SHIPPED via ${courierData.courierName} (${courierData.trackingNumber}). Track: ${all[idx].courier.trackingUrl}`,
+    recipient: `88${targetOrder.customerPhone}`,
+    message: `Dear ${targetOrder.customerName}, your order #${targetOrder.orderNumber} has been SHIPPED via ${courierData.courierName} (${courierData.trackingNumber}). Track: ${targetOrder.courier?.trackingUrl || courierData.trackingUrl || 'N/A'}`,
   });
 
-  return all[idx];
+  return targetOrder;
 }
 
 export function cancelOrder(orderId: string, reason: string): Order {

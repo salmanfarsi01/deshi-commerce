@@ -1543,7 +1543,7 @@ export const apiService = {
             status: n.status || 'SENT',
             orderId: n.orderId,
             userId: n.userId,
-            createdAt: n.createdAt || new Date().toISOString(),
+            timestamp: n.createdAt || n.timestamp || new Date().toISOString(),
           }));
           return wrapSuccess(logs);
         }
@@ -1732,24 +1732,26 @@ export const apiService = {
         const res = await apiClient.get<ApiResponse<any>>(`/admin/orders/customer/${userId}`);
         if (res.data?.data) {
           const s = res.data.data;
-          const mappedOrders = (s.orders || []).map(mapBackendOrderToFrontendOrder);
+          const mappedOrders: Order[] = (s.orders || []).map(mapBackendOrderToFrontendOrder);
+          const completed = mappedOrders.filter((o) => o.status === 'DELIVERED');
+          const cancelled = mappedOrders.filter((o) => o.status === 'CANCELLED');
+          const returnRate = mappedOrders.length > 0 ? Math.round((cancelled.length / mappedOrders.length) * 100) : 0;
+          let riskScore: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW';
+          if (returnRate > 30) riskScore = 'HIGH';
+          else if (returnRate > 10) riskScore = 'MEDIUM';
+
           const profile: Customer360Profile = {
-            user: {
-              id: s.userId,
-              name: s.customerName || 'Customer',
-              email: s.customerEmail || `${s.customerPhone || 'customer'}@deshicommerce.com.bd`,
-              phone: s.customerPhone || '01700000000',
-              role: 'CUSTOMER',
-              createdAt: new Date().toISOString(),
-            },
-            totalOrders: s.totalOrdersCount || mappedOrders.length,
-            totalSpend: Number(s.totalAmountSpent || 0),
-            lifetimeValue: Number(s.totalAmountSpent || 0),
-            averageOrderValue: s.totalOrdersCount > 0 ? Number(s.totalAmountSpent || 0) / s.totalOrdersCount : 0,
-            firstOrderDate: mappedOrders[0]?.createdAt || new Date().toISOString(),
-            lastOrderDate: mappedOrders[mappedOrders.length - 1]?.createdAt || new Date().toISOString(),
+            userId: s.userId || userId,
+            name: s.customerName || 'Customer',
+            phone: s.customerPhone || '01700000000',
+            email: s.customerEmail || `${s.customerPhone || 'customer'}@deshicommerce.com.bd`,
+            lifetimeSpent: Number(s.totalAmountSpent || 0),
+            completedOrdersCount: s.completedOrdersCount ?? completed.length,
+            totalOrdersCount: s.totalOrdersCount ?? mappedOrders.length,
+            returnRate: s.returnRate ?? returnRate,
+            riskScore: (s.riskScore as 'LOW' | 'MEDIUM' | 'HIGH') || riskScore,
+            verifiedPhone: s.verifiedPhone ?? true,
             orders: mappedOrders,
-            savedAddresses: [],
           };
           return wrapSuccess(profile);
         }

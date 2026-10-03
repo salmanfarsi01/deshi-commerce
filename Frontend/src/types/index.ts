@@ -161,13 +161,15 @@ export interface NotificationLog {
   id: string;
   orderId?: string;
   orderNumber?: string;
+  userId?: string;
   timestamp: string;
   channel: 'SMS' | 'EMAIL';
   event: 'ORDER_PLACED' | 'ORDER_CONFIRMED' | 'ORDER_SHIPPED' | 'PAYMENT_RECEIVED' | 'ORDER_DELIVERED' | 'ORDER_CANCELLED';
   recipient: string;
   subject?: string;
   message: string;
-  status: 'SENT' | 'SIMULATED';
+  status: 'SENT' | 'SIMULATED' | 'DELIVERED';
+  gatewayResponse?: string;
 }
 
 export interface Customer360Profile {

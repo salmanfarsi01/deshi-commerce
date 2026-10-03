@@ -1,0 +1,13 @@
+{
+  "name": "deshi-commerce-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Deshi Commerce - Bangladeshi E-Commerce Monorepo",
+  "scripts": {
+    "dev": "npm run dev --prefix Frontend",
+    "build": "npm run build --prefix Frontend",
+    "preview": "npm run preview --prefix Frontend",
+    "lint": "npm run lint --prefix Frontend",
+    "backend": "cmd /c \"cd /d SocialMedia && mvnw.cmd spring-boot:run\""
+  }
+}
