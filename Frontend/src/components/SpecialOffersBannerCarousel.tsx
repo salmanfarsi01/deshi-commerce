@@ -98,7 +98,19 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
   };
 
   const currentItem = activeOffers[currentIdx % activeOffers.length];
-  const isFullBanner = currentItem.bannerFormat === 'FULL_BANNER';
+  const isImageBanner = currentItem.bannerFormat === 'IMAGE_BANNER' || currentItem.bannerFormat === 'FULL_BANNER';
+  const isCustomBanner = currentItem.bannerFormat === 'CUSTOM_BANNER';
+
+  // Custom banner gradient / solid color calculation
+  const customBgStyle: React.CSSProperties = isCustomBanner
+    ? {
+        background:
+          currentItem.bgType === 'solid'
+            ? currentItem.bgColor1 || '#E11D48'
+            : `linear-gradient(${currentItem.gradientDirection || 'to right'}, ${currentItem.bgColor1 || '#F97316'}, ${currentItem.bgColor2 || '#EA580C'})`,
+        color: currentItem.textColor || '#FFFFFF',
+      }
+    : {};
 
   return (
     <section
@@ -151,47 +163,91 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
       </div>
 
       {/* Main Dynamic Carousel Banner */}
-      {isFullBanner ? (
-        /* Format A: Whole Graphic Banner (Canva / Custom Promotional Design) */
+      {isImageBanner ? (
+        /* Format A: Pure Uploaded Canva Banner Graphic (Zero text overlay, zero navy border/bar) */
         <div
           onClick={() => handleBannerClick(currentItem)}
-          className="relative rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 shadow-xl cursor-pointer group transition-all"
+          className="relative rounded-2xl overflow-hidden bg-transparent border border-slate-200/90 hover:border-slate-300 shadow-sm hover:shadow-md cursor-pointer group transition-all"
         >
-          <div className="relative w-full aspect-[16/7] sm:aspect-[21/8] md:aspect-[24/8] lg:aspect-[3/1] max-h-[380px] overflow-hidden flex items-center justify-center">
+          <div className="relative w-full aspect-[16/7] sm:aspect-[21/8] md:aspect-[24/8] lg:aspect-[3/1] max-h-[420px] overflow-hidden flex items-center justify-center">
             <img
               src={currentItem.image}
-              alt={currentItem.title}
-              className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.015]"
+              alt={currentItem.title || 'Promotional Banner'}
+              className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.012]"
             />
-            {/* Subtle dark gradient overlay at bottom for pill readability */}
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-transparent opacity-70 group-hover:opacity-50 transition-opacity pointer-events-none" />
 
-            {/* Floating Interactive Strip */}
-            <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 flex items-center justify-between pointer-events-none z-10">
-              <div className="flex items-center gap-2 max-w-[70%] truncate">
-                {currentItem.badgeText && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] sm:text-xs font-black tracking-wider uppercase bg-rose-600 text-white shadow-lg shadow-rose-950/60 shrink-0">
-                    <Sparkles className="w-3 h-3 fill-current" />
-                    <span>{currentItem.badgeText}</span>
-                  </span>
-                )}
-                {currentItem.title && (
-                  <span className="text-xs sm:text-sm font-bold text-white drop-shadow-md truncate hidden sm:inline">
-                    {currentItem.title}
-                  </span>
-                )}
+            {/* Floating Glassmorphic Dots for clean multiple-slide navigation */}
+            {activeOffers.length > 1 && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/20 pointer-events-auto shadow-md">
+                {activeOffers.map((_, dotIdx) => (
+                  <button
+                    key={dotIdx}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentIdx(dotIdx);
+                    }}
+                    className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                      currentIdx === dotIdx ? 'w-6 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/80'
+                    }`}
+                    title={`Go to slide ${dotIdx + 1}`}
+                  />
+                ))}
               </div>
+            )}
+          </div>
+        </div>
+      ) : isCustomBanner ? (
+        /* Format B: Custom Designed Banner (Admin Selected Color Code & Gradient) */
+        <div
+          onClick={() => handleBannerClick(currentItem)}
+          style={customBgStyle}
+          className="relative rounded-2xl overflow-hidden shadow-lg cursor-pointer group transition-all border border-black/10"
+        >
+          {/* Subtle inner decorative glow */}
+          <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
 
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950/85 backdrop-blur-md text-white text-xs font-bold border border-white/20 shadow-xl group-hover:bg-rose-600 group-hover:border-rose-500 transition-all pointer-events-auto">
-                <span>Explore Deal</span>
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-              </span>
+          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 sm:p-8 md:p-10 items-center">
+            <div className="lg:col-span-8 space-y-3.5">
+              {currentItem.badgeText && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-white/20 backdrop-blur-md border border-white/30 text-white shadow-xs">
+                  <Sparkles className="w-3.5 h-3.5 fill-current" />
+                  <span>{currentItem.badgeText}</span>
+                </div>
+              )}
+
+              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight drop-shadow-sm">
+                {currentItem.title}
+              </h3>
+
+              {currentItem.tagline && (
+                <p className="text-xs sm:text-sm text-white/90 font-medium leading-relaxed max-w-xl">
+                  {currentItem.tagline}
+                </p>
+              )}
+
+              <div className="pt-2 flex items-center gap-3">
+                <span className="px-5 py-2.5 rounded-xl bg-white text-slate-900 font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md group-hover:bg-slate-100 transition-colors">
+                  <span>Shop Collection</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-900 group-hover:translate-x-0.5 transition-transform" />
+                </span>
+              </div>
             </div>
+
+            {currentItem.image && (
+              <div className="lg:col-span-4 flex justify-center items-center">
+                <img
+                  src={currentItem.image}
+                  alt={currentItem.title}
+                  className="max-h-52 max-w-full object-contain drop-shadow-2xl transition-transform duration-500 group-hover:scale-105"
+                />
+              </div>
+            )}
           </div>
 
-          {/* Carousel Bottom Dots Navigation */}
+          {/* Floating Dots for Custom Banner */}
           {activeOffers.length > 1 && (
-            <div className="pb-3 pt-2 flex items-center justify-center gap-1.5 z-20 relative bg-slate-950/80">
+            <div className="pb-3 pt-1 flex items-center justify-center gap-1.5 z-20 relative">
               {activeOffers.map((_, dotIdx) => (
                 <button
                   key={dotIdx}
@@ -201,7 +257,7 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
                     setCurrentIdx(dotIdx);
                   }}
                   className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                    currentIdx === dotIdx ? 'w-7 bg-rose-500' : 'w-2 bg-slate-700 hover:bg-slate-500'
+                    currentIdx === dotIdx ? 'w-6 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/80'
                   }`}
                   title={`Go to slide ${dotIdx + 1}`}
                 />

@@ -1110,24 +1110,30 @@ export function saveSpecialOfferItem(item: Partial<SpecialOfferItem>): SpecialOf
     }
   }
 
-  const isFullBanner = item.bannerFormat === 'FULL_BANNER';
+  const isFullBanner = item.bannerFormat === 'FULL_BANNER' || item.bannerFormat === 'IMAGE_BANNER';
+  const isCustomBanner = item.bannerFormat === 'CUSTOM_BANNER';
   const newItem: SpecialOfferItem = {
     id: `offer_${Date.now()}`,
     bannerFormat: item.bannerFormat || 'CARD',
-    title: item.title || (isFullBanner ? 'Canva Promotional Banner' : 'Special Promotional Offer'),
+    title: item.title || (isFullBanner ? 'Canva Promotional Banner' : isCustomBanner ? 'Custom Gradient Banner' : 'Special Promotional Offer'),
     subtitle: item.subtitle || (isFullBanner ? 'Full Graphic Banner' : 'Limited Quantity Deal'),
-    offerType: item.offerType || (isFullBanner ? 'CUSTOM' : 'BOGO'),
-    badgeText: item.badgeText || (isFullBanner ? 'SPECIAL OFFER' : item.offerType === 'BUY_2_GET_1' ? 'BUY 2 GET 1 FREE' : 'BUY 1 GET 1 FREE'),
-    tagline: item.tagline || (isFullBanner ? 'Click banner to explore exclusive deals.' : 'Special discounted offer available while stock lasts.'),
+    offerType: item.offerType || (isFullBanner || isCustomBanner ? 'CUSTOM' : 'BOGO'),
+    badgeText: item.badgeText || (isFullBanner ? '' : item.offerType === 'BUY_2_GET_1' ? 'BUY 2 GET 1 FREE' : 'BUY 1 GET 1 FREE'),
+    tagline: item.tagline || (isFullBanner ? '' : 'Special discounted offer available while stock lasts.'),
     productId: item.productId,
     productSlug: item.productSlug,
     categorySlug: item.categorySlug,
     linkUrl: item.linkUrl,
-    originalPrice: item.originalPrice !== undefined ? item.originalPrice : (isFullBanner ? 0 : 1999),
-    offerPrice: item.offerPrice !== undefined ? item.offerPrice : (isFullBanner ? 0 : 1999),
-    image: item.image || 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=1600&q=80',
+    originalPrice: item.originalPrice !== undefined ? item.originalPrice : (isFullBanner || isCustomBanner ? 0 : 1999),
+    offerPrice: item.offerPrice !== undefined ? item.offerPrice : (isFullBanner || isCustomBanner ? 0 : 1999),
+    image: item.image || (isCustomBanner ? '' : 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=1600&q=80'),
     active: item.active !== undefined ? item.active : true,
     colorScheme: item.colorScheme || 'rose',
+    bgType: item.bgType || 'gradient',
+    bgColor1: item.bgColor1 || '#F97316',
+    bgColor2: item.bgColor2 || '#EA580C',
+    gradientDirection: item.gradientDirection || 'to right',
+    textColor: item.textColor || 'white',
     description: item.description || '',
     createdAt: new Date().toISOString(),
   };

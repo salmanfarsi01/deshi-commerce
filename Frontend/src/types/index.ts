@@ -244,15 +244,15 @@ export interface FlashSaleCampaign {
 }
 
 export type OfferType = 'BOGO' | 'BUY_2_GET_1' | 'BUY_3_GET_1' | 'COMBO_DEAL' | 'CUSTOM';
-export type BannerFormat = 'CARD' | 'FULL_BANNER';
+export type BannerFormat = 'IMAGE_BANNER' | 'CUSTOM_BANNER' | 'CARD' | 'FULL_BANNER';
 
 export interface SpecialOfferItem {
   id: string;
-  bannerFormat?: BannerFormat; // 'CARD' (BOGO/Deal Card) or 'FULL_BANNER' (Canva / uploaded whole banner)
+  bannerFormat?: BannerFormat; // 'IMAGE_BANNER' (pure Canva image, no text), 'CUSTOM_BANNER' (custom colors & gradient), or 'CARD' (BOGO deal card)
   title: string;
   subtitle?: string;
   offerType: OfferType;
-  badgeText: string; // e.g. "BUY 1 GET 1 FREE", "CANVA SPECIAL", "EID MEGA SALE"
+  badgeText: string;
   tagline?: string;
   productId?: string;
   productSlug?: string;
@@ -260,10 +260,16 @@ export interface SpecialOfferItem {
   linkUrl?: string; // Optional custom redirect URL or route
   originalPrice: number;
   offerPrice: number;
-  image: string; // Product photo for CARD; Full graphic banner image for FULL_BANNER
+  image: string; // Product photo or banner image
   active: boolean;
   description?: string;
   colorScheme?: 'rose' | 'amber' | 'emerald' | 'indigo' | 'purple';
+  // Custom Banner Design & Gradient Colors
+  bgType?: 'solid' | 'gradient';
+  bgColor1?: string; // Hex code 1, e.g. #F97316
+  bgColor2?: string; // Hex code 2, e.g. #EA580C
+  gradientDirection?: 'to right' | 'to bottom right' | 'to bottom' | 'to top right';
+  textColor?: string;
   createdAt?: string;
 }
 
