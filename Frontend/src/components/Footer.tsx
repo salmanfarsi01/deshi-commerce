@@ -191,15 +191,8 @@ export const Footer: React.FC = () => {
           <div>
             &copy; {new Date().getFullYear()} Deshi Commerce Bangladesh. {t('footer.rights', 'All rights reserved.')}
           </div>
-          <div className="flex items-center gap-4 text-slate-400">
-            <button
-              type="button"
-              onClick={() => navigateTo('/admin')}
-              className="hover:text-rose-400 transition-colors cursor-pointer text-[11px] flex items-center gap-1 font-medium"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-rose-500" />
-              <span>Admin Portal</span>
-            </button>
+          <div className="text-slate-500 text-[11px]">
+            {lang === 'bn' ? 'নিরাপদ ও নির্ভরযোগ্য ই-কমার্স' : 'Trusted & Secure E-Commerce'}
           </div>
         </div>
       </div>
