@@ -37,6 +37,7 @@ import {
   Menu,
   Zap,
   LogOut,
+  Gift,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { apiService } from '../../services/apiClient';
@@ -63,6 +64,7 @@ import { AdminKpiCards } from './components/AdminKpiCards';
 import { AdminSalesTrendChart } from './components/AdminSalesTrendChart';
 import { AdminPieChart } from './components/AdminPieChart';
 import { AdminFlashSaleTab } from './components/AdminFlashSaleTab';
+import { AdminSpecialOffersTab } from './components/AdminSpecialOffersTab';
 const ProductUploadModal = React.lazy(() =>
   import('./components/ProductUploadModal').then((m) => ({ default: m.ProductUploadModal }))
 );
@@ -83,11 +85,12 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'orders' | 'products' | 'flash-sale' | 'hero' | 'categories' | 'users' | 'faqs' | 'notifications'
+    'overview' | 'orders' | 'products' | 'flash-sale' | 'special-offers' | 'hero' | 'categories' | 'users' | 'faqs' | 'notifications'
   >('overview');
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [flashCampaign, setFlashCampaign] = useState<FlashSaleCampaign | null>(null);
+  const [specialOffersCount, setSpecialOffersCount] = useState<number>(0);
 
   // Summary & Datasets
   const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
@@ -138,7 +141,7 @@ export const AdminDashboard: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [sumRes, ordRes, prdRes, catRes, notRes, heroRes, usersRes, faqsRes, flashRes] = await Promise.all([
+      const [sumRes, ordRes, prdRes, catRes, notRes, heroRes, usersRes, faqsRes, flashRes, offersRes] = await Promise.all([
         apiService.admin.getDashboardSummary(),
         apiService.admin.getOrders(),
         apiService.products.getAll({ size: 100 }),
@@ -148,6 +151,7 @@ export const AdminDashboard: React.FC = () => {
         apiService.admin.getUsers(),
         apiService.faq.getAll(),
         apiService.flashSale.getCampaign(),
+        apiService.specialOffers.getCampaign(),
       ]);
       setSummary(sumRes.data);
       setOrders(ordRes.data);
@@ -158,6 +162,9 @@ export const AdminDashboard: React.FC = () => {
       setUsersList(usersRes.data || []);
       setFaqsList(faqsRes.data || []);
       if (flashRes.data) setFlashCampaign(flashRes.data);
+      if (offersRes.data?.items) {
+        setSpecialOffersCount(offersRes.data.items.filter((i) => i.active).length);
+      }
     } catch (err) {
       console.error(err);
       showToast('Error syncing admin metrics', 'error');
@@ -793,6 +800,36 @@ export const AdminDashboard: React.FC = () => {
             )}
           </button>
 
+          {/* SPECIAL OFFERS / BOGO DEALS */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('special-offers');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'special-offers'
+                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-xs'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900'
+            }`}
+          >
+            <Gift
+              className={`w-4 h-4 ${
+                specialOffersCount > 0 ? 'text-rose-400 fill-rose-400/20' : 'text-slate-500'
+              }`}
+            />
+            <span className="flex-1 text-left">Special Offers</span>
+            {specialOffersCount > 0 ? (
+              <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30">
+                {specialOffersCount} Active
+              </span>
+            ) : (
+              <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-slate-800 text-slate-500 font-medium">
+                0
+              </span>
+            )}
+          </button>
+
           {/* Hero Showcase */}
           <button
             type="button"
@@ -946,6 +983,7 @@ export const AdminDashboard: React.FC = () => {
               {activeTab === 'orders' && `Orders (${orders.length})`}
               {activeTab === 'products' && `Products (${products.length})`}
               {activeTab === 'flash-sale' && 'Flash Sale'}
+              {activeTab === 'special-offers' && 'Special Offers & BOGO Deals'}
               {activeTab === 'hero' && 'Hero Banners'}
               {activeTab === 'categories' && 'Categories'}
               {activeTab === 'users' && 'Users'}
@@ -1028,6 +1066,17 @@ export const AdminDashboard: React.FC = () => {
               products={products}
               categories={categories}
               onProductsUpdated={loadData}
+            />
+          )}
+
+          {/* ========================================================================= */}
+          {/* TAB: SPECIAL PROMOTIONAL & BOGO OFFERS MANAGEMENT (NEW) */}
+          {/* ========================================================================= */}
+          {activeTab === 'special-offers' && (
+            <AdminSpecialOffersTab
+              products={products}
+              categories={categories}
+              onOffersUpdated={loadData}
             />
           )}
         {/* ========================================================================= */}

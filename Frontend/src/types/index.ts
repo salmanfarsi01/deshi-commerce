@@ -243,5 +243,36 @@ export interface FlashSaleCampaign {
   updatedAt?: string;
 }
 
+export type OfferType = 'BOGO' | 'BUY_2_GET_1' | 'BUY_3_GET_1' | 'COMBO_DEAL' | 'CUSTOM';
+
+export interface SpecialOfferItem {
+  id: string;
+  title: string;
+  subtitle?: string;
+  offerType: OfferType;
+  badgeText: string; // e.g. "BUY 1 GET 1 FREE", "BUY 2 GET 1"
+  tagline?: string;
+  productId?: string;
+  productSlug?: string;
+  originalPrice: number;
+  offerPrice: number;
+  image: string;
+  active: boolean;
+  description?: string;
+  colorScheme?: 'rose' | 'amber' | 'emerald' | 'indigo' | 'purple';
+  createdAt?: string;
+}
+
+export interface SpecialOffersCampaign {
+  enabled: boolean;
+  sectionTitle: string;
+  sectionSubtitle?: string;
+  items: SpecialOfferItem[];
+  autoSlide?: boolean;
+  autoSlideIntervalSeconds?: number;
+  updatedAt?: string;
+}
+
+
 
 

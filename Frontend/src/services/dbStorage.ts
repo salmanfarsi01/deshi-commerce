@@ -12,6 +12,8 @@ import {
   OrderStatus,
   FAQItem,
   FlashSaleCampaign,
+  SpecialOfferItem,
+  SpecialOffersCampaign,
 } from '../types';
 import {
   INITIAL_USERS,
@@ -35,6 +37,7 @@ const STORAGE_KEYS = {
   HERO_SHOWCASE: 'deshi_hero_showcase_v1',
   FAQS: 'deshi_faqs_v1',
   FLASH_SALE: 'deshi_flash_sale_v1',
+  SPECIAL_OFFERS: 'deshi_special_offers_v1',
 };
 
 // Initialize default state
@@ -67,6 +70,9 @@ export function initDatabase() {
   }
   if (!localStorage.getItem(STORAGE_KEYS.FLASH_SALE)) {
     localStorage.setItem(STORAGE_KEYS.FLASH_SALE, JSON.stringify(INITIAL_FLASH_SALE));
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.SPECIAL_OFFERS)) {
+    localStorage.setItem(STORAGE_KEYS.SPECIAL_OFFERS, JSON.stringify(INITIAL_SPECIAL_OFFERS));
   }
 }
 
@@ -991,6 +997,135 @@ export function applyFlashDiscountToProducts(productIds: string[], discountPerce
   setItem(STORAGE_KEYS.PRODUCTS, updated);
   return updated;
 }
+
+// =========================================================================
+// Special Offers & BOGO Campaign Management
+// =========================================================================
+export const INITIAL_SPECIAL_OFFERS: SpecialOffersCampaign = {
+  enabled: true,
+  sectionTitle: 'Exclusive BOGO & Promotional Offers',
+  sectionSubtitle: 'Buy 1 Get 1 Free, Buy 2 Get 1 Free, and limited-stock promotional deals across Bangladesh.',
+  autoSlide: true,
+  autoSlideIntervalSeconds: 5,
+  items: [
+    {
+      id: 'offer_bogo_panjabi',
+      title: 'Aarong Heritage Semi-Silk Festive Panjabi',
+      subtitle: 'Festive Collection · Double Value',
+      offerType: 'BOGO',
+      badgeText: 'BUY 1 GET 1 FREE',
+      tagline: 'Order 1 Panjabi today and receive an identical matching piece absolutely FREE at delivery.',
+      productId: 'prd_aarong_panjabi',
+      productSlug: 'aarong-heritage-panjabi',
+      originalPrice: 4200,
+      offerPrice: 4200,
+      image: 'https://images.unsplash.com/photo-1597983073493-88cd35cf93b0?auto=format&fit=crop&w=800&q=80',
+      active: true,
+      colorScheme: 'rose',
+      description: 'Handcrafted jacquard embroidery on breathable premium blended cotton silk with genuine Aarong tag.',
+      createdAt: '2026-03-01T10:00:00Z',
+    },
+    {
+      id: 'offer_buy2get1_earbuds',
+      title: 'Pro ANC Wireless Earbuds with Wireless Case',
+      subtitle: 'Hi-Fi Spatial Sound · Family Pack',
+      offerType: 'BUY_2_GET_1',
+      badgeText: 'BUY 2 GET 1 FREE',
+      tagline: 'Buy 2 pairs for family or friends and receive a 3rd full earbud set 100% free.',
+      productId: 'prd_samsung_a55',
+      productSlug: 'samsung-galaxy-a55-5g',
+      originalPrice: 2850,
+      offerPrice: 5700,
+      image: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=800&q=80',
+      active: true,
+      colorScheme: 'indigo',
+      description: 'Active Noise Cancellation, 36-hour total battery life with Type-C fast charging and 1-year BD warranty.',
+      createdAt: '2026-03-02T10:00:00Z',
+    },
+    {
+      id: 'offer_bogo_jamdani',
+      title: 'Handloom Pure Cotton Dhakai Jamdani Saree',
+      subtitle: 'Traditional Artisan Heritage',
+      offerType: 'BOGO',
+      badgeText: 'BUY 1 GET 1 FREE',
+      tagline: 'Purchase this authentic handcrafted Jamdani saree and receive a second designer festive saree free.',
+      productId: 'prd_dhakai_jamdani',
+      productSlug: 'dhakai-jamdani-saree',
+      originalPrice: 6500,
+      offerPrice: 6500,
+      image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80',
+      active: true,
+      colorScheme: 'amber',
+      description: 'Woven by master weavers of Narayanganj using 84-count fine cotton thread with unstitched blouse piece.',
+      createdAt: '2026-03-03T10:00:00Z',
+    },
+  ],
+  updatedAt: new Date().toISOString(),
+};
+
+export function getSpecialOffersCampaign(): SpecialOffersCampaign {
+  return getItem<SpecialOffersCampaign>(STORAGE_KEYS.SPECIAL_OFFERS, INITIAL_SPECIAL_OFFERS);
+}
+
+export function saveSpecialOffersCampaign(campaign: SpecialOffersCampaign): SpecialOffersCampaign {
+  const updated: SpecialOffersCampaign = {
+    ...campaign,
+    updatedAt: new Date().toISOString(),
+  };
+  setItem(STORAGE_KEYS.SPECIAL_OFFERS, updated);
+  return updated;
+}
+
+export function saveSpecialOfferItem(item: Partial<SpecialOfferItem>): SpecialOfferItem {
+  const campaign = getSpecialOffersCampaign();
+  const items = [...campaign.items];
+
+  if (item.id) {
+    const idx = items.findIndex((i) => i.id === item.id);
+    if (idx !== -1) {
+      items[idx] = { ...items[idx], ...item } as SpecialOfferItem;
+      saveSpecialOffersCampaign({ ...campaign, items });
+      return items[idx];
+    }
+  }
+
+  const newItem: SpecialOfferItem = {
+    id: `offer_${Date.now()}`,
+    title: item.title || 'Special Promotional Offer',
+    subtitle: item.subtitle || 'Limited Quantity Deal',
+    offerType: item.offerType || 'BOGO',
+    badgeText: item.badgeText || (item.offerType === 'BUY_2_GET_1' ? 'BUY 2 GET 1 FREE' : 'BUY 1 GET 1 FREE'),
+    tagline: item.tagline || 'Special discounted offer available while stock lasts.',
+    productId: item.productId,
+    productSlug: item.productSlug,
+    originalPrice: item.originalPrice || 1999,
+    offerPrice: item.offerPrice || 1999,
+    image: item.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
+    active: item.active !== undefined ? item.active : true,
+    colorScheme: item.colorScheme || 'rose',
+    description: item.description || '',
+    createdAt: new Date().toISOString(),
+  };
+
+  items.unshift(newItem);
+  saveSpecialOffersCampaign({ ...campaign, items });
+  return newItem;
+}
+
+export function deleteSpecialOfferItem(id: string): boolean {
+  const campaign = getSpecialOffersCampaign();
+  const items = campaign.items.filter((i) => i.id !== id);
+  saveSpecialOffersCampaign({ ...campaign, items });
+  return true;
+}
+
+export function toggleSpecialOfferItem(id: string): boolean {
+  const campaign = getSpecialOffersCampaign();
+  const items = campaign.items.map((i) => (i.id === id ? { ...i, active: !i.active } : i));
+  saveSpecialOffersCampaign({ ...campaign, items });
+  return true;
+}
+
 
 
 

@@ -43,6 +43,11 @@ import {
   getFlashSaleCampaign,
   saveFlashSaleCampaign,
   applyFlashDiscountToProducts,
+  getSpecialOffersCampaign,
+  saveSpecialOffersCampaign,
+  saveSpecialOfferItem,
+  deleteSpecialOfferItem,
+  toggleSpecialOfferItem,
 } from './dbStorage';
 import {
   Category,
@@ -60,6 +65,8 @@ import {
   OrderStatus,
   FAQItem,
   FlashSaleCampaign,
+  SpecialOfferItem,
+  SpecialOffersCampaign,
 } from '../types';
 
 // Initialize localStorage on module load
@@ -1895,6 +1902,36 @@ export const apiService = {
       await simulateDelay(40);
       const updated = applyFlashDiscountToProducts(productIds, discountPercentage);
       return wrapSuccess(updated, `Applied ${discountPercentage}% discount to selected products`);
+    },
+  },
+
+  // =========================================================================
+  // 13. Special Offers & BOGO Campaign Management
+  // =========================================================================
+  specialOffers: {
+    getCampaign: async (): Promise<ApiResponse<SpecialOffersCampaign>> => {
+      await simulateDelay(20);
+      return wrapSuccess(getSpecialOffersCampaign());
+    },
+    updateCampaign: async (campaign: SpecialOffersCampaign): Promise<ApiResponse<SpecialOffersCampaign>> => {
+      await simulateDelay(40);
+      const saved = saveSpecialOffersCampaign(campaign);
+      return wrapSuccess(saved, 'Special offers campaign updated successfully');
+    },
+    saveItem: async (item: Partial<SpecialOfferItem>): Promise<ApiResponse<SpecialOfferItem>> => {
+      await simulateDelay(30);
+      const saved = saveSpecialOfferItem(item);
+      return wrapSuccess(saved, 'Special offer saved successfully');
+    },
+    deleteItem: async (id: string): Promise<ApiResponse<boolean>> => {
+      await simulateDelay(30);
+      deleteSpecialOfferItem(id);
+      return wrapSuccess(true, 'Special offer removed successfully');
+    },
+    toggleItem: async (id: string): Promise<ApiResponse<boolean>> => {
+      await simulateDelay(20);
+      toggleSpecialOfferItem(id);
+      return wrapSuccess(true, 'Special offer status updated');
     },
   },
 };

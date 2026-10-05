@@ -22,6 +22,7 @@ import { FAQSection } from '../components/FAQSection';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/apiClient';
 import { Product, Category, FlashSaleCampaign } from '../types';
+import { SpecialOffersBannerCarousel } from '../components/SpecialOffersBannerCarousel';
 import { formatBDT } from '../data/bangladeshGeo';
 import heroSmartWatch from '../images/hero_smart_watch.jpg';
 import heroFruitJuice from '../images/hero_fruit_juice.jpg';
@@ -418,7 +419,10 @@ export const CatalogView: React.FC<{ isLanding?: boolean }> = ({ isLanding = fal
         </section>
       )}
 
-      {/* 2. DYNAMIC FLASH SALE BANNER (Controlled by Admin Panel: On/Off, Dynamic %, Duration) */}
+      {/* 2. DYNAMIC SPECIAL OFFERS & BOGO CAROUSEL (Controlled dynamically by Admin Panel) */}
+      {isLanding && <SpecialOffersBannerCarousel />}
+
+      {/* 3. DYNAMIC FLASH SALE BANNER (Controlled by Admin Panel: On/Off, Dynamic %, Duration) */}
       {flashCampaign?.enabled && !timeLeft.isExpired && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
           <div className="bg-[#0F172A] text-white p-5 sm:p-6 rounded-xl border border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden">
