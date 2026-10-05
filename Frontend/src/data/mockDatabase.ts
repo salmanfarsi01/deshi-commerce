@@ -22,7 +22,7 @@ export const INITIAL_USERS: User[] = [
   {
     id: 'usr_admin_01',
     name: 'Rahim Chowdhury',
-    email: 'admin@deshicommerce.com.bd',
+    email: 'admin@store.com.bd',
     phone: '01711111111',
     role: 'ADMIN',
     avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=RahimAdmin',

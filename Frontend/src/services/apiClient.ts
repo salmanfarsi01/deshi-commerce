@@ -166,23 +166,16 @@ export const apiClient = axios.create({
   },
 });
 
-// Request Interceptor: Injects Bearer JWT & Auto-authenticates Admin requests if needed
+// Request Interceptor: Injects Bearer JWT
 apiClient.interceptors.request.use(async (config) => {
-  let token = safeLocalStorage.getItem('accessToken');
-
-  // If calling an admin route and token is missing or is a mock token, auto-acquire live admin JWT
-  if (config.url?.includes('/admin') && (!token || !token.startsWith('ey'))) {
-    const liveToken = await ensureAdminToken();
-    if (liveToken) token = liveToken;
-  }
-
+  const token = safeLocalStorage.getItem('accessToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Response Interceptor: Auto Refresh or Auto Re-auth on 401 Unauthorized
+// Response Interceptor: Auto Refresh on 401 Unauthorized
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -190,16 +183,6 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        // If it's an admin request or admin session, acquire a fresh admin token directly
-        if (originalRequest.url?.includes('/admin')) {
-          safeLocalStorage.removeItem('accessToken');
-          const liveToken = await ensureAdminToken();
-          if (liveToken) {
-            originalRequest.headers.Authorization = `Bearer ${liveToken}`;
-            return apiClient(originalRequest);
-          }
-        }
-
         const refreshToken = safeLocalStorage.getItem('refreshToken');
         if (refreshToken && refreshToken.startsWith('ey')) {
           const res = await axios.post(`${API_BASE_URL}/auth/refresh`, {
@@ -1275,7 +1258,32 @@ export const apiService = {
 
       // Standalone Sandbox Fallback
       await simulateDelay(80);
-      const admin = setCurrentUser('usr_admin_01');
+      const cleanIdentifier = (credentials.identifier || '').trim().toLowerCase();
+      const cleanPhone = (credentials.identifier || '').replace(/\s+/g, '');
+      const users = getUsers();
+
+      const matchedAdmin = users.find(
+        (u) =>
+          u.role === 'ADMIN' &&
+          (u.email.toLowerCase() === cleanIdentifier || u.phone.replace(/\s+/g, '') === cleanPhone)
+      );
+
+      const isKnownAdmin =
+        Boolean(matchedAdmin) ||
+        cleanIdentifier === 'admin@store.com.bd' ||
+        cleanIdentifier === 'admin@deshicommerce.com.bd' ||
+        cleanPhone === '01711111111';
+
+      if (!isKnownAdmin) {
+        throw new Error('Access denied. No administrator account found matching this identifier.');
+      }
+
+      if (credentials.password && credentials.password !== 'Password123!') {
+        throw new Error('Invalid administrator password. Access denied.');
+      }
+
+      const admin = matchedAdmin || setCurrentUser('usr_admin_01');
+      setCurrentUser(admin.id);
       return wrapSuccess(
         {
           user: admin,

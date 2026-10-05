@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import footerLogo from '../images/footer logo.png';
 
 export const Footer: React.FC = () => {
-  const { setCurrentView, setSelectedCategorySlug, openSupportModal, t, lang } = useApp();
+  const { setCurrentView, setSelectedCategorySlug, openSupportModal, navigateTo, t, lang } = useApp();
 
   return (
     <footer className="bg-[#0F172A] text-white border-t border-slate-800 text-xs font-sans">
@@ -176,8 +176,22 @@ export const Footer: React.FC = () => {
       </div>
 
       {/* Bottom Copyright Strip */}
-      <div className="border-t border-slate-800 py-4 px-4 sm:px-6 lg:px-8 text-center text-[11px] text-slate-400">
-        &copy; {new Date().getFullYear()} Deshi Commerce Bangladesh. {t('footer.rights', 'All rights reserved.')}
+      <div className="border-t border-slate-800 py-4 px-4 sm:px-6 lg:px-8 text-[11px] text-slate-400">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
+          <div>
+            &copy; {new Date().getFullYear()} Deshi Commerce Bangladesh. {t('footer.rights', 'All rights reserved.')}
+          </div>
+          <div className="flex items-center gap-4 text-slate-400">
+            <button
+              type="button"
+              onClick={() => navigateTo('/admin')}
+              className="hover:text-rose-400 transition-colors cursor-pointer text-[11px] flex items-center gap-1 font-medium"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-rose-500" />
+              <span>Admin Portal</span>
+            </button>
+          </div>
+        </div>
       </div>
     </footer>
   );

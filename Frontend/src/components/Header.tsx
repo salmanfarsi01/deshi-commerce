@@ -15,6 +15,7 @@ import {
   Menu,
   HelpCircle,
   Headphones,
+  Shield,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import mainLogo from '../images/main_logo.png';
@@ -36,6 +37,7 @@ export const Header: React.FC = () => {
     openAuthModal,
     openSupportModal,
     logout,
+    navigateTo,
     lang,
     toggleLang,
     t,
@@ -258,6 +260,20 @@ export const Header: React.FC = () => {
                         <Headphones className="w-3.5 h-3.5 text-slate-600" />
                         <span>{lang === 'bn' ? 'কাস্টমার সাপোর্ট' : 'Contact Support'}</span>
                       </button>
+
+                      {user.role === 'ADMIN' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigateTo('/admin');
+                            setIsUserMenuOpen(false);
+                          }}
+                          className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-bold rounded-none"
+                        >
+                          <Shield className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Admin Console</span>
+                        </button>
+                      )}
 
                       <div className="my-1 border-t border-slate-100"></div>
 

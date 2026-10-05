@@ -36,6 +36,7 @@ import {
   DollarSign,
   Menu,
   Zap,
+  LogOut,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { apiService } from '../../services/apiClient';
@@ -73,7 +74,13 @@ const Customer360Modal = React.lazy(() =>
 );
 
 export const AdminDashboard: React.FC = () => {
-  const { showToast, navigateTo } = useApp();
+  const { showToast, navigateTo, user, logout } = useApp();
+
+  const handleSignOut = () => {
+    logout();
+    showToast('Signed out of Admin Portal.', 'info');
+    navigateTo('/admin');
+  };
 
   const [activeTab, setActiveTab] = useState<
     'overview' | 'orders' | 'products' | 'flash-sale' | 'hero' | 'categories' | 'users' | 'faqs' | 'notifications'
@@ -877,16 +884,46 @@ export const AdminDashboard: React.FC = () => {
           </button>
         </nav>
 
-        {/* Sidebar Footer */}
-        <div className="p-3 border-t border-slate-800 space-y-2">
-          <button
-            type="button"
-            onClick={() => navigateTo('/')}
-            className="w-full px-3 py-2 bg-slate-900 hover:bg-slate-800 text-rose-300 hover:text-rose-200 text-xs font-semibold rounded-lg border border-rose-500/30 transition-colors cursor-pointer flex items-center justify-between"
-          >
-            <span>View Storefront</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </button>
+        {/* Sidebar Footer with Admin Profile & Sign Out */}
+        <div className="p-3 border-t border-slate-800 space-y-2.5">
+          <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-2.5">
+            <img
+              src={user?.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=RahimAdmin'}
+              alt={user?.name || 'Admin'}
+              className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 object-cover shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-bold text-white truncate">
+                {user?.name || 'Administrator'}
+              </div>
+              <div className="text-[10px] text-slate-400 font-mono truncate">
+                {user?.email || 'admin@store.com.bd'}
+              </div>
+            </div>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" title="Session active" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => navigateTo('/')}
+              className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-semibold rounded-lg border border-slate-800 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+              title="View Storefront"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Storefront</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="px-2.5 py-1.5 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-rose-200 text-xs font-semibold rounded-lg border border-rose-800/60 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+              title="Sign Out of Admin Console"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out</span>
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -950,6 +987,34 @@ export const AdminDashboard: React.FC = () => {
               <Plus className="w-4 h-4" />
               <span>Add Product</span>
             </button>
+
+            {/* Admin Profile & Sign Out Button */}
+            <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+              <div className="hidden md:flex items-center gap-2 text-right">
+                <img
+                  src={user?.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=RahimAdmin'}
+                  alt={user?.name || 'Admin'}
+                  className="w-7 h-7 rounded-full bg-slate-100 border border-slate-200 object-cover"
+                />
+                <div className="hidden lg:block">
+                  <div className="text-xs font-semibold text-slate-800 leading-tight">
+                    {user?.name || 'Administrator'}
+                  </div>
+                  <div className="text-[10px] text-emerald-600 font-medium font-mono">
+                    Super Admin
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="p-1.5 sm:px-2.5 sm:py-1.5 text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg text-xs font-semibold border border-rose-200 transition-colors cursor-pointer flex items-center gap-1.5"
+                title="Sign Out of Admin Console"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Sign Out</span>
+              </button>
+            </div>
           </div>
         </header>
 

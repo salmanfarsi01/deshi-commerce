@@ -60,6 +60,7 @@ const MainLayout: React.FC = () => {
     currentView,
     isAdminRoute,
     isAdmin,
+    isAuthLoading,
     isCartOpen,
     isAuthModalOpen,
     isSupportModalOpen,
@@ -67,6 +68,10 @@ const MainLayout: React.FC = () => {
 
   // If URL path is /admin or subpaths, require Admin Sign In
   if (isAdminRoute) {
+    if (isAuthLoading) {
+      return <AdminLoadingFallback />;
+    }
+
     return (
       <div className="min-h-screen flex flex-col bg-[#F8F9FA] text-[#2B2B2B] font-sans">
         <Suspense fallback={<AdminLoadingFallback />}>

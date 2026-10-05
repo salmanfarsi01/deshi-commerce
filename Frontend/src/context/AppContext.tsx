@@ -19,6 +19,7 @@ interface AppContextType {
   // Auth
   user: User | null;
   isAdmin: boolean;
+  isAuthLoading: boolean;
   login: (identifier: string, password?: string) => Promise<void>;
   adminLogin: (identifier: string, password?: string) => Promise<void>;
   sendRegistrationOtp: (phone: string, name?: string) => Promise<{ success: boolean; demoOtp?: string; message?: string }>;
@@ -98,6 +99,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [cart, setCart] = useState<Cart>({
     id: 'init',
     items: [],
@@ -174,6 +176,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setUser(res.data);
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsAuthLoading(false);
     }
   }, []);
 
@@ -364,6 +368,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isAdminRoute,
         user,
         isAdmin: user?.role === 'ADMIN',
+        isAuthLoading,
         login,
         adminLogin,
         sendRegistrationOtp,
