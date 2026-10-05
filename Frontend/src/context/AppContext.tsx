@@ -56,8 +56,8 @@ interface AppContextType {
   t: (key: string, defaultText?: string) => string;
 
   // Customer View routing & modals
-  currentView: 'home' | 'catalog' | 'product-detail' | 'checkout' | 'orders' | 'order-detail' | 'account' | 'wishlist';
-  setCurrentView: (view: 'home' | 'catalog' | 'product-detail' | 'checkout' | 'orders' | 'order-detail' | 'account' | 'wishlist') => void;
+  currentView: 'home' | 'catalog' | 'product-detail' | 'checkout' | 'orders' | 'order-detail' | 'account' | 'wishlist' | 'faq';
+  setCurrentView: (view: 'home' | 'catalog' | 'product-detail' | 'checkout' | 'orders' | 'order-detail' | 'account' | 'wishlist' | 'faq') => void;
   selectedProductSlug: string | null;
   viewProductDetail: (slug: string) => void;
   selectedOrderId: string | null;
@@ -121,7 +121,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState<'Dhaka' | 'Outside Dhaka'>('Dhaka');
   const [lang, setLang] = useState<'en' | 'bn'>('en');
-  const [currentView, setCurrentView] = useState<AppContextType['currentView']>('home');
+  const [currentView, setCurrentView] = useState<AppContextType['currentView']>(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname || '';
+      if (path === '/faq') return 'faq';
+    }
+    return 'home';
+  });
   const [selectedProductSlug, setSelectedProductSlug] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -133,7 +139,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     const handlePopState = () => {
-      setPathname(window.location.pathname || '/');
+      const path = window.location.pathname || '/';
+      setPathname(path);
+      if (path === '/faq') {
+        setCurrentView('faq');
+      } else if (path === '/' || path === '') {
+        setCurrentView('home');
+      }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -143,6 +155,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (typeof window !== 'undefined') {
       window.history.pushState({}, '', path);
       setPathname(path);
+      if (path === '/faq') {
+        setCurrentView('faq');
+      } else if (path === '/' || path === '') {
+        setCurrentView('home');
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };

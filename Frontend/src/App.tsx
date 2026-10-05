@@ -40,6 +40,9 @@ const AccountView = lazy(() =>
 const WishlistView = lazy(() =>
   import('./views/WishlistView').then((m) => ({ default: m.WishlistView }))
 );
+const FaqView = lazy(() =>
+  import('./views/FaqView').then((m) => ({ default: m.FaqView }))
+);
 
 const ViewLoadingFallback = () => (
   <div className="py-24 flex flex-col items-center justify-center gap-3">
@@ -97,6 +100,7 @@ const MainLayout: React.FC = () => {
           {currentView === 'order-detail' && <OrderDetailView />}
           {currentView === 'orders' && <AccountView />}
           {currentView === 'account' && <AccountView />}
+          {currentView === 'faq' && <FaqView />}
         </Suspense>
       </main>
 

@@ -18,7 +18,6 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { ProductCard } from '../components/ProductCard';
-import { FAQSection } from '../components/FAQSection';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/apiClient';
 import { Product, Category, FlashSaleCampaign } from '../types';
@@ -704,11 +703,6 @@ export const CatalogView: React.FC<{ isLanding?: boolean }> = ({ isLanding = fal
             )}
           </main>
         </div>
-      </div>
-
-      {/* 4. FAQ ACCORDION SECTION (Explicitly requested by user) */}
-      <div className="mt-16">
-        <FAQSection />
       </div>
     </div>
   );

@@ -1,5 +1,4 @@
-import React from 'react';
-import { ShieldCheck, Truck, RotateCcw, Phone, Mail, MapPin, Headphones } from 'lucide-react';
+import { ShieldCheck, Truck, RotateCcw, Phone, Mail, MapPin, Headphones, HelpCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import footerLogo from '../images/footer logo.png';
 
@@ -162,14 +161,25 @@ export const Footer: React.FC = () => {
             </li>
           </ul>
 
-          <div className="pt-2">
+          <div className="pt-2 flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={openSupportModal}
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold cursor-pointer transition-colors"
             >
               <Headphones className="w-3.5 h-3.5 text-rose-400" />
-              <span>{lang === 'bn' ? 'সাপোর্ট ফরম খুলুন' : 'Submit Support Ticket'}</span>
+              <span>{lang === 'bn' ? 'সাপোর্ট ফরম' : 'Submit Support Ticket'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCurrentView('faq');
+                navigateTo('/faq');
+              }}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold cursor-pointer transition-colors"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
+              <span>{lang === 'bn' ? 'সাধারণ জিজ্ঞাসা (FAQ)' : 'Help & FAQs'}</span>
             </button>
           </div>
         </div>
