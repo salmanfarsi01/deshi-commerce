@@ -54,7 +54,7 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
   const [campaign, setCampaign] = useState<SpecialOffersCampaign | null>(null);
   const [loading, setLoading] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
-  const [filterFormat, setFilterFormat] = useState<'ALL' | 'IMAGE_BANNER' | 'CUSTOM_BANNER' | 'CARD'>('ALL');
+  const [filterFormat, setFilterFormat] = useState<'ALL' | 'IMAGE_BANNER' | 'CARD'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Modal State
@@ -141,7 +141,7 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
     await apiService.specialOffers.updateCampaign(updated);
   };
 
-  const openAddModal = (format: 'IMAGE_BANNER' | 'CUSTOM_BANNER' | 'CARD' = 'IMAGE_BANNER') => {
+  const openAddModal = (format: 'IMAGE_BANNER' | 'CARD' = 'IMAGE_BANNER') => {
     if (format === 'IMAGE_BANNER') {
       setEditingItem({
         bannerFormat: 'IMAGE_BANNER',
@@ -154,26 +154,6 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
         offerPrice: 0,
         image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=1600&q=80',
         active: true,
-        linkUrl: '#catalog-grid',
-      });
-      setDestinationType('CUSTOM');
-    } else if (format === 'CUSTOM_BANNER') {
-      setEditingItem({
-        bannerFormat: 'CUSTOM_BANNER',
-        title: 'Seasonal Shopping Fest',
-        subtitle: 'Special Deal',
-        offerType: 'CUSTOM',
-        badgeText: 'SPECIAL OFFER',
-        tagline: 'Get up to 50% discount and exclusive bonus gifts with every order.',
-        originalPrice: 0,
-        offerPrice: 0,
-        image: '',
-        active: true,
-        bgType: 'gradient',
-        bgColor1: '#F97316',
-        bgColor2: '#EA580C',
-        gradientDirection: 'to right',
-        textColor: '#FFFFFF',
         linkUrl: '#catalog-grid',
       });
       setDestinationType('CUSTOM');
@@ -190,6 +170,10 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
         image: products[0]?.images?.[0] || 'https://images.unsplash.com/photo-1597983073493-88cd35cf93b0?auto=format&fit=crop&w=800&q=80',
         active: true,
         colorScheme: 'rose',
+        bgType: 'gradient',
+        bgColor1: '#1E293B',
+        bgColor2: '#0F172A',
+        gradientDirection: 'to right',
         description: 'Limited-quantity exclusive promotional offer available while stock lasts nationwide.',
       });
       setDestinationType('PRODUCT');
@@ -199,13 +183,15 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
 
   const openEditModal = (item: SpecialOfferItem) => {
     let format = item.bannerFormat || 'CARD';
-    if (format === ('FULL_BANNER' as any)) format = 'IMAGE_BANNER';
+    if (format === ('FULL_BANNER' as any) || format === ('CUSTOM_BANNER' as any)) {
+      format = item.bannerFormat === ('CUSTOM_BANNER' as any) ? 'CARD' : 'IMAGE_BANNER';
+    }
 
     setEditingItem({
       ...item,
       bannerFormat: format,
-      bgColor1: item.bgColor1 || '#F97316',
-      bgColor2: item.bgColor2 || '#EA580C',
+      bgColor1: item.bgColor1 || '#1E293B',
+      bgColor2: item.bgColor2 || '#0F172A',
       bgType: item.bgType || 'gradient',
       gradientDirection: item.gradientDirection || 'to right',
     });
@@ -302,7 +288,7 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
     // Default title if empty for image banners
     const itemToSave = {
       ...editingItem,
-      title: editingItem.title?.trim() || (editingItem.bannerFormat === 'IMAGE_BANNER' ? 'Canva Promo Banner' : 'Promotional Offer'),
+      title: editingItem.title?.trim() || (editingItem.bannerFormat === 'IMAGE_BANNER' ? 'Canva Promo Banner' : 'BOGO Promotional Offer'),
     };
 
     await apiService.specialOffers.saveItem(itemToSave);
@@ -316,8 +302,10 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
   const activeItems = items.filter((it) => it.active);
 
   const filteredItems = items.filter((it) => {
-    let itFormat = it.bannerFormat || 'CARD';
-    if (itFormat === ('FULL_BANNER' as any)) itFormat = 'IMAGE_BANNER';
+    let itFormat: 'IMAGE_BANNER' | 'CARD' =
+      it.bannerFormat === 'IMAGE_BANNER' || it.bannerFormat === ('FULL_BANNER' as any)
+        ? 'IMAGE_BANNER'
+        : 'CARD';
 
     const matchesFormat = filterFormat === 'ALL' || itFormat === filterFormat;
     const matchesSearch =
@@ -328,8 +316,7 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
   });
 
   const imageBannersCount = items.filter((i) => i.bannerFormat === 'IMAGE_BANNER' || i.bannerFormat === ('FULL_BANNER' as any)).length;
-  const customBannersCount = items.filter((i) => i.bannerFormat === 'CUSTOM_BANNER').length;
-  const cardsCount = items.filter((i) => i.bannerFormat !== 'IMAGE_BANNER' && i.bannerFormat !== 'CUSTOM_BANNER' && i.bannerFormat !== ('FULL_BANNER' as any)).length;
+  const cardsCount = items.filter((i) => i.bannerFormat !== 'IMAGE_BANNER' && i.bannerFormat !== ('FULL_BANNER' as any)).length;
 
   return (
     <div className="space-y-6">
@@ -343,9 +330,6 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
             Special Offers & Promotional Banners
           </h2>
-          <p className="text-xs text-slate-400 mt-1 max-w-xl">
-            Upload clean Canva banners (pure image with no extra text overlays), design custom gradient banners by color code, or configure BOGO deal cards.
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
@@ -379,17 +363,7 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
             className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
           >
             <UploadCloud className="w-4 h-4" />
-            <span>Upload Banner Image</span>
-          </button>
-
-          {/* Design Custom Banner (Gradient) */}
-          <button
-            type="button"
-            onClick={() => openAddModal('CUSTOM_BANNER')}
-            className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
-          >
-            <Palette className="w-4 h-4" />
-            <span>Custom Gradient</span>
+            <span>Upload Banner Image (Canva)</span>
           </button>
 
           {/* Add BOGO Deal Card */}
@@ -399,7 +373,7 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
             className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-lg border border-slate-700 transition-colors cursor-pointer flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
-            <span>BOGO Deal Card</span>
+            <span>Add BOGO Deal Card</span>
           </button>
         </div>
       </div>
@@ -411,7 +385,17 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
             Total Items
           </div>
           <div className="text-2xl font-bold text-slate-900 mt-1">{items.length}</div>
-          <div className="text-[10px] text-slate-400 mt-0.5">In carousel engine</div>
+          <div className="text-[10px] text-slate-400 mt-0.5">Configured in engine</div>
+        </div>
+
+        <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
+          <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+            Active in Carousel
+          </div>
+          <div className="text-2xl font-bold text-emerald-600 mt-1">{activeItems.length}</div>
+          <div className="text-[10px] text-emerald-600/80 mt-0.5">
+            {campaign?.enabled && activeItems.length > 0 ? 'Displaying on storefront' : 'Hidden from storefront'}
+          </div>
         </div>
 
         <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
@@ -420,16 +404,7 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
             <span>Canva Image Banners</span>
           </div>
           <div className="text-2xl font-bold text-rose-600 mt-1">{imageBannersCount}</div>
-          <div className="text-[10px] text-slate-400 mt-0.5">Clean graphics (no text overlay)</div>
-        </div>
-
-        <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
-          <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-            <Palette className="w-3.5 h-3.5 text-purple-500" />
-            <span>Custom Gradients</span>
-          </div>
-          <div className="text-2xl font-bold text-purple-600 mt-1">{customBannersCount}</div>
-          <div className="text-[10px] text-slate-400 mt-0.5">Designed with color codes</div>
+          <div className="text-[10px] text-slate-400 mt-0.5">Clean graphic designs</div>
         </div>
 
         <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
@@ -438,7 +413,7 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
             <span>BOGO Deal Cards</span>
           </div>
           <div className="text-2xl font-bold text-indigo-600 mt-1">{cardsCount}</div>
-          <div className="text-[10px] text-slate-400 mt-0.5">Product discount packs</div>
+          <div className="text-[10px] text-slate-400 mt-0.5">Custom color & discount cards</div>
         </div>
       </div>
 
@@ -454,8 +429,6 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-semibold border border-slate-700">
                 {activeItems[previewSlideIdx % activeItems.length]?.bannerFormat === 'IMAGE_BANNER' || activeItems[previewSlideIdx % activeItems.length]?.bannerFormat === ('FULL_BANNER' as any)
                   ? '🖼️ Clean Canva Image Banner'
-                  : activeItems[previewSlideIdx % activeItems.length]?.bannerFormat === 'CUSTOM_BANNER'
-                  ? '🎨 Custom Gradient Banner'
                   : '🏷️ BOGO Deal Card'}
               </span>
             </div>
@@ -487,7 +460,6 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
             if (!current) return null;
 
             const isImg = current.bannerFormat === 'IMAGE_BANNER' || current.bannerFormat === ('FULL_BANNER' as any);
-            const isCustom = current.bannerFormat === 'CUSTOM_BANNER';
 
             if (isImg) {
               return (
@@ -504,40 +476,23 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
               );
             }
 
-            if (isCustom) {
-              const bg =
-                current.bgType === 'solid'
-                  ? current.bgColor1 || '#E11D48'
-                  : `linear-gradient(${current.gradientDirection || 'to right'}, ${current.bgColor1 || '#F97316'}, ${current.bgColor2 || '#EA580C'})`;
-              return (
-                <div
-                  style={{ background: bg }}
-                  className="relative rounded-xl overflow-hidden p-5 sm:p-6 text-white min-h-[140px] flex items-center justify-between"
-                >
-                  <div className="space-y-1.5 max-w-lg z-10">
-                    {current.badgeText && (
-                      <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/20 border border-white/30 text-white">
-                        {current.badgeText}
-                      </span>
-                    )}
-                    <h3 className="text-xl sm:text-2xl font-black drop-shadow">{current.title}</h3>
-                    {current.tagline && <p className="text-xs text-white/90 font-medium">{current.tagline}</p>}
-                  </div>
-                  <div className="text-right z-10">
-                    <span className="text-[10px] font-bold px-2 py-1 rounded bg-black/30 backdrop-blur-xs">
-                      Color: {current.bgColor1} {current.bgType === 'gradient' ? `→ ${current.bgColor2}` : ''}
-                    </span>
-                  </div>
-                </div>
-              );
-            }
+            const cardBg = current.bgColor1
+              ? current.bgType === 'solid'
+                ? current.bgColor1
+                : `linear-gradient(${current.gradientDirection || 'to right'}, ${current.bgColor1}, ${current.bgColor2 || '#0A0E1A'})`
+              : undefined;
 
             return (
-              <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 rounded-xl border border-slate-700/60 p-5 sm:p-6 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-5">
+              <div
+                style={cardBg ? { background: cardBg } : {}}
+                className={`rounded-xl border border-slate-700/60 p-5 sm:p-6 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-5 ${
+                  !cardBg ? 'bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950' : ''
+                }`}
+              >
                 <div className="space-y-2.5 z-10 max-w-lg">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-rose-600 text-white shadow-md">
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>{current.badgeText}</span>
+                    <span>{current.badgeText || 'BUY 1 GET 1 FREE'}</span>
                   </div>
                   <h3 className="text-xl sm:text-2xl font-black text-white leading-tight">
                     {current.title}
@@ -644,7 +599,6 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
             {[
               { id: 'ALL', label: `All (${items.length})` },
               { id: 'IMAGE_BANNER', label: `🖼️ Canva Banners (${imageBannersCount})` },
-              { id: 'CUSTOM_BANNER', label: `🎨 Custom Gradients (${customBannersCount})` },
               { id: 'CARD', label: `🏷️ BOGO Cards (${cardsCount})` },
             ].map((f) => (
               <button
@@ -692,14 +646,6 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => openAddModal('CUSTOM_BANNER')}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors"
-              >
-                <Palette className="w-4 h-4" />
-                <span>Custom Gradient</span>
-              </button>
-              <button
-                type="button"
                 onClick={() => openAddModal('CARD')}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg cursor-pointer transition-colors"
               >
@@ -712,7 +658,6 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
           <div className="divide-y divide-slate-100">
             {filteredItems.map((item, idx) => {
               const isImg = item.bannerFormat === 'IMAGE_BANNER' || item.bannerFormat === ('FULL_BANNER' as any);
-              const isCustom = item.bannerFormat === 'CUSTOM_BANNER';
 
               return (
                 <div
@@ -732,18 +677,6 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
                           CANVA
                         </span>
                       </div>
-                    ) : isCustom ? (
-                      <div
-                        style={{
-                          background:
-                            item.bgType === 'solid'
-                              ? item.bgColor1 || '#E11D48'
-                              : `linear-gradient(${item.gradientDirection || 'to right'}, ${item.bgColor1 || '#F97316'}, ${item.bgColor2 || '#EA580C'})`,
-                        }}
-                        className="w-24 h-12 sm:w-32 sm:h-14 rounded-lg flex items-center justify-center text-white shrink-0 shadow-xs border border-black/10 font-bold text-[10px]"
-                      >
-                        GRADIENT
-                      </div>
                     ) : (
                       <img
                         src={item.image}
@@ -755,14 +688,9 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
                         {isImg ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full text-white uppercase tracking-wider bg-rose-600 shadow-xs">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full text-white uppercase tracking-wider bg-rose-600 shadow-xs">
                             <UploadCloud className="w-3 h-3" />
                             <span>Canva Image Banner</span>
-                          </span>
-                        ) : isCustom ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full text-white uppercase tracking-wider bg-purple-600 shadow-xs">
-                            <Palette className="w-3 h-3" />
-                            <span>Custom Gradient</span>
                           </span>
                         ) : (
                           <span
@@ -788,6 +716,16 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
                         >
                           {item.active ? '● Active in Carousel' : 'Inactive (Draft)'}
                         </span>
+
+                        {!isImg && item.bgColor1 && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                            <span
+                              className="w-2 h-2 rounded-full inline-block"
+                              style={{ backgroundColor: item.bgColor1 }}
+                            />
+                            <span>{item.bgColor1}</span>
+                          </span>
+                        )}
                       </div>
 
                       <h4 className="text-sm font-bold text-slate-900 truncate">
@@ -795,12 +733,12 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
                       </h4>
 
                       <p className="text-xs text-slate-500 line-clamp-1">
-                        {isImg || isCustom
+                        {isImg
                           ? `Click Destination: ${item.productSlug ? `Product (${item.productSlug})` : item.categorySlug ? `Category (${item.categorySlug})` : item.linkUrl || 'Catalog grid'}`
                           : item.tagline}
                       </p>
 
-                      {!isImg && !isCustom && (
+                      {!isImg && (
                         <div className="flex items-center gap-2 text-xs font-semibold">
                           <span className="text-slate-900">{formatBDT(item.offerPrice)}</span>
                           {item.originalPrice > item.offerPrice && (
@@ -883,8 +821,6 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
               <div className="flex items-center gap-2">
                 {editingItem.bannerFormat === 'IMAGE_BANNER' || editingItem.bannerFormat === ('FULL_BANNER' as any) ? (
                   <UploadCloud className="w-5 h-5 text-rose-600" />
-                ) : editingItem.bannerFormat === 'CUSTOM_BANNER' ? (
-                  <Palette className="w-5 h-5 text-purple-600" />
                 ) : (
                   <Gift className="w-5 h-5 text-indigo-600" />
                 )}
@@ -892,13 +828,9 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
                   {editingItem.id
                     ? editingItem.bannerFormat === 'IMAGE_BANNER' || editingItem.bannerFormat === ('FULL_BANNER' as any)
                       ? 'Edit Uploaded Banner Image'
-                      : editingItem.bannerFormat === 'CUSTOM_BANNER'
-                      ? 'Edit Custom Gradient Banner'
                       : 'Edit BOGO Deal Card'
                     : editingItem.bannerFormat === 'IMAGE_BANNER' || editingItem.bannerFormat === ('FULL_BANNER' as any)
                     ? 'Upload Banner Image (Canva Graphic)'
-                    : editingItem.bannerFormat === 'CUSTOM_BANNER'
-                    ? 'Design Custom Gradient Banner'
                     : 'Create BOGO Deal Card'}
                 </h3>
               </div>
@@ -912,12 +844,12 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
             </div>
 
             <form onSubmit={handleSaveModal} className="space-y-4">
-              {/* Format Switcher: 3 Options */}
+              {/* Format Switcher: 2 Options Only */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                   Item Format
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -929,41 +861,21 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
                         tagline: '',
                       });
                     }}
-                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 ${
                       editingItem.bannerFormat === 'IMAGE_BANNER' || editingItem.bannerFormat === ('FULL_BANNER' as any)
                         ? 'border-rose-600 bg-rose-50 text-rose-950 font-bold shadow-xs ring-1 ring-rose-600'
                         : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs'
                     }`}
                   >
-                    <UploadCloud className="w-4 h-4 mx-auto mb-1 text-rose-600" />
-                    <div className="text-[11px] leading-tight font-semibold">Upload Image</div>
-                    <div className="text-[9px] text-slate-400">Canva / Graphic</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingItem({
-                        ...editingItem,
-                        bannerFormat: 'CUSTOM_BANNER',
-                        title: editingItem.title || 'Special Shopping Offer',
-                        badgeText: editingItem.badgeText || 'SPECIAL OFFER',
-                        tagline: editingItem.tagline || 'Explore exclusive seasonal savings.',
-                        bgType: editingItem.bgType || 'gradient',
-                        bgColor1: editingItem.bgColor1 || '#F97316',
-                        bgColor2: editingItem.bgColor2 || '#EA580C',
-                        gradientDirection: editingItem.gradientDirection || 'to right',
-                      });
-                    }}
-                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
-                      editingItem.bannerFormat === 'CUSTOM_BANNER'
-                        ? 'border-purple-600 bg-purple-50 text-purple-950 font-bold shadow-xs ring-1 ring-purple-600'
-                        : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs'
-                    }`}
-                  >
-                    <Palette className="w-4 h-4 mx-auto mb-1 text-purple-600" />
-                    <div className="text-[11px] leading-tight font-semibold">Custom Gradient</div>
-                    <div className="text-[9px] text-slate-400">Color Codes</div>
+                    <div className="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+                      <UploadCloud className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold">Upload Banner Image</div>
+                      <div className="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                        Canva / Graphic design. Clean display with zero overlay text.
+                      </div>
+                    </div>
                   </button>
 
                   <button
@@ -972,34 +884,39 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
                       setEditingItem({
                         ...editingItem,
                         bannerFormat: 'CARD',
-                        offerType: 'BOGO',
-                        badgeText: 'BUY 1 GET 1 FREE',
+                        offerType: editingItem.offerType || 'BOGO',
+                        badgeText: editingItem.badgeText || 'BUY 1 GET 1 FREE',
                         originalPrice: editingItem.originalPrice || 2500,
                         offerPrice: editingItem.offerPrice || 2500,
+                        bgType: editingItem.bgType || 'gradient',
+                        bgColor1: editingItem.bgColor1 || '#1E293B',
+                        bgColor2: editingItem.bgColor2 || '#0F172A',
                       });
                     }}
-                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
-                      editingItem.bannerFormat === 'CARD'
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 ${
+                      editingItem.bannerFormat !== 'IMAGE_BANNER' && editingItem.bannerFormat !== ('FULL_BANNER' as any)
                         ? 'border-indigo-600 bg-indigo-50 text-indigo-950 font-bold shadow-xs ring-1 ring-indigo-600'
                         : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs'
                     }`}
                   >
-                    <Gift className="w-4 h-4 mx-auto mb-1 text-indigo-600" />
-                    <div className="text-[11px] leading-tight font-semibold">BOGO Card</div>
-                    <div className="text-[9px] text-slate-400">Product Saver</div>
+                    <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+                      <Gift className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold">BOGO Deal Card</div>
+                      <div className="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                        Product offer with custom color & gradient styling.
+                      </div>
+                    </div>
                   </button>
                 </div>
               </div>
 
               {/* ========================================================= */}
-              {/* FORMAT 1: UPLOAD IMAGE BANNER (CANVA / NO TEXT FIELDS)    */}
+              {/* FORMAT 1: UPLOAD IMAGE BANNER (CANVA / ZERO TEXT FIELDS)  */}
               {/* ========================================================= */}
               {editingItem.bannerFormat === 'IMAGE_BANNER' || editingItem.bannerFormat === ('FULL_BANNER' as any) ? (
                 <div className="space-y-4 pt-1">
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-xs">
-                    💡 <strong>Clean Image Banner:</strong> Since all text, titles, and discounts are already designed into your Canva banner graphic, no external titles or badges will be overlaid on top of your image.
-                  </div>
-
                   {/* Banner Image Upload & Live Clean Preview */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -1040,7 +957,7 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
                           className="w-full h-full object-cover"
                         />
                         <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-xs text-white text-[10px] font-semibold px-2 py-0.5 rounded">
-                          Storefront Preview (No Overlay Text)
+                          Storefront Preview (Clean, No Overlay)
                         </div>
                       </div>
                     )}
@@ -1129,17 +1046,17 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
                     )}
                   </div>
                 </div>
-              ) : editingItem.bannerFormat === 'CUSTOM_BANNER' ? (
+              ) : (
                 /* ========================================================= */
-                /* FORMAT 2: CUSTOM GRADIENT BANNER BUILDER                 */
+                /* FORMAT 2: BOGO DEAL CARD WITH COLOR & GRADIENT BUILDER   */
                 /* ========================================================= */
                 <div className="space-y-4 pt-1">
-                  {/* Color & Gradient Controls */}
+                  {/* Color & Gradient Setup Box */}
                   <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                        <Palette className="w-4 h-4 text-purple-600" />
-                        <span>Background Color & Gradient Setup</span>
+                        <Palette className="w-4 h-4 text-indigo-600" />
+                        <span>Card Background Color & Gradient</span>
                       </label>
 
                       {/* Solid vs Gradient Toggle */}
@@ -1148,7 +1065,7 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
                           type="button"
                           onClick={() => setEditingItem({ ...editingItem, bgType: 'gradient' })}
                           className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer ${
-                            editingItem.bgType !== 'solid' ? 'bg-purple-600 text-white' : 'text-slate-600'
+                            editingItem.bgType !== 'solid' ? 'bg-indigo-600 text-white' : 'text-slate-600'
                           }`}
                         >
                           Gradient
@@ -1157,7 +1074,7 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
                           type="button"
                           onClick={() => setEditingItem({ ...editingItem, bgType: 'solid' })}
                           className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer ${
-                            editingItem.bgType === 'solid' ? 'bg-purple-600 text-white' : 'text-slate-600'
+                            editingItem.bgType === 'solid' ? 'bg-indigo-600 text-white' : 'text-slate-600'
                           }`}
                         >
                           Solid Color
@@ -1174,16 +1091,16 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
                         <div className="flex items-center gap-2">
                           <input
                             type="color"
-                            value={editingItem.bgColor1 || '#F97316'}
+                            value={editingItem.bgColor1 || '#1E293B'}
                             onChange={(e) => setEditingItem({ ...editingItem, bgColor1: e.target.value })}
                             className="w-9 h-9 rounded-lg border border-slate-300 p-0.5 cursor-pointer bg-white"
                           />
                           <input
                             type="text"
-                            value={editingItem.bgColor1 || '#F97316'}
+                            value={editingItem.bgColor1 || '#1E293B'}
                             onChange={(e) => setEditingItem({ ...editingItem, bgColor1: e.target.value })}
-                            placeholder="#F97316"
-                            className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg font-mono uppercase font-bold focus:outline-none focus:border-purple-600 bg-white"
+                            placeholder="#1E293B"
+                            className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg font-mono uppercase font-bold focus:outline-none focus:border-indigo-600 bg-white"
                           />
                         </div>
                       </div>
@@ -1196,16 +1113,16 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
                           <div className="flex items-center gap-2">
                             <input
                               type="color"
-                              value={editingItem.bgColor2 || '#EA580C'}
+                              value={editingItem.bgColor2 || '#0F172A'}
                               onChange={(e) => setEditingItem({ ...editingItem, bgColor2: e.target.value })}
                               className="w-9 h-9 rounded-lg border border-slate-300 p-0.5 cursor-pointer bg-white"
                             />
                             <input
                               type="text"
-                              value={editingItem.bgColor2 || '#EA580C'}
+                              value={editingItem.bgColor2 || '#0F172A'}
                               onChange={(e) => setEditingItem({ ...editingItem, bgColor2: e.target.value })}
-                              placeholder="#EA580C"
-                              className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg font-mono uppercase font-bold focus:outline-none focus:border-purple-600 bg-white"
+                              placeholder="#0F172A"
+                              className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg font-mono uppercase font-bold focus:outline-none focus:border-indigo-600 bg-white"
                             />
                           </div>
                         </div>
@@ -1221,7 +1138,7 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
                         <select
                           value={editingItem.gradientDirection || 'to right'}
                           onChange={(e) => setEditingItem({ ...editingItem, gradientDirection: e.target.value as any })}
-                          className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600 bg-white font-medium"
+                          className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-600 bg-white font-medium"
                         >
                           <option value="to right">Left → Right (Horizontal)</option>
                           <option value="to bottom right">Top-Left → Bottom-Right (Diagonal)</option>
@@ -1231,10 +1148,10 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
                       </div>
                     )}
 
-                    {/* Quick Preset Swatches */}
+                    {/* Preset Palettes */}
                     <div>
                       <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                        Quick Preset Palettes:
+                        Quick Preset Color Themes:
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {GRADIENT_PRESETS.map((p) => (
@@ -1260,154 +1177,30 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
                         ))}
                       </div>
                     </div>
-                  </div>
 
-                  {/* Real-time Custom Banner Preview in Modal */}
-                  <div
-                    style={{
-                      background:
-                        editingItem.bgType === 'solid'
-                          ? editingItem.bgColor1 || '#E11D48'
-                          : `linear-gradient(${editingItem.gradientDirection || 'to right'}, ${editingItem.bgColor1 || '#F97316'}, ${editingItem.bgColor2 || '#EA580C'})`,
-                    }}
-                    className="p-4 sm:p-5 rounded-xl text-white shadow-inner relative overflow-hidden"
-                  >
-                    <div className="space-y-1 max-w-sm">
-                      <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-white/20 border border-white/30 text-white">
-                        {editingItem.badgeText || 'SPECIAL OFFER'}
+                    {/* Real-time BOGO Card Color Preview */}
+                    <div
+                      style={{
+                        background:
+                          editingItem.bgType === 'solid'
+                            ? editingItem.bgColor1 || '#1E293B'
+                            : `linear-gradient(${editingItem.gradientDirection || 'to right'}, ${editingItem.bgColor1 || '#1E293B'}, ${editingItem.bgColor2 || '#0F172A'})`,
+                      }}
+                      className="p-3.5 rounded-xl text-white shadow-inner flex items-center justify-between"
+                    >
+                      <div className="space-y-0.5">
+                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-600 text-white">
+                          {editingItem.badgeText || 'BUY 1 GET 1 FREE'}
+                        </span>
+                        <div className="text-xs font-bold">{editingItem.title || 'Product Title'}</div>
+                      </div>
+                      <span className="text-[10px] font-mono text-white/80 font-bold">
+                        {editingItem.bgColor1} {editingItem.bgType !== 'solid' ? `→ ${editingItem.bgColor2}` : ''}
                       </span>
-                      <h4 className="text-lg font-black leading-tight drop-shadow">
-                        {editingItem.title || 'Your Banner Title Goes Here'}
-                      </h4>
-                      <p className="text-xs text-white/90 font-medium">
-                        {editingItem.tagline || 'Short promotional message or discount condition.'}
-                      </p>
                     </div>
                   </div>
 
-                  {/* Text Content Inputs */}
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Banner Headline Title
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={editingItem.title || ''}
-                      onChange={(e) => setEditingItem({ ...editingItem, title: e.target.value })}
-                      placeholder="e.g. Summer Clearance Mega Sale"
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600 font-semibold"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Badge Text (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={editingItem.badgeText || ''}
-                        onChange={(e) => setEditingItem({ ...editingItem, badgeText: e.target.value })}
-                        placeholder="BUY 1 GET 1 FREE"
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600 uppercase font-bold"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Subtitle / Tagline (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={editingItem.tagline || ''}
-                        onChange={(e) => setEditingItem({ ...editingItem, tagline: e.target.value })}
-                        placeholder="Save up to 60% on all orders today"
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Click Destination Configuration */}
-                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-                    <label className="block text-xs font-bold text-slate-800">
-                      When visitor clicks this banner:
-                    </label>
-
-                    <div className="flex gap-2">
-                      {[
-                        { id: 'CUSTOM', label: 'Scroll to Catalog / URL' },
-                        { id: 'PRODUCT', label: 'Open Specific Product' },
-                        { id: 'CATEGORY', label: 'Filter by Category' },
-                      ].map((t) => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => setDestinationType(t.id as any)}
-                          className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg border transition-colors cursor-pointer ${
-                            destinationType === t.id
-                              ? 'bg-purple-600 border-purple-600 text-white'
-                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
-                          }`}
-                        >
-                          {t.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    {destinationType === 'PRODUCT' && (
-                      <div>
-                        <select
-                          value={editingItem.productId || ''}
-                          onChange={(e) => handleSelectProduct(e.target.value)}
-                          className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600 bg-white"
-                        >
-                          <option value="">-- Choose destination product --</option>
-                          {products.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name} ({formatBDT(p.price)})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    {destinationType === 'CATEGORY' && (
-                      <div>
-                        <select
-                          value={editingItem.categorySlug || ''}
-                          onChange={(e) => handleSelectCategory(e.target.value)}
-                          className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600 bg-white"
-                        >
-                          <option value="">-- Choose destination category --</option>
-                          {categories.map((c) => (
-                            <option key={c.id} value={c.slug}>
-                              {c.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    {destinationType === 'CUSTOM' && (
-                      <div>
-                        <input
-                          type="text"
-                          value={editingItem.linkUrl || '#catalog-grid'}
-                          onChange={(e) => setEditingItem({ ...editingItem, linkUrl: e.target.value })}
-                          placeholder="#catalog-grid or https://..."
-                          className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600 font-mono"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                /* ========================================================= */
-                /* FORMAT 3: BOGO / PRODUCT DEAL CARD BUILDER               */
-                /* ========================================================= */
-                <div className="space-y-4 pt-1">
-                  {/* Offer Type Preset Buttons */}
+                  {/* Deal Type Preset Buttons */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                       Deal Type

@@ -99,16 +99,14 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
 
   const currentItem = activeOffers[currentIdx % activeOffers.length];
   const isImageBanner = currentItem.bannerFormat === 'IMAGE_BANNER' || currentItem.bannerFormat === 'FULL_BANNER';
-  const isCustomBanner = currentItem.bannerFormat === 'CUSTOM_BANNER';
 
-  // Custom banner gradient / solid color calculation
-  const customBgStyle: React.CSSProperties = isCustomBanner
+  // Custom background for BOGO Card if colors are customized
+  const bogoCardBgStyle: React.CSSProperties = currentItem.bgColor1
     ? {
         background:
           currentItem.bgType === 'solid'
-            ? currentItem.bgColor1 || '#E11D48'
-            : `linear-gradient(${currentItem.gradientDirection || 'to right'}, ${currentItem.bgColor1 || '#F97316'}, ${currentItem.bgColor2 || '#EA580C'})`,
-        color: currentItem.textColor || '#FFFFFF',
+            ? currentItem.bgColor1
+            : `linear-gradient(${currentItem.gradientDirection || 'to right'}, ${currentItem.bgColor1}, ${currentItem.bgColor2 || '#0A0E1A'})`,
       }
     : {};
 
@@ -197,77 +195,14 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
             )}
           </div>
         </div>
-      ) : isCustomBanner ? (
-        /* Format B: Custom Designed Banner (Admin Selected Color Code & Gradient) */
-        <div
-          onClick={() => handleBannerClick(currentItem)}
-          style={customBgStyle}
-          className="relative rounded-2xl overflow-hidden shadow-lg cursor-pointer group transition-all border border-black/10"
-        >
-          {/* Subtle inner decorative glow */}
-          <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-
-          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 sm:p-8 md:p-10 items-center">
-            <div className="lg:col-span-8 space-y-3.5">
-              {currentItem.badgeText && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-white/20 backdrop-blur-md border border-white/30 text-white shadow-xs">
-                  <Sparkles className="w-3.5 h-3.5 fill-current" />
-                  <span>{currentItem.badgeText}</span>
-                </div>
-              )}
-
-              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight drop-shadow-sm">
-                {currentItem.title}
-              </h3>
-
-              {currentItem.tagline && (
-                <p className="text-xs sm:text-sm text-white/90 font-medium leading-relaxed max-w-xl">
-                  {currentItem.tagline}
-                </p>
-              )}
-
-              <div className="pt-2 flex items-center gap-3">
-                <span className="px-5 py-2.5 rounded-xl bg-white text-slate-900 font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md group-hover:bg-slate-100 transition-colors">
-                  <span>Shop Collection</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-900 group-hover:translate-x-0.5 transition-transform" />
-                </span>
-              </div>
-            </div>
-
-            {currentItem.image && (
-              <div className="lg:col-span-4 flex justify-center items-center">
-                <img
-                  src={currentItem.image}
-                  alt={currentItem.title}
-                  className="max-h-52 max-w-full object-contain drop-shadow-2xl transition-transform duration-500 group-hover:scale-105"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Floating Dots for Custom Banner */}
-          {activeOffers.length > 1 && (
-            <div className="pb-3 pt-1 flex items-center justify-center gap-1.5 z-20 relative">
-              {activeOffers.map((_, dotIdx) => (
-                <button
-                  key={dotIdx}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCurrentIdx(dotIdx);
-                  }}
-                  className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                    currentIdx === dotIdx ? 'w-6 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/80'
-                  }`}
-                  title={`Go to slide ${dotIdx + 1}`}
-                />
-              ))}
-            </div>
-          )}
-        </div>
       ) : (
-        /* Format B: Rich Product Deal Card (BOGO / Buy 2 Get 1 / Bundle) */
-        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-[#0B132B] via-[#1C2541] to-[#0A0E1A] text-white border border-slate-800 shadow-lg shadow-slate-950/20">
+        /* Format B: Rich Product Deal Card (BOGO / Buy 2 Get 1 / Bundle) with Custom Color/Gradient Support */
+        <div
+          style={bogoCardBgStyle}
+          className={`relative rounded-2xl overflow-hidden text-white border border-slate-800/80 shadow-lg shadow-slate-950/20 ${
+            !currentItem.bgColor1 ? 'bg-gradient-to-br from-[#0B132B] via-[#1C2541] to-[#0A0E1A]' : ''
+          }`}
+        >
           {/* Decorative background glows */}
           <div className="absolute -top-24 -left-24 w-72 h-72 bg-rose-600/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
