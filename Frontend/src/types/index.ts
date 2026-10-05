@@ -270,6 +270,10 @@ export interface SpecialOfferItem {
   bgColor2?: string; // Hex code 2, e.g. #EA580C
   gradientDirection?: 'to right' | 'to bottom right' | 'to bottom' | 'to top right';
   textColor?: string;
+  // Offer Deal Price Box Color Customization
+  priceBoxColor?: string; // Hex or rgba for the Offer Deal Price box (e.g. #0F172A or rgba(0,0,0,0.4))
+  // Product Showcase Shape on Banner (Artistic non-square/non-circle shapes)
+  imageShape?: 'asymmetric' | 'tilted' | 'squircle' | 'ticket';
   createdAt?: string;
 }
 

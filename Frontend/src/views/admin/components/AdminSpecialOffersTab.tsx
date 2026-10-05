@@ -46,6 +46,24 @@ const GRADIENT_PRESETS = [
   { name: 'Ruby Glow', color1: '#FB7185', color2: '#BE123C', direction: 'to right' },
 ];
 
+const PRICE_BOX_COLOR_PRESETS = [
+  { name: 'Midnight Slate', color: '#0F172A' },
+  { name: 'Dark Glass', color: 'rgba(0,0,0,0.5)' },
+  { name: 'Frosted Glass', color: 'rgba(255,255,255,0.15)' },
+  { name: 'Rose Velvet', color: '#881337' },
+  { name: 'Emerald Night', color: '#064E3B' },
+  { name: 'Royal Indigo', color: '#1E1B4B' },
+  { name: 'Deep Purple', color: '#4A044E' },
+  { name: 'Warm Amber', color: '#451A03' },
+];
+
+const PRODUCT_SHAPE_OPTIONS: { id: 'asymmetric' | 'tilted' | 'squircle' | 'ticket'; label: string; desc: string }[] = [
+  { id: 'asymmetric', label: '🌟 Artistic Arch', desc: 'Asymmetric architectural curvature' },
+  { id: 'tilted', label: '📐 3D Tilted', desc: 'Angled floating isometric presentation' },
+  { id: 'squircle', label: '💎 Organic Squircle', desc: 'Ultra-smooth modern contour' },
+  { id: 'ticket', label: '🎫 Ticket Cut', desc: 'Modern chamfered boutique' },
+];
+
 export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
   products,
   categories,
@@ -174,6 +192,8 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
         bgColor1: '#1E293B',
         bgColor2: '#0F172A',
         gradientDirection: 'to right',
+        priceBoxColor: 'rgba(15, 23, 42, 0.85)',
+        imageShape: 'asymmetric',
         description: 'Limited-quantity exclusive promotional offer available while stock lasts nationwide.',
       });
       setDestinationType('PRODUCT');
@@ -194,6 +214,8 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
       bgColor2: item.bgColor2 || '#0F172A',
       bgType: item.bgType || 'gradient',
       gradientDirection: item.gradientDirection || 'to right',
+      priceBoxColor: item.priceBoxColor || 'rgba(15, 23, 42, 0.85)',
+      imageShape: item.imageShape || 'asymmetric',
     });
 
     if (item.productId) {
@@ -463,7 +485,7 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
 
             if (isImg) {
               return (
-                <div className="relative rounded-xl overflow-hidden bg-transparent border border-slate-700 aspect-[21/8] md:aspect-[3/1] max-h-56">
+                <div className="relative rounded-2xl overflow-hidden bg-transparent shadow-lg aspect-[21/8] md:aspect-[3/1] max-h-56">
                   <img
                     src={current.image}
                     alt={current.title}
@@ -485,11 +507,11 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
             return (
               <div
                 style={cardBg ? { background: cardBg } : {}}
-                className={`rounded-xl border border-slate-700/60 p-5 sm:p-6 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-5 ${
+                className={`rounded-3xl p-6 sm:p-7 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl ${
                   !cardBg ? 'bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950' : ''
                 }`}
               >
-                <div className="space-y-2.5 z-10 max-w-lg">
+                <div className="space-y-3 z-10 max-w-lg">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-rose-600 text-white shadow-md">
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>{current.badgeText || 'BUY 1 GET 1 FREE'}</span>
@@ -498,25 +520,71 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
                     {current.title}
                   </h3>
                   <p className="text-xs text-slate-300">{current.tagline}</p>
-                  <div className="flex items-baseline gap-3 pt-1">
-                    <span className="text-2xl font-black text-white">
-                      {formatBDT(current.offerPrice)}
-                    </span>
-                    {current.originalPrice > 0 && (
-                      <span className="text-xs text-slate-400 line-through">
-                        {formatBDT(current.originalPrice * 2)}
-                      </span>
-                    )}
-                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[11px] font-bold border border-emerald-500/30">
+
+                  {/* Pricing Box - No Stroke, Customizable Color */}
+                  <div
+                    style={{
+                      backgroundColor: current.priceBoxColor || 'rgba(15, 23, 42, 0.75)',
+                    }}
+                    className="p-3.5 rounded-2xl backdrop-blur-md flex items-center justify-between gap-4 max-w-md shadow-lg"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="text-[10px] text-white/70 font-bold uppercase tracking-wider">
+                        Offer Deal Price
+                      </div>
+                      <div className="flex items-baseline gap-2.5">
+                        <span className="text-2xl font-black text-white font-mono">
+                          {formatBDT(current.offerPrice)}
+                        </span>
+                        {current.originalPrice > 0 && (
+                          <span className="text-xs text-white/50 line-through font-mono">
+                            {formatBDT(current.originalPrice * 2)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/25 text-emerald-300 text-xs font-bold shadow-xs">
                       2nd Unit Free
                     </span>
                   </div>
                 </div>
 
-                <div className="relative z-10 shrink-0 w-36 h-36 sm:w-44 sm:h-44 rounded-xl overflow-hidden bg-slate-800 border-2 border-slate-700 shadow-xl">
-                  <img src={current.image} alt={current.title} className="w-full h-full object-cover" />
-                  <div className="absolute top-2 right-2 bg-rose-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow">
-                    PROMO
+                {/* Visual Showcase - Unique Shape & No Stroke */}
+                <div className="relative z-10 shrink-0 w-44 h-48 sm:w-52 sm:h-56 group">
+                  <div
+                    style={{
+                      background: current.bgColor1
+                        ? `radial-gradient(circle, ${current.bgColor1}99 0%, transparent 70%)`
+                        : 'radial-gradient(circle, rgba(244,63,94,0.35) 0%, transparent 70%)',
+                    }}
+                    className="absolute -inset-2 rounded-[36px] blur-xl opacity-60 pointer-events-none"
+                  />
+                  <div
+                    className={`absolute inset-0 bg-white/10 backdrop-blur-xs pointer-events-none ${
+                      current.imageShape === 'tilted'
+                        ? 'rounded-3xl rotate-3 scale-95 translate-x-1 translate-y-1'
+                        : current.imageShape === 'squircle'
+                        ? 'rounded-[36px] scale-95'
+                        : current.imageShape === 'ticket'
+                        ? 'rounded-2xl scale-95 rotate-1'
+                        : 'rounded-tl-[44px] rounded-br-[44px] rounded-tr-xl rounded-bl-xl -rotate-2 scale-95'
+                    }`}
+                  />
+                  <div
+                    className={`relative w-full h-full overflow-hidden shadow-2xl ${
+                      current.imageShape === 'tilted'
+                        ? 'rounded-3xl -rotate-2'
+                        : current.imageShape === 'squircle'
+                        ? 'rounded-[36px]'
+                        : current.imageShape === 'ticket'
+                        ? 'rounded-2xl'
+                        : 'rounded-tl-[40px] rounded-br-[40px] rounded-tr-xl rounded-bl-xl'
+                    }`}
+                  >
+                    <img src={current.image} alt={current.title} className="w-full h-full object-cover" />
+                    <div className="absolute top-2 right-2 bg-rose-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-lg">
+                      PROMO
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1178,25 +1246,162 @@ export const AdminSpecialOffersTab: React.FC<AdminSpecialOffersTabProps> = ({
                       </div>
                     </div>
 
-                    {/* Real-time BOGO Card Color Preview */}
-                    <div
-                      style={{
-                        background:
-                          editingItem.bgType === 'solid'
-                            ? editingItem.bgColor1 || '#1E293B'
-                            : `linear-gradient(${editingItem.gradientDirection || 'to right'}, ${editingItem.bgColor1 || '#1E293B'}, ${editingItem.bgColor2 || '#0F172A'})`,
-                      }}
-                      className="p-3.5 rounded-xl text-white shadow-inner flex items-center justify-between"
-                    >
-                      <div className="space-y-0.5">
-                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-600 text-white">
-                          {editingItem.badgeText || 'BUY 1 GET 1 FREE'}
+                    {/* Offer Deal Price Box Color Option */}
+                    <div className="pt-3 border-t border-slate-200">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Tag className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Offer Deal Price Box Color</span>
+                        </label>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {editingItem.priceBoxColor || 'rgba(15, 23, 42, 0.85)'}
                         </span>
-                        <div className="text-xs font-bold">{editingItem.title || 'Product Title'}</div>
                       </div>
-                      <span className="text-[10px] font-mono text-white/80 font-bold">
-                        {editingItem.bgColor1} {editingItem.bgType !== 'solid' ? `→ ${editingItem.bgColor2}` : ''}
-                      </span>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                            Price Box Background Color
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={
+                                editingItem.priceBoxColor && editingItem.priceBoxColor.startsWith('#')
+                                  ? editingItem.priceBoxColor
+                                  : '#0F172A'
+                              }
+                              onChange={(e) => setEditingItem({ ...editingItem, priceBoxColor: e.target.value })}
+                              className="w-9 h-9 rounded-lg border border-slate-300 p-0.5 cursor-pointer bg-white"
+                            />
+                            <input
+                              type="text"
+                              value={editingItem.priceBoxColor || 'rgba(15, 23, 42, 0.85)'}
+                              onChange={(e) => setEditingItem({ ...editingItem, priceBoxColor: e.target.value })}
+                              placeholder="#0F172A or rgba(...)"
+                              className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg font-mono font-bold focus:outline-none focus:border-indigo-600 bg-white"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                            Quick Presets for Price Box:
+                          </label>
+                          <div className="flex flex-wrap gap-1">
+                            {PRICE_BOX_COLOR_PRESETS.map((p) => (
+                              <button
+                                key={p.name}
+                                type="button"
+                                onClick={() => setEditingItem({ ...editingItem, priceBoxColor: p.color })}
+                                className="px-2 py-1 rounded text-[10px] font-bold text-white shadow-xs cursor-pointer transition-transform hover:scale-105"
+                                style={{ backgroundColor: p.color.includes('rgba') ? '#1E293B' : p.color }}
+                                title={p.name}
+                              >
+                                {p.name}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Product Presentation Shape (Unique non-square/non-circle silhouettes) */}
+                    <div className="pt-3 border-t border-slate-200">
+                      <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5 mb-2">
+                        <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Product Image Presentation Shape (No Square or Circle)</span>
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {PRODUCT_SHAPE_OPTIONS.map((shape) => {
+                          const isSelected = (editingItem.imageShape || 'asymmetric') === shape.id;
+                          return (
+                            <button
+                              key={shape.id}
+                              type="button"
+                              onClick={() => setEditingItem({ ...editingItem, imageShape: shape.id })}
+                              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'border-indigo-600 bg-indigo-50 text-indigo-950 font-bold shadow-xs ring-1 ring-indigo-600'
+                                  : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs'
+                              }`}
+                            >
+                              <div className="text-xs font-bold">{shape.label}</div>
+                              <div className="text-[10px] text-slate-500 mt-0.5 leading-snug">{shape.desc}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Real-time BOGO Card Color & Shape Preview (No Harsh Strokes) */}
+                    <div className="pt-3 border-t border-slate-200">
+                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        Live Preview (Color, Price Box & Image Shape):
+                      </div>
+                      <div
+                        style={{
+                          background:
+                            editingItem.bgType === 'solid'
+                              ? editingItem.bgColor1 || '#1E293B'
+                              : `linear-gradient(${editingItem.gradientDirection || 'to right'}, ${editingItem.bgColor1 || '#1E293B'}, ${editingItem.bgColor2 || '#0F172A'})`,
+                        }}
+                        className="p-4 rounded-2xl text-white shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4"
+                      >
+                        <div className="space-y-2 flex-1 w-full sm:w-auto">
+                          <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-600 text-white shadow">
+                            {editingItem.badgeText || 'BUY 1 GET 1 FREE'}
+                          </div>
+                          <div className="text-sm font-bold leading-tight">{editingItem.title || 'Product Title'}</div>
+
+                          {/* Live Preview Price Box */}
+                          <div
+                            style={{
+                              backgroundColor: editingItem.priceBoxColor || 'rgba(15, 23, 42, 0.85)',
+                            }}
+                            className="p-2.5 rounded-xl backdrop-blur-md flex items-center justify-between gap-2 shadow-md max-w-xs"
+                          >
+                            <div>
+                              <div className="text-[9px] text-white/70 font-bold uppercase">Deal Price Box Preview</div>
+                              <div className="text-sm font-black font-mono">
+                                {formatBDT(editingItem.offerPrice || 2500)}
+                              </div>
+                            </div>
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-emerald-500/25 text-emerald-300">
+                              +1 Free
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Live Preview Image Shape (No square or circle!) */}
+                        <div className="relative shrink-0 w-24 h-28 group">
+                          <div
+                            style={{
+                              background: editingItem.bgColor1
+                                ? `radial-gradient(circle, ${editingItem.bgColor1}99 0%, transparent 70%)`
+                                : 'radial-gradient(circle, rgba(244,63,94,0.4) 0%, transparent 70%)',
+                            }}
+                            className="absolute -inset-1 blur-md opacity-70 pointer-events-none"
+                          />
+                          <div
+                            className={`relative w-full h-full overflow-hidden shadow-lg ${
+                              editingItem.imageShape === 'tilted'
+                                ? 'rounded-2xl -rotate-3'
+                                : editingItem.imageShape === 'squircle'
+                                ? 'rounded-[24px]'
+                                : editingItem.imageShape === 'ticket'
+                                ? 'rounded-xl'
+                                : 'rounded-tl-[28px] rounded-br-[28px] rounded-tr-lg rounded-bl-lg'
+                            }`}
+                          >
+                            <img
+                              src={editingItem.image || 'https://images.unsplash.com/photo-1597983073493-88cd35cf93b0?auto=format&fit=crop&w=800&q=80'}
+                              alt="Preview"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 

@@ -162,10 +162,10 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
 
       {/* Main Dynamic Carousel Banner */}
       {isImageBanner ? (
-        /* Format A: Pure Uploaded Canva Banner Graphic (Zero text overlay, zero navy border/bar) */
+        /* Format A: Pure Uploaded Canva Banner Graphic (Zero text overlay, zero strokes/borders) */
         <div
           onClick={() => handleBannerClick(currentItem)}
-          className="relative rounded-2xl overflow-hidden bg-transparent border border-slate-200/90 hover:border-slate-300 shadow-sm hover:shadow-md cursor-pointer group transition-all"
+          className="relative rounded-3xl overflow-hidden bg-transparent shadow-md hover:shadow-xl cursor-pointer group transition-all"
         >
           <div className="relative w-full aspect-[16/7] sm:aspect-[21/8] md:aspect-[24/8] lg:aspect-[3/1] max-h-[420px] overflow-hidden flex items-center justify-center">
             <img
@@ -196,10 +196,10 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
           </div>
         </div>
       ) : (
-        /* Format B: Rich Product Deal Card (BOGO / Buy 2 Get 1 / Bundle) with Custom Color/Gradient Support */
+        /* Format B: Rich Product Deal Card (BOGO / Buy 2 Get 1 / Bundle) with Custom Color/Gradient & Zero Harsh Strokes */
         <div
           style={bogoCardBgStyle}
-          className={`relative rounded-2xl overflow-hidden text-white border border-slate-800/80 shadow-lg shadow-slate-950/20 ${
+          className={`relative rounded-3xl overflow-hidden text-white shadow-2xl ${
             !currentItem.bgColor1 ? 'bg-gradient-to-br from-[#0B132B] via-[#1C2541] to-[#0A0E1A]' : ''
           }`}
         >
@@ -232,10 +232,15 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
                 </p>
               </div>
 
-              {/* Pricing Strip & Bonus Callout */}
-              <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-700/80 flex flex-wrap items-center justify-between gap-3 max-w-lg">
+              {/* Pricing Strip & Bonus Callout - Customizable Price Box Color, NO Harsh Stroke */}
+              <div
+                style={{
+                  backgroundColor: currentItem.priceBoxColor || 'rgba(15, 23, 42, 0.75)',
+                }}
+                className="p-4 rounded-2xl backdrop-blur-md flex flex-wrap items-center justify-between gap-3 max-w-lg shadow-xl"
+              >
                 <div className="space-y-0.5">
-                  <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
+                  <div className="text-[10px] text-white/70 font-bold uppercase tracking-wider">
                     {currentItem.offerType === 'BUY_2_GET_1'
                       ? 'Pack Price for 3 Units'
                       : 'Offer Deal Price'}
@@ -245,7 +250,7 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
                       {formatBDT(currentItem.offerPrice)}
                     </span>
                     {currentItem.originalPrice > 0 && (
-                      <span className="text-xs text-slate-400 line-through font-mono">
+                      <span className="text-xs text-white/50 line-through font-mono">
                         {formatBDT(
                           currentItem.offerType === 'BOGO'
                             ? currentItem.originalPrice * 2
@@ -259,14 +264,14 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
                 </div>
 
                 <div className="text-right">
-                  <span className="inline-block px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-black tracking-wide">
+                  <span className="inline-block px-3 py-1 rounded-lg bg-emerald-500/25 text-emerald-300 text-xs font-black tracking-wide shadow-xs">
                     {currentItem.offerType === 'BUY_2_GET_1' ? '+1 FREE BONUS' : '+1 100% FREE'}
                   </span>
-                  <span className="block text-[10px] text-slate-400 mt-0.5">Doorstep delivery</span>
+                  <span className="block text-[10px] text-white/60 mt-0.5 font-medium">Doorstep delivery</span>
                 </div>
               </div>
 
-              {/* CTA Buttons & Guarantees */}
+              {/* CTA Buttons & Guarantees - Borderless */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
                 <button
                   type="button"
@@ -284,27 +289,61 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
 
-                <div className="flex items-center gap-2 text-[11px] text-slate-300 px-3 py-2 rounded-xl bg-slate-800/60 border border-slate-700/60">
+                <div className="flex items-center gap-2 text-[11px] text-white/90 px-3.5 py-2.5 rounded-xl bg-black/25 backdrop-blur-xs font-medium">
                   <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
                   <span>Cash on Delivery &bull; 7-Day Replacement</span>
                 </div>
               </div>
             </div>
 
-            {/* Right Column: Visual Product Showcase with Glow & Badge */}
+            {/* Right Column: Visual Product Showcase with Unique Artistic Silhouette (No harsh strokes) */}
             <div className="lg:col-span-5 flex justify-center items-center">
-              <div className="relative w-full max-w-[280px] sm:max-w-[320px] aspect-square rounded-2xl overflow-hidden bg-gradient-to-tr from-slate-900 via-slate-800 to-slate-950 border-2 border-slate-700/80 shadow-2xl p-2 group">
-                <div className="w-full h-full rounded-xl overflow-hidden relative">
+              <div className="relative w-full max-w-[280px] sm:max-w-[330px] aspect-[4/4.2] group">
+                {/* Ambient Glow Backlight (Soft aura blooming behind the product) */}
+                <div
+                  style={{
+                    background: currentItem.bgColor1
+                      ? `radial-gradient(circle, ${currentItem.bgColor1}99 0%, transparent 70%)`
+                      : 'radial-gradient(circle, rgba(244,63,94,0.35) 0%, transparent 70%)',
+                  }}
+                  className="absolute -inset-4 rounded-[48px] blur-2xl opacity-60 pointer-events-none transition-opacity duration-500 group-hover:opacity-90"
+                />
+
+                {/* Layered Floating Offset Plate (Adds 3D architectural depth without harsh strokes) */}
+                <div
+                  className={`absolute inset-0 bg-white/10 backdrop-blur-xs pointer-events-none transition-transform duration-500 group-hover:scale-100 ${
+                    currentItem.imageShape === 'tilted'
+                      ? 'rounded-3xl rotate-3 scale-95 translate-x-2 translate-y-2'
+                      : currentItem.imageShape === 'squircle'
+                      ? 'rounded-[44px] scale-95'
+                      : currentItem.imageShape === 'ticket'
+                      ? 'rounded-2xl scale-95 rotate-1'
+                      : 'rounded-tl-[54px] rounded-br-[54px] rounded-tr-2xl rounded-bl-2xl -rotate-2 scale-95'
+                  }`}
+                />
+
+                {/* Main Product Showcase Silhouette */}
+                <div
+                  className={`relative w-full h-full overflow-hidden shadow-2xl transition-all duration-500 group-hover:scale-[1.02] ${
+                    currentItem.imageShape === 'tilted'
+                      ? 'rounded-3xl -rotate-2 group-hover:rotate-0'
+                      : currentItem.imageShape === 'squircle'
+                      ? 'rounded-[44px]'
+                      : currentItem.imageShape === 'ticket'
+                      ? 'rounded-2xl'
+                      : 'rounded-tl-[50px] rounded-br-[50px] rounded-tr-2xl rounded-bl-2xl'
+                  }`}
+                >
                   <img
                     src={currentItem.image}
                     alt={currentItem.title}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent pointer-events-none" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
 
-                  {/* Floating Ribbon Badge */}
+                  {/* Floating Ribbon Badge (Borderless) */}
                   <div className="absolute top-3 right-3 z-10">
-                    <div className="px-3 py-1 rounded-full bg-rose-600 text-white text-xs font-black shadow-lg shadow-rose-950/70 uppercase tracking-wider flex items-center gap-1">
+                    <div className="px-3.5 py-1.5 rounded-full bg-rose-600 text-white text-xs font-black shadow-xl shadow-rose-950/60 uppercase tracking-wider flex items-center gap-1.5">
                       <Zap className="w-3.5 h-3.5 fill-current" />
                       <span>
                         {currentItem.offerType === 'BUY_2_GET_1'
@@ -316,10 +355,10 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Bottom title pill */}
-                  <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between text-xs font-semibold text-white bg-slate-900/85 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-700">
-                    <span className="truncate pr-2">{currentItem.title}</span>
-                    <span className="font-mono text-emerald-400 font-bold shrink-0">
+                  {/* Bottom Floating Title & Price Pill (Borderless Glassmorphism) */}
+                  <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between text-xs font-semibold text-white bg-black/60 backdrop-blur-md px-3.5 py-2 rounded-xl shadow-lg">
+                    <span className="truncate pr-2 font-bold">{currentItem.title}</span>
+                    <span className="font-mono text-emerald-400 font-black shrink-0">
                       {formatBDT(currentItem.offerPrice)}
                     </span>
                   </div>

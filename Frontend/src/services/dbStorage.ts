@@ -1134,6 +1134,8 @@ export function saveSpecialOfferItem(item: Partial<SpecialOfferItem>): SpecialOf
     bgColor2: item.bgColor2 || '#EA580C',
     gradientDirection: item.gradientDirection || 'to right',
     textColor: item.textColor || 'white',
+    priceBoxColor: item.priceBoxColor || 'rgba(15, 23, 42, 0.85)',
+    imageShape: item.imageShape || 'asymmetric',
     description: item.description || '',
     createdAt: new Date().toISOString(),
   };
