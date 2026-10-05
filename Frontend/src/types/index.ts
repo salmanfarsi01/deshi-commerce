@@ -244,19 +244,23 @@ export interface FlashSaleCampaign {
 }
 
 export type OfferType = 'BOGO' | 'BUY_2_GET_1' | 'BUY_3_GET_1' | 'COMBO_DEAL' | 'CUSTOM';
+export type BannerFormat = 'CARD' | 'FULL_BANNER';
 
 export interface SpecialOfferItem {
   id: string;
+  bannerFormat?: BannerFormat; // 'CARD' (BOGO/Deal Card) or 'FULL_BANNER' (Canva / uploaded whole banner)
   title: string;
   subtitle?: string;
   offerType: OfferType;
-  badgeText: string; // e.g. "BUY 1 GET 1 FREE", "BUY 2 GET 1"
+  badgeText: string; // e.g. "BUY 1 GET 1 FREE", "CANVA SPECIAL", "EID MEGA SALE"
   tagline?: string;
   productId?: string;
   productSlug?: string;
+  categorySlug?: string;
+  linkUrl?: string; // Optional custom redirect URL or route
   originalPrice: number;
   offerPrice: number;
-  image: string;
+  image: string; // Product photo for CARD; Full graphic banner image for FULL_BANNER
   active: boolean;
   description?: string;
   colorScheme?: 'rose' | 'amber' | 'emerald' | 'indigo' | 'purple';

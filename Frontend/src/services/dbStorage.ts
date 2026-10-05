@@ -1009,7 +1009,26 @@ export const INITIAL_SPECIAL_OFFERS: SpecialOffersCampaign = {
   autoSlideIntervalSeconds: 5,
   items: [
     {
+      id: 'offer_canva_eid_festival',
+      bannerFormat: 'FULL_BANNER',
+      title: 'Mega Festive Collection & Seasonal Clearance Sale',
+      subtitle: 'Official Promo Banner',
+      offerType: 'CUSTOM',
+      badgeText: 'CANVA FULL BANNER',
+      tagline: 'Get up to 60% off + Buy 1 Get 1 Free on selected fashion & electronics nationwide.',
+      categorySlug: 'fashion',
+      linkUrl: '#catalog-grid',
+      originalPrice: 0,
+      offerPrice: 0,
+      image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=1600&q=80',
+      active: true,
+      colorScheme: 'rose',
+      description: 'Full width Canva graphic banner showcasing seasonal shopping festival.',
+      createdAt: '2026-03-01T09:00:00Z',
+    },
+    {
       id: 'offer_bogo_panjabi',
+      bannerFormat: 'CARD',
       title: 'Aarong Heritage Semi-Silk Festive Panjabi',
       subtitle: 'Festive Collection · Double Value',
       offerType: 'BOGO',
@@ -1027,6 +1046,7 @@ export const INITIAL_SPECIAL_OFFERS: SpecialOffersCampaign = {
     },
     {
       id: 'offer_buy2get1_earbuds',
+      bannerFormat: 'CARD',
       title: 'Pro ANC Wireless Earbuds with Wireless Case',
       subtitle: 'Hi-Fi Spatial Sound · Family Pack',
       offerType: 'BUY_2_GET_1',
@@ -1044,6 +1064,7 @@ export const INITIAL_SPECIAL_OFFERS: SpecialOffersCampaign = {
     },
     {
       id: 'offer_bogo_jamdani',
+      bannerFormat: 'CARD',
       title: 'Handloom Pure Cotton Dhakai Jamdani Saree',
       subtitle: 'Traditional Artisan Heritage',
       offerType: 'BOGO',
@@ -1089,18 +1110,22 @@ export function saveSpecialOfferItem(item: Partial<SpecialOfferItem>): SpecialOf
     }
   }
 
+  const isFullBanner = item.bannerFormat === 'FULL_BANNER';
   const newItem: SpecialOfferItem = {
     id: `offer_${Date.now()}`,
-    title: item.title || 'Special Promotional Offer',
-    subtitle: item.subtitle || 'Limited Quantity Deal',
-    offerType: item.offerType || 'BOGO',
-    badgeText: item.badgeText || (item.offerType === 'BUY_2_GET_1' ? 'BUY 2 GET 1 FREE' : 'BUY 1 GET 1 FREE'),
-    tagline: item.tagline || 'Special discounted offer available while stock lasts.',
+    bannerFormat: item.bannerFormat || 'CARD',
+    title: item.title || (isFullBanner ? 'Canva Promotional Banner' : 'Special Promotional Offer'),
+    subtitle: item.subtitle || (isFullBanner ? 'Full Graphic Banner' : 'Limited Quantity Deal'),
+    offerType: item.offerType || (isFullBanner ? 'CUSTOM' : 'BOGO'),
+    badgeText: item.badgeText || (isFullBanner ? 'SPECIAL OFFER' : item.offerType === 'BUY_2_GET_1' ? 'BUY 2 GET 1 FREE' : 'BUY 1 GET 1 FREE'),
+    tagline: item.tagline || (isFullBanner ? 'Click banner to explore exclusive deals.' : 'Special discounted offer available while stock lasts.'),
     productId: item.productId,
     productSlug: item.productSlug,
-    originalPrice: item.originalPrice || 1999,
-    offerPrice: item.offerPrice || 1999,
-    image: item.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
+    categorySlug: item.categorySlug,
+    linkUrl: item.linkUrl,
+    originalPrice: item.originalPrice !== undefined ? item.originalPrice : (isFullBanner ? 0 : 1999),
+    offerPrice: item.offerPrice !== undefined ? item.offerPrice : (isFullBanner ? 0 : 1999),
+    image: item.image || 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=1600&q=80',
     active: item.active !== undefined ? item.active : true,
     colorScheme: item.colorScheme || 'rose',
     description: item.description || '',
