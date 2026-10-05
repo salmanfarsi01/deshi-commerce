@@ -159,19 +159,39 @@ export interface AdminDashboardSummary {
   statusBreakdown: Record<OrderStatus, number>;
 }
 
+export interface SupportTicket {
+  id: string;
+  name: string;
+  contact: string;
+  email?: string;
+  phone?: string;
+  orderNumber?: string;
+  topic: string;
+  message: string;
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
+  createdAt: string;
+  resolvedAt?: string;
+  adminNotes?: string;
+  isRead?: boolean;
+}
+
 export interface NotificationLog {
   id: string;
   orderId?: string;
   orderNumber?: string;
   userId?: string;
   timestamp: string;
-  channel: 'SMS' | 'EMAIL';
-  event: 'ORDER_PLACED' | 'ORDER_CONFIRMED' | 'ORDER_SHIPPED' | 'PAYMENT_RECEIVED' | 'ORDER_DELIVERED' | 'ORDER_CANCELLED';
+  channel: 'SMS' | 'EMAIL' | 'SUPPORT';
+  event: 'ORDER_PLACED' | 'ORDER_CONFIRMED' | 'ORDER_SHIPPED' | 'PAYMENT_RECEIVED' | 'ORDER_DELIVERED' | 'ORDER_CANCELLED' | 'SUPPORT_INQUIRY';
   recipient: string;
   subject?: string;
   message: string;
-  status: 'SENT' | 'SIMULATED' | 'DELIVERED';
+  status: 'SENT' | 'SIMULATED' | 'DELIVERED' | 'UNREAD' | 'READ';
   gatewayResponse?: string;
+  clientName?: string;
+  clientContact?: string;
+  ticketId?: string;
+  topic?: string;
 }
 
 export interface Customer360Profile {

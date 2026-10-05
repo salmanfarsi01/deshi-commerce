@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { X, Send, Phone, Mail, HelpCircle, MessageSquare, CheckCircle2, Clock } from 'lucide-react';
+import { apiService } from '../services/apiClient';
 
 export const ContactSupportModal: React.FC = () => {
   const { isSupportModalOpen, closeSupportModal, user, showToast, lang } = useApp();
@@ -15,21 +16,33 @@ export const ContactSupportModal: React.FC = () => {
 
   if (!isSupportModalOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
+    if (!name.trim() || !contact.trim() || !message.trim()) return;
 
-    setTimeout(() => {
-      const ticketId = `TKT-${Math.floor(100000 + Math.random() * 900000)}`;
+    setSubmitting(true);
+    try {
+      const res = await apiService.support.submitTicket({
+        name: name.trim(),
+        contact: contact.trim(),
+        orderNumber: orderNumber.trim() || undefined,
+        topic,
+        message: message.trim(),
+      });
+
+      const ticketId = res.data?.id || `TKT-${Math.floor(100000 + Math.random() * 900000)}`;
       setSubmittedTicket(ticketId);
-      setSubmitting(false);
       showToast(
         lang === 'bn'
-          ? `সাপোর্ট টিকিট #${ticketId} সফলভাবে গৃহীত হয়েছে!`
-          : `Support ticket #${ticketId} submitted successfully!`,
+          ? `সাপোর্ট টিকিট #${ticketId} সফলভাবে গৃহীত হয়েছে! এডমিন টিম শীঘ্রই যোগাযোগ করবেন।`
+          : `Support ticket #${ticketId} submitted! Admin has been notified with your contact info.`,
         'success'
       );
-    }, 600);
+    } catch (err) {
+      showToast('Failed to submit ticket. Please try again or call hotline.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleReset = () => {

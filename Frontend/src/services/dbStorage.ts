@@ -14,6 +14,7 @@ import {
   FlashSaleCampaign,
   SpecialOfferItem,
   SpecialOffersCampaign,
+  SupportTicket,
 } from '../types';
 import {
   INITIAL_USERS,
@@ -38,6 +39,7 @@ const STORAGE_KEYS = {
   FAQS: 'deshi_faqs_v1',
   FLASH_SALE: 'deshi_flash_sale_v1',
   SPECIAL_OFFERS: 'deshi_special_offers_v1',
+  SUPPORT_TICKETS: 'deshi_support_tickets_v1',
 };
 
 // Initialize default state
@@ -73,6 +75,9 @@ export function initDatabase() {
   }
   if (!localStorage.getItem(STORAGE_KEYS.SPECIAL_OFFERS)) {
     localStorage.setItem(STORAGE_KEYS.SPECIAL_OFFERS, JSON.stringify(INITIAL_SPECIAL_OFFERS));
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.SUPPORT_TICKETS)) {
+    localStorage.setItem(STORAGE_KEYS.SUPPORT_TICKETS, JSON.stringify(INITIAL_SUPPORT_TICKETS));
   }
 }
 
@@ -713,6 +718,133 @@ export function addNotificationLog(log: Omit<NotificationLog, 'id' | 'timestamp'
   list.unshift(entry);
   setItem(STORAGE_KEYS.NOTIFICATIONS, list);
   return entry;
+}
+
+export const INITIAL_SUPPORT_TICKETS: SupportTicket[] = [
+  {
+    id: 'TKT-492104',
+    name: 'Fatima Rahman',
+    contact: '01712-849201',
+    phone: '01712-849201',
+    email: 'fatima.rahman@gmail.com',
+    orderNumber: 'ORD-982341',
+    topic: 'Order Delivery Inquiry',
+    message: 'Hello, I placed an order yesterday for Panjabi and Jamdani saree. Can you confirm if courier has picked it up? Need it before Eid.',
+    status: 'OPEN',
+    createdAt: '2026-03-05 14:20:00',
+    isRead: false,
+  },
+  {
+    id: 'TKT-318920',
+    name: 'Kamrul Hasan',
+    contact: 'kamrul.hasan@gmail.com',
+    email: 'kamrul.hasan@gmail.com',
+    phone: '01819-338291',
+    orderNumber: 'ORD-771239',
+    topic: 'Size Exchange Request',
+    message: 'Received my polo t-shirt today, but size L is slightly tight. Would like to exchange for XL size. Please let me know the process.',
+    status: 'IN_PROGRESS',
+    createdAt: '2026-03-05 11:15:00',
+    adminNotes: 'Contacted customer via WhatsApp. Arranged replacement pickup with courier.',
+    isRead: true,
+  },
+];
+
+export function getSupportTickets(): SupportTicket[] {
+  return getItem<SupportTicket[]>(STORAGE_KEYS.SUPPORT_TICKETS, INITIAL_SUPPORT_TICKETS);
+}
+
+export function submitSupportTicket(ticket: {
+  name: string;
+  contact: string;
+  orderNumber?: string;
+  topic: string;
+  message: string;
+}): SupportTicket {
+  const tickets = getSupportTickets();
+  const ticketId = `TKT-${Math.floor(100000 + Math.random() * 900000)}`;
+  const now = new Date();
+  const timestamp = `${now.toISOString().split('T')[0]} ${now.toTimeString().split(' ')[0]}`;
+
+  const isEmail = ticket.contact.includes('@');
+  const isPhone = !isEmail;
+
+  const newTicket: SupportTicket = {
+    id: ticketId,
+    name: ticket.name,
+    contact: ticket.contact,
+    email: isEmail ? ticket.contact : undefined,
+    phone: isPhone ? ticket.contact : undefined,
+    orderNumber: ticket.orderNumber || undefined,
+    topic: ticket.topic,
+    message: ticket.message,
+    status: 'OPEN',
+    createdAt: timestamp,
+    isRead: false,
+  };
+
+  tickets.unshift(newTicket);
+  setItem(STORAGE_KEYS.SUPPORT_TICKETS, tickets);
+
+  // Automatically trigger an audit/notification log entry so admin gets instant notification
+  addNotificationLog({
+    channel: 'SUPPORT',
+    event: 'SUPPORT_INQUIRY',
+    recipient: `${ticket.name} (${ticket.contact})`,
+    subject: `Support Ticket #${ticketId}: ${ticket.topic}`,
+    message: ticket.message,
+    clientName: ticket.name,
+    clientContact: ticket.contact,
+    ticketId: ticketId,
+    topic: ticket.topic,
+    orderNumber: ticket.orderNumber,
+  });
+
+  // Notify listeners across app/tabs
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('deshi_support_ticket_added', { detail: newTicket }));
+  }
+
+  return newTicket;
+}
+
+export function updateSupportTicket(
+  id: string,
+  updates: Partial<SupportTicket>
+): SupportTicket | null {
+  const tickets = getSupportTickets();
+  const idx = tickets.findIndex((t) => t.id === id);
+  if (idx === -1) return null;
+
+  tickets[idx] = {
+    ...tickets[idx],
+    ...updates,
+    resolvedAt: updates.status === 'RESOLVED' ? new Date().toISOString() : tickets[idx].resolvedAt,
+  };
+  setItem(STORAGE_KEYS.SUPPORT_TICKETS, tickets);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('deshi_support_ticket_updated', { detail: tickets[idx] }));
+  }
+
+  return tickets[idx];
+}
+
+export function deleteSupportTicket(id: string): boolean {
+  const tickets = getSupportTickets();
+  const filtered = tickets.filter((t) => t.id !== id);
+  if (filtered.length === tickets.length) return false;
+  setItem(STORAGE_KEYS.SUPPORT_TICKETS, filtered);
+  return true;
+}
+
+export function markSupportTicketRead(id: string): void {
+  const tickets = getSupportTickets();
+  const ticket = tickets.find((t) => t.id === id);
+  if (ticket && !ticket.isRead) {
+    ticket.isRead = true;
+    setItem(STORAGE_KEYS.SUPPORT_TICKETS, tickets);
+  }
 }
 
 // Admin Summary

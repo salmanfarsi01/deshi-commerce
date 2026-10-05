@@ -48,6 +48,11 @@ import {
   saveSpecialOfferItem,
   deleteSpecialOfferItem,
   toggleSpecialOfferItem,
+  getSupportTickets,
+  submitSupportTicket,
+  updateSupportTicket,
+  deleteSupportTicket,
+  markSupportTicketRead,
 } from './dbStorage';
 import {
   Category,
@@ -67,6 +72,7 @@ import {
   FlashSaleCampaign,
   SpecialOfferItem,
   SpecialOffersCampaign,
+  SupportTicket,
 } from '../types';
 
 // Initialize localStorage on module load
@@ -1932,6 +1938,43 @@ export const apiService = {
       await simulateDelay(20);
       toggleSpecialOfferItem(id);
       return wrapSuccess(true, 'Special offer status updated');
+    },
+  },
+  // =========================================================================
+  // CUSTOMER SUPPORT INQUIRIES & TICKETS
+  // =========================================================================
+  support: {
+    getTickets: async (): Promise<ApiResponse<SupportTicket[]>> => {
+      await simulateDelay(30);
+      return wrapSuccess(getSupportTickets());
+    },
+    submitTicket: async (ticket: {
+      name: string;
+      contact: string;
+      orderNumber?: string;
+      topic: string;
+      message: string;
+    }): Promise<ApiResponse<SupportTicket>> => {
+      await simulateDelay(50);
+      const newTicket = submitSupportTicket(ticket);
+      return wrapSuccess(newTicket, 'Support inquiry submitted successfully');
+    },
+    updateTicket: async (
+      id: string,
+      updates: Partial<SupportTicket>
+    ): Promise<ApiResponse<SupportTicket | null>> => {
+      await simulateDelay(40);
+      const updated = updateSupportTicket(id, updates);
+      return wrapSuccess(updated, 'Support ticket updated');
+    },
+    deleteTicket: async (id: string): Promise<ApiResponse<boolean>> => {
+      await simulateDelay(30);
+      const ok = deleteSupportTicket(id);
+      return wrapSuccess(ok, 'Ticket deleted');
+    },
+    markRead: async (id: string): Promise<ApiResponse<void>> => {
+      markSupportTicketRead(id);
+      return wrapSuccess(undefined);
     },
   },
 };
