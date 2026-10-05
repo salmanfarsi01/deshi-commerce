@@ -123,7 +123,7 @@ export const FaqView: React.FC = () => {
       </div>
 
       {/* 2. Hero Search & Title Header */}
-      <div className="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800 text-white py-14 px-4 sm:px-6 lg:px-8 text-center relative overflow-hidden">
+      <div className="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800 text-white pt-12 pb-16 px-4 sm:px-6 lg:px-8 text-center relative">
         {/* Subtle background decoration */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(244,63,94,0.15),transparent_60%)] pointer-events-none" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,rgba(59,130,246,0.12),transparent_60%)] pointer-events-none" />
@@ -145,7 +145,7 @@ export const FaqView: React.FC = () => {
           </p>
 
           {/* Search Box */}
-          <div className="pt-4 max-w-xl mx-auto">
+          <div className="pt-2 max-w-xl mx-auto">
             <div className="relative flex items-center">
               <Search className="w-5 h-5 text-slate-400 absolute left-4 pointer-events-none" />
               <input
@@ -157,7 +157,7 @@ export const FaqView: React.FC = () => {
                     ? 'প্রশ্ন বা কীওয়ার্ড খুঁজুন (যেমন: ডেলিভারি, বিকাশ, রিটার্ন)...'
                     : 'Search questions or keywords (e.g. delivery, bKash, return)...'
                 }
-                className="w-full pl-12 pr-10 py-3.5 bg-white text-slate-900 placeholder:text-slate-400 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-rose-500 shadow-lg"
+                className="w-full pl-12 pr-10 py-3.5 bg-white text-slate-900 placeholder:text-slate-400 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-rose-500 shadow-md border border-slate-200"
               />
               {searchQuery && (
                 <button
@@ -174,9 +174,9 @@ export const FaqView: React.FC = () => {
       </div>
 
       {/* 3. Main Content Area */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 -mt-7">
         {/* Category Pills Card */}
-        <div className="bg-white rounded-2xl p-3 shadow-md border border-slate-200/80 mb-8">
+        <div className="bg-white rounded-2xl p-2.5 sm:p-3 shadow-lg border border-slate-200 mb-8">
           <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none justify-start sm:justify-center">
             {categories.map((cat) => {
               const Icon = cat.icon;
@@ -189,7 +189,7 @@ export const FaqView: React.FC = () => {
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
                     isActive
                       ? 'bg-slate-900 text-white shadow-sm font-bold'
-                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-100'
                   }`}
                 >
                   <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-rose-400' : 'text-slate-500'}`} />
