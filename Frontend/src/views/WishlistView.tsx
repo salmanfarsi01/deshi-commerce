@@ -35,7 +35,7 @@ export const WishlistView: React.FC = () => {
   const likedProducts = products.filter((p) => wishlist.includes(p.id));
 
   return (
-    <div className="min-h-screen pb-20 bg-[#F8FAFC]">
+    <div className="min-h-screen pb-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         {/* Navigation Breadcrumb */}
         <div className="flex items-center justify-between mb-6">

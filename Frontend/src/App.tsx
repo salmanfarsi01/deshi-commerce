@@ -87,7 +87,7 @@ const MainLayout: React.FC = () => {
 
   // Customer Ecommerce Storefront (Zero admin cues)
   return (
-    <div className="min-h-screen flex flex-col bg-[#F8F9FA] text-[#2B2B2B] font-sans">
+    <div className="min-h-screen flex flex-col bg-white text-[#0F172A] font-sans">
       <Header />
 
       <main className="flex-1">

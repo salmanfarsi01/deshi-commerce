@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Gift,
   Sparkles,
   ShoppingBag,
   ArrowRight,
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
-  CheckCircle2,
-  Tag,
   Zap,
 } from 'lucide-react';
 import { SpecialOfferItem, SpecialOffersCampaign } from '../types';
@@ -118,18 +115,10 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
     >
       {/* Section Header Strip */}
       <div className="flex items-center justify-between mb-3 px-1">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-rose-600/10 border border-rose-600/30 text-rose-600 flex items-center justify-center">
-            <Gift className="w-4 h-4" />
-          </div>
-          <div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
-              <span>{campaign.sectionTitle || 'Special Promotional & BOGO Offers'}</span>
-              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-rose-600 text-white tracking-wider animate-pulse">
-                LIMITED DEALS
-              </span>
-            </h2>
-          </div>
+        <div>
+          <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+            {campaign.sectionTitle || 'Special Promotional & BOGO Offers'}
+          </h2>
         </div>
 
         {/* Carousel Slide Indicators & Arrows */}
@@ -199,58 +188,56 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
         /* Format B: Rich Product Deal Card (BOGO / Buy 2 Get 1 / Bundle) with Custom Color/Gradient & Zero Harsh Strokes */
         <div
           style={bogoCardBgStyle}
-          className={`relative rounded-3xl overflow-hidden text-white shadow-2xl ${
-            !currentItem.bgColor1 ? 'bg-gradient-to-br from-[#0B132B] via-[#1C2541] to-[#0A0E1A]' : ''
+          className={`relative rounded-3xl overflow-hidden shadow-xs border border-slate-200 ${
+            !currentItem.bgColor1 ? 'bg-white text-slate-900' : 'text-white'
           }`}
         >
-          {/* Decorative background glows */}
-          <div className="absolute -top-24 -left-24 w-72 h-72 bg-rose-600/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
-
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 p-5 sm:p-7 md:p-8 items-center">
             {/* Left Column: Details & Offer Hook */}
             <div className="lg:col-span-7 space-y-4">
               <div className="flex flex-wrap items-center gap-2">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-gradient-to-r from-rose-600 to-rose-500 text-white shadow-md shadow-rose-950/50">
-                  <Sparkles className="w-3.5 h-3.5 fill-current" />
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase bg-slate-100 text-slate-800 border border-slate-200">
+                  <Sparkles className="w-3.5 h-3.5 fill-current text-slate-700" />
                   <span>{currentItem.badgeText || 'BUY 1 GET 1 FREE'}</span>
                 </div>
 
                 {currentItem.subtitle && (
-                  <span className="text-[11px] font-semibold text-rose-300/90 tracking-wide uppercase">
+                  <span className={`text-[11px] font-semibold tracking-wide uppercase ${currentItem.bgColor1 ? 'text-slate-300' : 'text-slate-500'}`}>
                     &bull; {currentItem.subtitle}
                   </span>
                 )}
               </div>
 
               <div>
-                <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight">
+                <h3 className={`text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight leading-tight ${currentItem.bgColor1 ? 'text-white' : 'text-slate-900'}`}>
                   {currentItem.title}
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-300 font-normal mt-2 leading-relaxed max-w-xl">
+                <p className={`text-xs sm:text-sm font-normal mt-2 leading-relaxed max-w-xl ${currentItem.bgColor1 ? 'text-slate-300' : 'text-slate-600'}`}>
                   {currentItem.tagline || currentItem.description || 'Exclusive bundle offer available for online orders nationwide.'}
                 </p>
               </div>
 
-              {/* Pricing Strip & Bonus Callout - Customizable Price Box Color, NO Harsh Stroke */}
+              {/* Pricing Strip & Bonus Callout */}
               <div
                 style={{
-                  backgroundColor: currentItem.priceBoxColor || 'rgba(15, 23, 42, 0.75)',
+                  backgroundColor: currentItem.priceBoxColor || (currentItem.bgColor1 ? 'rgba(15, 23, 42, 0.75)' : '#F8FAFC'),
                 }}
-                className="p-4 rounded-2xl backdrop-blur-md flex flex-wrap items-center justify-between gap-3 max-w-lg shadow-xl"
+                className={`p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3 max-w-lg ${
+                  currentItem.bgColor1 ? 'shadow-xl text-white' : 'border border-slate-200 text-slate-900 shadow-2xs'
+                }`}
               >
                 <div className="space-y-0.5">
-                  <div className="text-[10px] text-white/70 font-bold uppercase tracking-wider">
+                  <div className={`text-[10px] font-bold uppercase tracking-wider ${currentItem.bgColor1 ? 'text-white/70' : 'text-slate-500'}`}>
                     {currentItem.offerType === 'BUY_2_GET_1'
                       ? 'Pack Price for 3 Units'
                       : 'Offer Deal Price'}
                   </div>
                   <div className="flex items-baseline gap-2.5">
-                    <span className="text-2xl sm:text-3xl font-black text-white font-mono">
+                    <span className={`text-2xl sm:text-3xl font-black font-mono ${currentItem.bgColor1 ? 'text-white' : 'text-slate-900'}`}>
                       {formatBDT(currentItem.offerPrice)}
                     </span>
                     {currentItem.originalPrice > 0 && (
-                      <span className="text-xs text-white/50 line-through font-mono">
+                      <span className={`text-xs line-through font-mono ${currentItem.bgColor1 ? 'text-white/50' : 'text-slate-400'}`}>
                         {formatBDT(
                           currentItem.offerType === 'BOGO'
                             ? currentItem.originalPrice * 2
@@ -264,19 +251,21 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
                 </div>
 
                 <div className="text-right">
-                  <span className="inline-block px-3 py-1 rounded-lg bg-emerald-500/25 text-emerald-300 text-xs font-black tracking-wide shadow-xs">
+                  <span className="inline-block px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-black tracking-wide">
                     {currentItem.offerType === 'BUY_2_GET_1' ? '+1 FREE BONUS' : '+1 100% FREE'}
                   </span>
-                  <span className="block text-[10px] text-white/60 mt-0.5 font-medium">Doorstep delivery</span>
+                  <span className={`block text-[10px] mt-0.5 font-medium ${currentItem.bgColor1 ? 'text-white/60' : 'text-slate-500'}`}>
+                    Doorstep delivery
+                  </span>
                 </div>
               </div>
 
-              {/* CTA Buttons & Guarantees - Borderless */}
+              {/* CTA Buttons & Guarantees */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
                 <button
                   type="button"
                   onClick={() => handleClaimOffer(currentItem)}
-                  className="px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all shadow-lg shadow-rose-950/60"
+                  className="px-6 py-3 rounded-xl bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs"
                 >
                   <ShoppingBag className="w-4 h-4" />
                   <span>
@@ -289,8 +278,10 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
 
-                <div className="flex items-center gap-2 text-[11px] text-white/90 px-3.5 py-2.5 rounded-xl bg-black/25 backdrop-blur-xs font-medium">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                <div className={`flex items-center gap-2 text-[11px] px-3.5 py-2.5 rounded-xl font-medium ${
+                  currentItem.bgColor1 ? 'bg-black/25 text-white/90' : 'bg-slate-50 text-slate-700 border border-slate-200'
+                }`}>
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>Cash on Delivery &bull; 7-Day Replacement</span>
                 </div>
               </div>
@@ -299,19 +290,9 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
             {/* Right Column: Visual Product Showcase with Unique Artistic Silhouette (No harsh strokes) */}
             <div className="lg:col-span-5 flex justify-center items-center">
               <div className="relative w-full max-w-[280px] sm:max-w-[330px] aspect-[4/4.2] group">
-                {/* Ambient Glow Backlight (Soft aura blooming behind the product) */}
+                {/* Layered Floating Offset Plate */}
                 <div
-                  style={{
-                    background: currentItem.bgColor1
-                      ? `radial-gradient(circle, ${currentItem.bgColor1}99 0%, transparent 70%)`
-                      : 'radial-gradient(circle, rgba(244,63,94,0.35) 0%, transparent 70%)',
-                  }}
-                  className="absolute -inset-4 rounded-[48px] blur-2xl opacity-60 pointer-events-none transition-opacity duration-500 group-hover:opacity-90"
-                />
-
-                {/* Layered Floating Offset Plate (Adds 3D architectural depth without harsh strokes) */}
-                <div
-                  className={`absolute inset-0 bg-white/10 backdrop-blur-xs pointer-events-none transition-transform duration-500 group-hover:scale-100 ${
+                  className={`absolute inset-0 bg-slate-100 pointer-events-none transition-transform duration-500 group-hover:scale-100 ${
                     currentItem.imageShape === 'tilted'
                       ? 'rounded-3xl rotate-3 scale-95 translate-x-2 translate-y-2'
                       : currentItem.imageShape === 'squircle'
@@ -324,7 +305,7 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
 
                 {/* Main Product Showcase Silhouette */}
                 <div
-                  className={`relative w-full h-full overflow-hidden shadow-2xl transition-all duration-500 group-hover:scale-[1.02] ${
+                  className={`relative w-full h-full overflow-hidden shadow-sm border border-slate-200 transition-all duration-500 group-hover:scale-[1.02] ${
                     currentItem.imageShape === 'tilted'
                       ? 'rounded-3xl -rotate-2 group-hover:rotate-0'
                       : currentItem.imageShape === 'squircle'
@@ -343,7 +324,7 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
 
                   {/* Floating Ribbon Badge (Borderless) */}
                   <div className="absolute top-3 right-3 z-10">
-                    <div className="px-3.5 py-1.5 rounded-full bg-rose-600 text-white text-xs font-black shadow-xl shadow-rose-950/60 uppercase tracking-wider flex items-center gap-1.5">
+                    <div className="px-3.5 py-1.5 rounded-full bg-slate-900 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
                       <Zap className="w-3.5 h-3.5 fill-current" />
                       <span>
                         {currentItem.offerType === 'BUY_2_GET_1'
@@ -379,7 +360,9 @@ export const SpecialOffersBannerCarousel: React.FC = () => {
                     setCurrentIdx(dotIdx);
                   }}
                   className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                    currentIdx === dotIdx ? 'w-7 bg-rose-500' : 'w-2 bg-slate-700 hover:bg-slate-500'
+                    currentIdx === dotIdx
+                      ? currentItem.bgColor1 ? 'w-7 bg-white' : 'w-7 bg-[#0F172A]'
+                      : currentItem.bgColor1 ? 'w-2 bg-slate-700 hover:bg-slate-500' : 'w-2 bg-slate-300 hover:bg-slate-400'
                   }`}
                   title={`Go to slide ${dotIdx + 1}`}
                 />

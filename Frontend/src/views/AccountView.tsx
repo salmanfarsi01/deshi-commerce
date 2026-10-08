@@ -111,17 +111,17 @@ export const AccountView: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center px-4 py-16 bg-[#F8F9FA]">
-        <div className="max-w-md w-full bg-white p-8 border border-[#D4D4D4] shadow-sm text-center space-y-6">
-          <div className="w-16 h-16 bg-[#2B2B2B] text-white flex items-center justify-center mx-auto border border-[#3D3D3D]">
-            <LogIn className="w-8 h-8 text-[#E11D48]" />
+      <div className="min-h-[70vh] flex items-center justify-center px-4 py-16 bg-white">
+        <div className="max-w-md w-full bg-white p-8 border border-[#D4D4D4] rounded-2xl shadow-xs text-center space-y-6">
+          <div className="w-16 h-16 bg-slate-100 text-[#0F172A] rounded-full flex items-center justify-center mx-auto border border-slate-200">
+            <LogIn className="w-8 h-8 text-[#0F172A]" />
           </div>
 
           <div>
-            <h3 className="text-xl font-bold text-[#2B2B2B] font-serif uppercase tracking-tight">
+            <h3 className="text-xl font-bold text-[#0F172A] uppercase tracking-tight">
               Customer Account Portal
             </h3>
-            <p className="text-xs text-stone-600 mt-2 leading-relaxed">
+            <p className="text-xs text-slate-500 mt-2 leading-relaxed">
               Sign in or create an account with <strong>Google Mail</strong> or your mobile number to view past orders, track live delivery consignments, and manage saved shipping addresses.
             </p>
           </div>
@@ -131,7 +131,7 @@ export const AccountView: React.FC = () => {
             <button
               type="button"
               onClick={() => openAuthModal('login')}
-              className="rounded-none w-full py-3 px-4 bg-white hover:bg-stone-50 text-[#2B2B2B] border-2 border-[#2B2B2B] hover:border-[#E11D48] text-xs font-bold uppercase tracking-wider shadow-xs transition-colors flex items-center justify-center gap-2.5 cursor-pointer"
+              className="rounded-lg w-full py-3 px-4 bg-white hover:bg-slate-50 text-[#0F172A] border border-slate-300 text-xs font-bold uppercase tracking-wider shadow-2xs transition-colors flex items-center justify-center gap-2.5 cursor-pointer"
             >
               <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -145,25 +145,25 @@ export const AccountView: React.FC = () => {
             <button
               type="button"
               onClick={() => openAuthModal('register')}
-              className="rounded-none w-full py-3 px-4 bg-[#E11D48] hover:bg-[#BE123C] text-white text-xs font-bold uppercase tracking-wider shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              className="rounded-lg w-full py-3 px-4 bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider shadow-2xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               <UserPlus className="w-4 h-4" />
               <span>Sign Up (Create Account)</span>
             </button>
           </div>
 
-          <div className="pt-2 border-t border-[#D4D4D4] flex items-center justify-between text-xs">
+          <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs">
             <button
               type="button"
               onClick={() => openAuthModal('login')}
-              className="rounded-none text-stone-600 hover:text-[#2B2B2B] font-bold uppercase tracking-wider cursor-pointer"
+              className="text-slate-600 hover:text-[#0F172A] font-bold uppercase tracking-wider cursor-pointer"
             >
               Sign In with Mobile
             </button>
             <button
               type="button"
               onClick={() => setCurrentView('home')}
-              className="rounded-none text-[#E11D48] hover:underline font-bold uppercase tracking-wider cursor-pointer"
+              className="text-slate-900 hover:underline font-bold uppercase tracking-wider cursor-pointer"
             >
               Return to Catalog &rarr;
             </button>
@@ -174,15 +174,15 @@ export const AccountView: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen pb-20 bg-[#F8F9FA]">
+    <div className="min-h-screen pb-20 bg-white">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         {/* User Hero Bar */}
-        <div className="bg-[#2B2B2B] p-6 sm:p-8 text-white shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 border-b-2 border-[#E11D48]">
+        <div className="bg-white p-6 sm:p-8 text-[#0F172A] shadow-xs rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 border border-slate-200">
           <div className="flex items-center gap-4">
             <div className="relative">
-              <div className="w-14 h-14 bg-white/10 text-white p-0.5 border border-white/20 flex items-center justify-center font-bold text-lg font-serif">
+              <div className="w-14 h-14 bg-slate-100 rounded-full text-[#0F172A] p-0.5 border border-slate-200 flex items-center justify-center font-bold text-lg">
                 {user.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                  <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover rounded-full" />
                 ) : (
                   user.name.charAt(0)
                 )}
@@ -195,32 +195,32 @@ export const AccountView: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-bold font-serif text-white uppercase">{user.name}</h1>
+                <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">{user.name}</h1>
                 {user.authProvider === 'google' && (
-                  <span className="text-[10px] font-bold text-white bg-blue-600 px-1.5 py-0.5 uppercase tracking-wider">
+                  <span className="text-[10px] font-bold text-white bg-blue-600 px-1.5 py-0.5 rounded uppercase tracking-wider">
                     Google Mail
                   </span>
                 )}
               </div>
-              <div className="text-xs text-[#D4D4D4] font-mono mt-0.5">
+              <div className="text-xs text-slate-500 font-mono mt-0.5">
                 {user.phone} · {user.email}
               </div>
             </div>
           </div>
 
-          <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2 sm:border-l sm:border-stone-700 sm:pl-6 text-xs text-[#B3B3B3]">
+          <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2 sm:border-l sm:border-slate-200 sm:pl-6 text-xs text-slate-500">
             <div className="text-right hidden sm:block">
               <div>Member since</div>
-              <div className="font-bold text-white">
+              <div className="font-bold text-slate-800">
                 {new Date(user.createdAt).toLocaleDateString('en-GB')}
               </div>
             </div>
             <button
               type="button"
               onClick={logout}
-              className="rounded-none px-3 py-1.5 bg-white/10 hover:bg-red-900/60 text-white border border-white/20 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="rounded-lg px-3 py-1.5 bg-slate-50 hover:bg-rose-50 text-rose-600 border border-slate-200 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <LogOut className="w-3.5 h-3.5 text-red-400" />
+              <LogOut className="w-3.5 h-3.5" />
               <span>Sign Out</span>
             </button>
           </div>

@@ -155,7 +155,7 @@ export const ProductDetailView: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen pb-20 bg-[#F8FAFC]">
+    <div className="min-h-screen pb-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         {/* Breadcrumbs */}
         <nav className="flex items-center gap-2 text-xs text-slate-500 mb-6 overflow-x-auto whitespace-nowrap">

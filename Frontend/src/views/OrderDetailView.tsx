@@ -197,7 +197,7 @@ export const OrderDetailView: React.FC = () => {
   const isDhaka = order.shippingAddress.district.toLowerCase() === 'dhaka';
 
   return (
-    <div className="min-h-screen pb-20 bg-[#F8FAFC]">
+    <div className="min-h-screen pb-20 bg-white">
       {/* ======================================================== */}
       {/* 1. SCREEN VIEW (Visible on web, hidden during print)      */}
       {/* ======================================================== */}

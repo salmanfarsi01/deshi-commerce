@@ -101,7 +101,7 @@ export const FaqView: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/60 pb-20">
+    <div className="min-h-screen bg-white pb-20">
       {/* 1. Top Breadcrumbs Navigation */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center gap-2 text-xs text-slate-500">
@@ -123,22 +123,18 @@ export const FaqView: React.FC = () => {
       </div>
 
       {/* 2. Hero Search & Title Header */}
-      <div className="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800 text-white pt-12 pb-16 px-4 sm:px-6 lg:px-8 text-center relative">
-        {/* Subtle background decoration */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(244,63,94,0.15),transparent_60%)] pointer-events-none" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,rgba(59,130,246,0.12),transparent_60%)] pointer-events-none" />
-
+      <div className="bg-white text-slate-900 border-b border-slate-100 pt-10 pb-10 px-4 sm:px-6 lg:px-8 text-center relative">
         <div className="max-w-3xl mx-auto relative z-10 space-y-4">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3.5 py-1 rounded-full">
+          <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-rose-700 bg-rose-50 border border-rose-200 px-3.5 py-1 rounded-full">
             <HelpCircle className="w-3.5 h-3.5" />
             <span>{lang === 'bn' ? 'সহায়তা কেন্দ্র ও প্রশ্নোত্তর' : 'Help & Knowledge Base'}</span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
             {lang === 'bn' ? 'আমরা কীভাবে সাহায্য করতে পারি?' : 'Frequently Asked Questions'}
           </h1>
 
-          <p className="text-sm text-slate-300 max-w-xl mx-auto leading-relaxed">
+          <p className="text-sm text-slate-600 max-w-xl mx-auto leading-relaxed">
             {lang === 'bn'
               ? 'ডেলিভারি, পেমেন্ট, ক্যাশ অন ডেলিভারি, রিফান্ড ও রিটার্ন পলিসি সংক্রান্ত যাবতীয় তথ্যের উত্তর এখানে পাবেন।'
               : 'Find quick and clear answers regarding Bangladesh nationwide delivery, COD, SSLCommerz payments, and hassle-free returns.'}
@@ -157,7 +153,7 @@ export const FaqView: React.FC = () => {
                     ? 'প্রশ্ন বা কীওয়ার্ড খুঁজুন (যেমন: ডেলিভারি, বিকাশ, রিটার্ন)...'
                     : 'Search questions or keywords (e.g. delivery, bKash, return)...'
                 }
-                className="w-full pl-12 pr-10 py-3.5 bg-white text-slate-900 placeholder:text-slate-400 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-rose-500 shadow-md border border-slate-200"
+                className="w-full pl-12 pr-10 py-3.5 bg-slate-50 text-slate-900 placeholder:text-slate-400 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-slate-400 shadow-2xs border border-slate-200"
               />
               {searchQuery && (
                 <button
@@ -174,7 +170,7 @@ export const FaqView: React.FC = () => {
       </div>
 
       {/* 3. Main Content Area */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 -mt-7">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         {/* Category Pills Card */}
         <div className="bg-white rounded-2xl p-2.5 sm:p-3 shadow-lg border border-slate-200 mb-8">
           <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none justify-start sm:justify-center">
