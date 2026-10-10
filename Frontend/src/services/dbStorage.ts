@@ -1089,6 +1089,16 @@ export function markChatConversationRead(conversationId: string, role: 'USER' | 
   }
 }
 
+export function deleteChatConversation(conversationId: string): boolean {
+  const convs = getChatConversations();
+  const updated = convs.filter((c) => c.id !== conversationId);
+  setItem(STORAGE_KEYS.CHAT_CONVERSATIONS, updated);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('deshi_chat_updated', { detail: { deletedId: conversationId } }));
+  }
+  return true;
+}
+
 // Admin Summary
 export function getAdminDashboardSummary(): AdminDashboardSummary {
   const orders = getItem<Order[]>(STORAGE_KEYS.ORDERS, INITIAL_ORDERS);
