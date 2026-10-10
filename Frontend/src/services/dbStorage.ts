@@ -15,6 +15,8 @@ import {
   SpecialOfferItem,
   SpecialOffersCampaign,
   SupportTicket,
+  ChatMessage,
+  ChatConversation,
 } from '../types';
 import {
   INITIAL_USERS,
@@ -40,6 +42,7 @@ const STORAGE_KEYS = {
   FLASH_SALE: 'deshi_flash_sale_v1',
   SPECIAL_OFFERS: 'deshi_special_offers_v1',
   SUPPORT_TICKETS: 'deshi_support_tickets_v1',
+  CHAT_CONVERSATIONS: 'deshi_chat_conversations_v1',
 };
 
 // Initialize default state
@@ -78,6 +81,9 @@ export function initDatabase() {
   }
   if (!localStorage.getItem(STORAGE_KEYS.SUPPORT_TICKETS)) {
     localStorage.setItem(STORAGE_KEYS.SUPPORT_TICKETS, JSON.stringify(INITIAL_SUPPORT_TICKETS));
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.CHAT_CONVERSATIONS)) {
+    localStorage.setItem(STORAGE_KEYS.CHAT_CONVERSATIONS, JSON.stringify(INITIAL_CHAT_CONVERSATIONS));
   }
 }
 
@@ -137,6 +143,22 @@ export function deleteUser(userId: string): boolean {
   const updated = users.filter((u) => u.id !== userId);
   setItem(STORAGE_KEYS.USERS, updated);
   return true;
+}
+
+export function updateUserProfile(userId: string, updates: Partial<User>): User {
+  const users = getUsers();
+  const idx = users.findIndex((u) => u.id === userId);
+  if (idx === -1) {
+    throw new Error('User not found');
+  }
+  const updatedUser: User = {
+    ...users[idx],
+    ...updates,
+    id: users[idx].id,
+  };
+  users[idx] = updatedUser;
+  setItem(STORAGE_KEYS.USERS, users);
+  return updatedUser;
 }
 
 // Categories
@@ -844,6 +866,226 @@ export function markSupportTicketRead(id: string): void {
   if (ticket && !ticket.isRead) {
     ticket.isRead = true;
     setItem(STORAGE_KEYS.SUPPORT_TICKETS, tickets);
+  }
+}
+
+// Live Support Direct Chat (User <-> Admin)
+export const INITIAL_CHAT_CONVERSATIONS: ChatConversation[] = [
+  {
+    id: 'conv_usr_customer',
+    userId: 'usr_customer',
+    userName: 'Tanvir Hossain',
+    userPhone: '01722222222',
+    userEmail: 'tanvir@deshicommerce.com.bd',
+    userAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&h=200&q=80',
+    lastMessage: 'Thank you for your prompt response! Looking forward to receiving the package.',
+    lastMessageTime: '10:45 AM',
+    unreadAdminCount: 0,
+    unreadUserCount: 0,
+    status: 'OPEN',
+    messages: [
+      {
+        id: 'msg_1',
+        conversationId: 'conv_usr_customer',
+        sender: 'USER',
+        senderName: 'Tanvir Hossain',
+        senderAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&h=200&q=80',
+        text: 'Assalamu Alaikum. Can you confirm if doorstep delivery is available in Bogura Sadar?',
+        timestamp: '10:30 AM',
+        isRead: true,
+      },
+      {
+        id: 'msg_2',
+        conversationId: 'conv_usr_customer',
+        sender: 'ADMIN',
+        senderName: 'Deshi Support',
+        text: 'Walaikum Assalam! Yes, brother, we deliver to all 64 districts nationwide via Steadfast & Pathao couriers. Home delivery takes 48-72 hours.',
+        timestamp: '10:35 AM',
+        isRead: true,
+      },
+      {
+        id: 'msg_3',
+        conversationId: 'conv_usr_customer',
+        sender: 'USER',
+        senderName: 'Tanvir Hossain',
+        senderAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&h=200&q=80',
+        text: 'Thank you for your prompt response! Looking forward to receiving the package.',
+        timestamp: '10:45 AM',
+        isRead: true,
+      },
+    ],
+  },
+  {
+    id: 'conv_usr_guest_demo',
+    userId: undefined,
+    userName: 'Nusrat Jahan',
+    userPhone: '01811112233',
+    userEmail: 'nusrat.jahan@gmail.com',
+    userAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&h=200&q=80',
+    lastMessage: 'Is Cash on Delivery available for organic cold-pressed juices?',
+    lastMessageTime: '11:15 AM',
+    unreadAdminCount: 1,
+    unreadUserCount: 0,
+    status: 'OPEN',
+    messages: [
+      {
+        id: 'msg_4',
+        conversationId: 'conv_usr_guest_demo',
+        sender: 'USER',
+        senderName: 'Nusrat Jahan',
+        senderAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&h=200&q=80',
+        text: 'Is Cash on Delivery available for organic cold-pressed juices?',
+        timestamp: '11:15 AM',
+        isRead: false,
+      },
+    ],
+  },
+];
+
+export function getChatConversations(): ChatConversation[] {
+  return getItem<ChatConversation[]>(STORAGE_KEYS.CHAT_CONVERSATIONS, INITIAL_CHAT_CONVERSATIONS);
+}
+
+export function getChatConversation(id: string): ChatConversation | undefined {
+  const convs = getChatConversations();
+  return convs.find((c) => c.id === id || c.userId === id);
+}
+
+export function sendUserChatMessage(payload: {
+  conversationId: string;
+  userId?: string;
+  userName: string;
+  userPhone?: string;
+  userEmail?: string;
+  userAvatar?: string;
+  text: string;
+}): { conversation: ChatConversation; message: ChatMessage } {
+  const convs = getChatConversations();
+  let conv = convs.find((c) => c.id === payload.conversationId || (payload.userId && c.userId === payload.userId));
+
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const newMsg: ChatMessage = {
+    id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    conversationId: payload.conversationId,
+    sender: 'USER',
+    senderName: payload.userName,
+    senderAvatar: payload.userAvatar,
+    text: payload.text,
+    timestamp: timeStr,
+    isRead: false,
+  };
+
+  if (!conv) {
+    conv = {
+      id: payload.conversationId,
+      userId: payload.userId,
+      userName: payload.userName,
+      userPhone: payload.userPhone,
+      userEmail: payload.userEmail,
+      userAvatar: payload.userAvatar,
+      lastMessage: payload.text,
+      lastMessageTime: timeStr,
+      unreadAdminCount: 1,
+      unreadUserCount: 0,
+      status: 'OPEN',
+      messages: [newMsg],
+    };
+    convs.unshift(conv);
+  } else {
+    conv.messages.push(newMsg);
+    conv.lastMessage = payload.text;
+    conv.lastMessageTime = timeStr;
+    conv.unreadAdminCount += 1;
+    if (payload.userName) conv.userName = payload.userName;
+    if (payload.userAvatar) conv.userAvatar = payload.userAvatar;
+    if (payload.userPhone) conv.userPhone = payload.userPhone;
+    if (payload.userEmail) conv.userEmail = payload.userEmail;
+    const idx = convs.findIndex((c) => c.id === conv!.id);
+    if (idx > 0) {
+      convs.splice(idx, 1);
+      convs.unshift(conv);
+    }
+  }
+
+  setItem(STORAGE_KEYS.CHAT_CONVERSATIONS, convs);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('deshi_chat_updated', { detail: { conversationId: conv.id } }));
+  }
+
+  return { conversation: conv, message: newMsg };
+}
+
+export function sendAdminChatMessage(payload: {
+  conversationId: string;
+  adminName: string;
+  text: string;
+}): { conversation: ChatConversation; message: ChatMessage } {
+  const convs = getChatConversations();
+  const conv = convs.find((c) => c.id === payload.conversationId);
+  if (!conv) throw new Error('Conversation not found');
+
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const newMsg: ChatMessage = {
+    id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    conversationId: conv.id,
+    sender: 'ADMIN',
+    senderName: payload.adminName || 'Deshi Support',
+    text: payload.text,
+    timestamp: timeStr,
+    isRead: false,
+  };
+
+  conv.messages.push(newMsg);
+  conv.lastMessage = payload.text;
+  conv.lastMessageTime = timeStr;
+  conv.unreadUserCount += 1;
+  conv.unreadAdminCount = 0;
+
+  setItem(STORAGE_KEYS.CHAT_CONVERSATIONS, convs);
+
+  // Trigger customer notification so they see it in their profile
+  addNotificationLog({
+    userId: conv.userId,
+    channel: 'SUPPORT',
+    event: 'SUPPORT_INQUIRY',
+    recipient: conv.userPhone || conv.userEmail || conv.userName,
+    subject: `Support Reply from ${payload.adminName || 'Admin'}`,
+    message: payload.text,
+  });
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('deshi_chat_updated', { detail: { conversationId: conv.id } }));
+    window.dispatchEvent(new CustomEvent('deshi_user_notif_updated', { detail: { userId: conv.userId } }));
+  }
+
+  return { conversation: conv, message: newMsg };
+}
+
+export function markChatConversationRead(conversationId: string, role: 'USER' | 'ADMIN'): void {
+  const convs = getChatConversations();
+  const conv = convs.find((c) => c.id === conversationId);
+  if (!conv) return;
+
+  if (role === 'USER') {
+    conv.unreadUserCount = 0;
+    conv.messages.forEach((m) => {
+      if (m.sender === 'ADMIN') m.isRead = true;
+    });
+  } else {
+    conv.unreadAdminCount = 0;
+    conv.messages.forEach((m) => {
+      if (m.sender === 'USER') m.isRead = true;
+    });
+  }
+
+  setItem(STORAGE_KEYS.CHAT_CONVERSATIONS, convs);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('deshi_chat_updated', { detail: { conversationId } }));
   }
 }
 

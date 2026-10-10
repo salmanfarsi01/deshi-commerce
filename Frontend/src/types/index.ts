@@ -7,6 +7,8 @@ export interface User {
   phone: string;
   role: Role;
   avatarUrl?: string;
+  gender?: 'male' | 'female' | 'other';
+  age?: number;
   authProvider?: 'phone' | 'email' | 'google';
   googleId?: string;
   createdAt: string;
@@ -173,6 +175,32 @@ export interface SupportTicket {
   resolvedAt?: string;
   adminNotes?: string;
   isRead?: boolean;
+}
+
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  sender: 'USER' | 'ADMIN';
+  senderName: string;
+  senderAvatar?: string;
+  text: string;
+  timestamp: string;
+  isRead: boolean;
+}
+
+export interface ChatConversation {
+  id: string;
+  userId?: string;
+  userName: string;
+  userPhone?: string;
+  userEmail?: string;
+  userAvatar?: string;
+  lastMessage: string;
+  lastMessageTime: string;
+  unreadAdminCount: number;
+  unreadUserCount: number;
+  status: 'OPEN' | 'RESOLVED';
+  messages: ChatMessage[];
 }
 
 export interface NotificationLog {

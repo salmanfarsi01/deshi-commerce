@@ -4,6 +4,8 @@ import {
   MapPin,
   Lock,
   Trash2,
+  Edit3,
+  Plus,
   ChevronRight,
   LogIn,
   UserPlus,
@@ -14,27 +16,95 @@ import {
   Mail,
   Smartphone,
   ExternalLink,
+  User as UserIcon,
+  MessageSquare,
+  Headphones,
+  Check,
+  Sparkles,
+  X,
+  AlertCircle,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/apiClient';
 import { Order, Address, NotificationLog } from '../types';
-import { formatBDT } from '../data/bangladeshGeo';
+import { formatBDT, BANGLADESH_DIVISIONS } from '../data/bangladeshGeo';
+
+// Curated stylish individual avatars for Male & Female
+const MALE_AVATARS = [
+  { id: 'm1', label: 'Casual Style', url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&h=200&q=80' },
+  { id: 'm2', label: 'Young Pro', url: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=200&h=200&q=80' },
+  { id: 'm3', label: 'Warm Smile', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&h=200&q=80' },
+  { id: 'm4', label: 'Creative', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&h=200&q=80' },
+  { id: 'm5', label: 'Illustrated Felix', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix&facialHairProbability=0' },
+  { id: 'm6', label: 'Illustrated Jack', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jack' },
+  { id: 'm7', label: 'Illustrated Leo', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Leo' },
+  { id: 'm8', label: 'Illustrated Oliver', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Oliver' },
+];
+
+const FEMALE_AVATARS = [
+  { id: 'f1', label: 'Chic Smile', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&h=200&q=80' },
+  { id: 'f2', label: 'Professional Lady', url: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=200&h=200&q=80' },
+  { id: 'f3', label: 'Modern Aesthetic', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&h=200&q=80' },
+  { id: 'f4', label: 'Creative Warmth', url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&h=200&q=80' },
+  { id: 'f5', label: 'Illustrated Aneka', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka' },
+  { id: 'f6', label: 'Illustrated Sophia', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sophia' },
+  { id: 'f7', label: 'Illustrated Maya', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Maya' },
+  { id: 'f8', label: 'Illustrated Zoe', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Zoe' },
+];
 
 export const AccountView: React.FC = () => {
-  const { user, setCurrentView, viewOrderDetail, showToast, openAuthModal, logout } = useApp();
+  const { user, setCurrentView, viewOrderDetail, showToast, openAuthModal, logout, updateUserProfile, openChat } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'notifications' | 'addresses' | 'security'>('orders');
+  const [activeTab, setActiveTab] = useState<'profile' | 'addresses' | 'orders' | 'notifications' | 'security'>('profile');
   const [orders, setOrders] = useState<Order[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [notifications, setNotifications] = useState<NotificationLog[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
 
+  // Profile Edit State
+  const [profileName, setProfileName] = useState(user?.name || '');
+  const [profilePhone, setProfilePhone] = useState(user?.phone || '');
+  const [profileEmail, setProfileEmail] = useState(user?.email || '');
+  const [profileGender, setProfileGender] = useState<'male' | 'female' | 'other'>(user?.gender || 'male');
+  const [profileAge, setProfileAge] = useState<number | ''>(user?.age ?? 25);
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState(user?.avatarUrl || MALE_AVATARS[0].url);
+  const [avatarGenderTab, setAvatarGenderTab] = useState<'male' | 'female'>((user?.gender === 'female') ? 'female' : 'male');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // Address Modal State
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
+  const [addressForm, setAddressForm] = useState({
+    fullName: '',
+    phone: '',
+    division: 'Dhaka',
+    district: 'Dhaka',
+    upazila: 'Dhanmondi',
+    streetAddress: '',
+    type: 'HOME' as 'HOME' | 'OFFICE',
+    isDefault: false,
+  });
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
+
   // Security tab
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passLoading, setPassLoading] = useState(false);
+
+  // Sync profile state when user changes
+  useEffect(() => {
+    if (user) {
+      setProfileName(user.name);
+      setProfilePhone(user.phone);
+      setProfileEmail(user.email);
+      setProfileGender(user.gender || 'male');
+      setProfileAge(user.age ?? 25);
+      if (user.avatarUrl) setProfileAvatarUrl(user.avatarUrl);
+      if (user.gender === 'female') setAvatarGenderTab('female');
+    }
+  }, [user]);
 
   useEffect(() => {
     // Pre-fetch notifications count
@@ -62,6 +132,98 @@ export const AccountView: React.FC = () => {
       });
     }
   }, [activeTab]);
+
+  // Handle Save Profile
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profileName.trim()) {
+      showToast('Name cannot be empty', 'error');
+      return;
+    }
+    if (profileAge !== '' && (Number(profileAge) < 12 || Number(profileAge) > 120)) {
+      showToast('Please enter a realistic age (12 - 120)', 'error');
+      return;
+    }
+
+    setIsSavingProfile(true);
+    try {
+      await updateUserProfile({
+        name: profileName.trim(),
+        gender: profileGender,
+        age: profileAge === '' ? undefined : Number(profileAge),
+        avatarUrl: profileAvatarUrl,
+      });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  // Open Address Modal for New
+  const handleOpenAddAddress = () => {
+    setEditingAddress(null);
+    setAddressForm({
+      fullName: user?.name || '',
+      phone: user?.phone || '',
+      division: 'Dhaka',
+      district: 'Dhaka',
+      upazila: '',
+      streetAddress: '',
+      type: 'HOME',
+      isDefault: addresses.length === 0,
+    });
+    setIsAddressModalOpen(true);
+  };
+
+  // Open Address Modal for Edit
+  const handleOpenEditAddress = (addr: Address) => {
+    setEditingAddress(addr);
+    setAddressForm({
+      fullName: addr.fullName,
+      phone: addr.phone,
+      division: addr.division || 'Dhaka',
+      district: addr.district || 'Dhaka',
+      upazila: addr.upazila || '',
+      streetAddress: addr.streetAddress || '',
+      type: addr.type || 'HOME',
+      isDefault: addr.isDefault,
+    });
+    setIsAddressModalOpen(true);
+  };
+
+  // Save Delivery Address (Create / Update)
+  const handleSaveAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addressForm.fullName.trim()) {
+      showToast('Recipient full name is required', 'error');
+      return;
+    }
+    if (!addressForm.phone.trim() || addressForm.phone.replace(/[^0-9]/g, '').length < 10) {
+      showToast('Please enter a valid Bangladesh contact mobile number', 'error');
+      return;
+    }
+    if (!addressForm.streetAddress.trim()) {
+      showToast('Street address / House / Road details are required', 'error');
+      return;
+    }
+
+    setIsSavingAddress(true);
+    try {
+      if (editingAddress) {
+        await apiService.addresses.update(editingAddress.id, addressForm);
+        showToast('Delivery address updated successfully!', 'success');
+      } else {
+        await apiService.addresses.create(addressForm);
+        showToast('New delivery address added successfully!', 'success');
+      }
+      const res = await apiService.addresses.getAll();
+      setAddresses(res.data);
+      setIsAddressModalOpen(false);
+    } catch (err: any) {
+      showToast(err.message || 'Failed to save address', 'error');
+    } finally {
+      setIsSavingAddress(false);
+    }
+  };
 
   const handleDeleteAddress = async (id: string) => {
     if (!confirm('Are you sure you want to delete this address?')) return;
@@ -112,26 +274,25 @@ export const AccountView: React.FC = () => {
   if (!user) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center px-4 py-16 bg-white">
-        <div className="max-w-md w-full bg-white p-8 border border-[#D4D4D4] rounded-2xl shadow-xs text-center space-y-6">
+        <div className="max-w-md w-full bg-white p-8 border border-slate-200 rounded-2xl shadow-xs text-center space-y-6">
           <div className="w-16 h-16 bg-slate-100 text-[#0F172A] rounded-full flex items-center justify-center mx-auto border border-slate-200">
             <LogIn className="w-8 h-8 text-[#0F172A]" />
           </div>
 
           <div>
-            <h3 className="text-xl font-bold text-[#0F172A] uppercase tracking-tight">
+            <h3 className="text-xl font-bold text-[#0F172A] tracking-tight">
               Customer Account Portal
             </h3>
             <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-              Sign in or create an account with <strong>Google Mail</strong> or your mobile number to view past orders, track live delivery consignments, and manage saved shipping addresses.
+              Sign in or create an account with <strong>Google Mail</strong> or your mobile number to view past orders, update your delivery address, and customize your profile.
             </p>
           </div>
 
-          {/* Direct Google Mail Sign In & Sign Up buttons */}
           <div className="space-y-2.5 pt-2">
             <button
               type="button"
               onClick={() => openAuthModal('login')}
-              className="rounded-lg w-full py-3 px-4 bg-white hover:bg-slate-50 text-[#0F172A] border border-slate-300 text-xs font-bold uppercase tracking-wider shadow-2xs transition-colors flex items-center justify-center gap-2.5 cursor-pointer"
+              className="rounded-xl w-full py-3 px-4 bg-white hover:bg-slate-50 text-[#0F172A] border border-slate-300 text-xs font-bold uppercase tracking-wider shadow-2xs transition-colors flex items-center justify-center gap-2.5 cursor-pointer"
             >
               <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -145,7 +306,7 @@ export const AccountView: React.FC = () => {
             <button
               type="button"
               onClick={() => openAuthModal('register')}
-              className="rounded-lg w-full py-3 px-4 bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider shadow-2xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              className="rounded-xl w-full py-3 px-4 bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider shadow-2xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               <UserPlus className="w-4 h-4" />
               <span>Sign Up (Create Account)</span>
@@ -156,14 +317,14 @@ export const AccountView: React.FC = () => {
             <button
               type="button"
               onClick={() => openAuthModal('login')}
-              className="text-slate-600 hover:text-[#0F172A] font-bold uppercase tracking-wider cursor-pointer"
+              className="text-slate-600 hover:text-[#0F172A] font-bold cursor-pointer"
             >
               Sign In with Mobile
             </button>
             <button
               type="button"
               onClick={() => setCurrentView('home')}
-              className="text-slate-900 hover:underline font-bold uppercase tracking-wider cursor-pointer"
+              className="text-slate-900 hover:underline font-bold cursor-pointer"
             >
               Return to Catalog &rarr;
             </button>
@@ -176,11 +337,11 @@ export const AccountView: React.FC = () => {
   return (
     <div className="min-h-screen pb-20 bg-white">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-        {/* User Hero Bar */}
-        <div className="bg-white p-6 sm:p-8 text-[#0F172A] shadow-xs rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 border border-slate-200">
+        {/* User Hero Bar with live avatar preview */}
+        <div className="bg-white p-5 sm:p-7 text-[#0F172A] shadow-xs rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 border border-slate-200">
           <div className="flex items-center gap-4">
             <div className="relative">
-              <div className="w-14 h-14 bg-slate-100 rounded-full text-[#0F172A] p-0.5 border border-slate-200 flex items-center justify-center font-bold text-lg">
+              <div className="w-16 h-16 bg-slate-100 rounded-full text-[#0F172A] p-0.5 border-2 border-slate-200 flex items-center justify-center font-bold text-xl overflow-hidden shadow-xs">
                 {user.avatarUrl ? (
                   <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover rounded-full" />
                 ) : (
@@ -188,7 +349,7 @@ export const AccountView: React.FC = () => {
                 )}
               </div>
               {user.authProvider === 'google' && (
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-xs border border-stone-200">
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-xs border border-slate-200">
                   <span className="text-[10px] font-black text-blue-600">G</span>
                 </div>
               )}
@@ -196,29 +357,31 @@ export const AccountView: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">{user.name}</h1>
-                {user.authProvider === 'google' && (
-                  <span className="text-[10px] font-bold text-white bg-blue-600 px-1.5 py-0.5 rounded uppercase tracking-wider">
-                    Google Mail
+                {user.gender && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 capitalize">
+                    {user.gender} {user.age ? `· ${user.age} yrs` : ''}
                   </span>
                 )}
               </div>
               <div className="text-xs text-slate-500 font-mono mt-0.5">
-                {user.phone} · {user.email}
+                {user.phone} &bull; {user.email}
               </div>
             </div>
           </div>
 
           <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2 sm:border-l sm:border-slate-200 sm:pl-6 text-xs text-slate-500">
-            <div className="text-right hidden sm:block">
-              <div>Member since</div>
-              <div className="font-bold text-slate-800">
-                {new Date(user.createdAt).toLocaleDateString('en-GB')}
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={openChat}
+              className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Headphones className="w-3.5 h-3.5 text-slate-700" />
+              <span>Direct Chat with Admin</span>
+            </button>
             <button
               type="button"
               onClick={logout}
-              className="rounded-lg px-3 py-1.5 bg-slate-50 hover:bg-rose-50 text-rose-600 border border-slate-200 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="rounded-xl px-3 py-1.5 bg-slate-50 hover:bg-rose-50 text-rose-600 border border-slate-200 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>Sign Out</span>
@@ -227,14 +390,40 @@ export const AccountView: React.FC = () => {
         </div>
 
         {/* Account Tabs */}
-        <div className="flex border-b border-[#D4D4D4] text-xs font-bold uppercase tracking-wider gap-6 mb-6">
+        <div className="flex border-b border-slate-200 text-xs font-bold uppercase tracking-wider gap-3 sm:gap-6 mb-6 overflow-x-auto no-scrollbar">
+          <button
+            type="button"
+            onClick={() => setActiveTab('profile')}
+            className={`pb-3 border-b-2 flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap ${
+              activeTab === 'profile'
+                ? 'border-[#0F172A] text-[#0F172A]'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <UserIcon className="w-4 h-4" />
+            <span>Profile &amp; Avatar</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('addresses')}
+            className={`pb-3 border-b-2 flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap ${
+              activeTab === 'addresses'
+                ? 'border-[#0F172A] text-[#0F172A]'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <MapPin className="w-4 h-4" />
+            <span>Delivery Addresses</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setActiveTab('orders')}
-            className={`rounded-none pb-3 border-b-2 flex items-center gap-2 transition-colors cursor-pointer ${
+            className={`pb-3 border-b-2 flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap ${
               activeTab === 'orders'
-                ? 'border-[#E11D48] text-[#E11D48]'
-                : 'border-transparent text-stone-500 hover:text-[#2B2B2B]'
+                ? 'border-[#0F172A] text-[#0F172A]'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
             <Package className="w-4 h-4" />
@@ -244,10 +433,10 @@ export const AccountView: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab('notifications')}
-            className={`rounded-none pb-3 border-b-2 flex items-center gap-2 transition-colors cursor-pointer ${
+            className={`pb-3 border-b-2 flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap ${
               activeTab === 'notifications'
-                ? 'border-[#E11D48] text-[#E11D48]'
-                : 'border-transparent text-stone-500 hover:text-[#2B2B2B]'
+                ? 'border-[#0F172A] text-[#0F172A]'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
             <Bell className="w-4 h-4" />
@@ -256,24 +445,11 @@ export const AccountView: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setActiveTab('addresses')}
-            className={`rounded-none pb-3 border-b-2 flex items-center gap-2 transition-colors cursor-pointer ${
-              activeTab === 'addresses'
-                ? 'border-[#E11D48] text-[#E11D48]'
-                : 'border-transparent text-stone-500 hover:text-[#2B2B2B]'
-            }`}
-          >
-            <MapPin className="w-4 h-4" />
-            <span>Saved Addresses</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => setActiveTab('security')}
-            className={`rounded-none pb-3 border-b-2 flex items-center gap-2 transition-colors cursor-pointer ${
+            className={`pb-3 border-b-2 flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap ${
               activeTab === 'security'
-                ? 'border-[#E11D48] text-[#E11D48]'
-                : 'border-transparent text-stone-500 hover:text-[#2B2B2B]'
+                ? 'border-[#0F172A] text-[#0F172A]'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
             <Lock className="w-4 h-4" />
@@ -281,24 +457,343 @@ export const AccountView: React.FC = () => {
           </button>
         </div>
 
-        {/* Tab 1: Orders */}
+        {/* =========================================================================
+            TAB 1: PROFILE, GENDER, AGE & MALE/FEMALE AVATAR PICKER
+        ========================================================================= */}
+        {activeTab === 'profile' && (
+          <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-xs max-w-3xl space-y-8">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Personal Profile &amp; Avatar</h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Customize your gender, age, and choose your preferred male or female avatar illustration.
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="space-y-6">
+              {/* Basic Fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={profileName}
+                    onChange={(e) => setProfileName(e.target.value)}
+                    required
+                    className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-slate-800 focus:outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Contact Mobile Number
+                  </label>
+                  <input
+                    type="text"
+                    value={profilePhone}
+                    disabled
+                    className="w-full px-3.5 py-2.5 text-xs bg-slate-100 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed font-mono"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">Phone number is verified and tied to your account</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={profileEmail}
+                    disabled
+                    className="w-full px-3.5 py-2.5 text-xs bg-slate-100 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed font-mono"
+                  />
+                </div>
+
+                {/* AGE FIELD */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Age (Years)
+                  </label>
+                  <input
+                    type="number"
+                    min="12"
+                    max="120"
+                    value={profileAge}
+                    onChange={(e) => setProfileAge(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="e.g. 26"
+                    className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-slate-800 focus:outline-none transition-all font-mono"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">Helps us curate appropriate deals &amp; recommendations</span>
+                </div>
+              </div>
+
+              {/* GENDER SELECTION */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Gender Selection
+                </label>
+                <div className="grid grid-cols-3 gap-3 max-w-md">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileGender('male');
+                      setAvatarGenderTab('male');
+                    }}
+                    className={`py-3 px-4 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
+                      profileGender === 'male'
+                        ? 'border-slate-900 bg-slate-900 text-white shadow-xs font-bold'
+                        : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium'
+                    }`}
+                  >
+                    <span className="text-lg">👨</span>
+                    <span className="text-xs">Male</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileGender('female');
+                      setAvatarGenderTab('female');
+                    }}
+                    className={`py-3 px-4 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
+                      profileGender === 'female'
+                        ? 'border-slate-900 bg-slate-900 text-white shadow-xs font-bold'
+                        : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium'
+                    }`}
+                  >
+                    <span className="text-lg">👩</span>
+                    <span className="text-xs">Female</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setProfileGender('other')}
+                    className={`py-3 px-4 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
+                      profileGender === 'other'
+                        ? 'border-slate-900 bg-slate-900 text-white shadow-xs font-bold'
+                        : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium'
+                    }`}
+                  >
+                    <span className="text-lg">✨</span>
+                    <span className="text-xs">Other</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* AVATAR CHOOSING SECTION FOR MALE & FEMALE */}
+              <div className="pt-4 border-t border-slate-100 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider">
+                      Choose Your Avatar
+                    </label>
+                    <p className="text-[11px] text-slate-500">
+                      Select an avatar icon that reflects your style. Click to preview immediately.
+                    </p>
+                  </div>
+
+                  {/* Male / Female Avatar Tab Toggle */}
+                  <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200 self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => setAvatarGenderTab('male')}
+                      className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                        avatarGenderTab === 'male'
+                          ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      👨 Male Avatars
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAvatarGenderTab('female')}
+                      className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                        avatarGenderTab === 'female'
+                          ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      👩 Female Avatars
+                    </button>
+                  </div>
+                </div>
+
+                {/* Avatar Gallery Grid */}
+                <div className="grid grid-cols-4 sm:grid-cols-8 gap-3 pt-2">
+                  {(avatarGenderTab === 'male' ? MALE_AVATARS : FEMALE_AVATARS).map((av) => {
+                    const isSelected = profileAvatarUrl === av.url;
+                    return (
+                      <button
+                        key={av.id}
+                        type="button"
+                        onClick={() => setProfileAvatarUrl(av.url)}
+                        className={`relative aspect-square rounded-2xl overflow-hidden p-1 transition-all duration-200 cursor-pointer group ${
+                          isSelected
+                            ? 'ring-3 ring-slate-900 ring-offset-2 bg-slate-900'
+                            : 'border-2 border-slate-200 hover:border-slate-400 bg-slate-50'
+                        }`}
+                        title={av.label}
+                      >
+                        <img
+                          src={av.url}
+                          alt={av.label}
+                          className="w-full h-full object-cover rounded-xl group-hover:scale-105 transition-transform"
+                        />
+                        {isSelected && (
+                          <div className="absolute top-1.5 right-1.5 w-4 h-4 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-xs">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Save Button */}
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-end">
+                <button
+                  type="submit"
+                  disabled={isSavingProfile}
+                  className="px-6 py-2.5 bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-xs cursor-pointer flex items-center gap-2"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{isSavingProfile ? 'Saving...' : 'Save Profile Changes'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* =========================================================================
+            TAB 2: SAVED DELIVERY ADDRESSES (UPDATE & ADD OPTIONS)
+        ========================================================================= */}
+        {activeTab === 'addresses' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Your Delivery Addresses</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Manage shipping addresses across all 64 districts in Bangladesh for one-click checkout.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenAddAddress}
+                className="px-4 py-2 bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0 self-start sm:self-auto"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Delivery Address</span>
+              </button>
+            </div>
+
+            {/* Address Cards Grid */}
+            {addresses.length === 0 ? (
+              <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 shadow-xs">
+                <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400 border border-slate-200">
+                  <MapPin className="w-6 h-6 text-slate-400" />
+                </div>
+                <h4 className="font-bold text-slate-900 text-sm mb-1">No Delivery Address Saved Yet</h4>
+                <p className="text-xs text-slate-500 mb-4 max-w-sm mx-auto">
+                  Add your home or office address to ensure quick and smooth doorstep parcel delivery.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleOpenAddAddress}
+                  className="px-4 py-2 bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                >
+                  + Add First Delivery Address
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {addresses.map((addr) => (
+                  <div
+                    key={addr.id}
+                    className={`bg-white p-5 sm:p-6 rounded-2xl border transition-all flex flex-col justify-between space-y-4 shadow-xs ${
+                      addr.isDefault ? 'border-slate-900 ring-1 ring-slate-900/10' : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-slate-900">{addr.fullName}</span>
+                          <span className="text-[10px] font-bold text-slate-600 px-2 py-0.5 bg-slate-100 rounded-md uppercase tracking-wider border border-slate-200">
+                            {addr.type || 'HOME'}
+                          </span>
+                        </div>
+                        {addr.isDefault ? (
+                          <span className="text-[10px] font-bold text-white bg-[#0F172A] px-2 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
+                            Default Address
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleSetDefaultAddress(addr)}
+                            className="text-[11px] text-slate-500 hover:text-slate-900 hover:underline font-semibold cursor-pointer uppercase tracking-wider"
+                          >
+                            Set Default
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="text-xs font-mono text-slate-600 mt-1">{addr.phone}</div>
+                      <div className="text-xs text-slate-800 mt-2 font-medium leading-relaxed">{addr.streetAddress}</div>
+                      <div className="text-[11px] text-slate-500 font-medium mt-1">
+                        {addr.upazila ? `${addr.upazila}, ` : ''}{addr.district}, {addr.division}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                      {/* Edit Address Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditAddress(addr)}
+                        className="text-xs font-bold text-slate-700 hover:text-[#0F172A] flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Update / Edit</span>
+                      </button>
+
+                      {/* Delete Address Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAddress(addr.id)}
+                        className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* =========================================================================
+            TAB 3: ORDERS
+        ========================================================================= */}
         {activeTab === 'orders' && (
           <div className="space-y-4">
             {loadingOrders ? (
-              <div className="p-12 text-center text-stone-500 text-xs">Loading orders...</div>
+              <div className="p-12 text-center text-slate-500 text-xs">Loading orders...</div>
             ) : orders.length === 0 ? (
-              <div className="bg-white p-12 text-center border border-[#D4D4D4]">
-                <div className="w-14 h-14 bg-rose-50 flex items-center justify-center mx-auto mb-3 text-stone-400 border border-rose-200">
-                  <Package className="w-7 h-7 text-[#E11D48]" />
+              <div className="bg-white p-12 text-center border border-slate-200 rounded-2xl shadow-xs">
+                <div className="w-14 h-14 bg-slate-50 flex items-center justify-center mx-auto mb-3 text-slate-400 border border-slate-200 rounded-full">
+                  <Package className="w-7 h-7 text-slate-700" />
                 </div>
-                <h4 className="font-bold text-[#2B2B2B] text-base mb-1 uppercase tracking-wider">No orders yet</h4>
-                <p className="text-xs text-stone-500 mb-4">
-                  Browse products and place your first order with doorstep delivery.
+                <h4 className="font-bold text-slate-900 text-base mb-1 tracking-tight">No orders yet</h4>
+                <p className="text-xs text-slate-500 mb-4 max-w-sm mx-auto">
+                  Browse products and place your first order with doorstep cash on delivery nationwide.
                 </p>
                 <button
                   type="button"
                   onClick={() => setCurrentView('catalog')}
-                  className="rounded-none px-4 py-2 bg-[#2B2B2B] hover:bg-[#E11D48] text-white text-xs font-bold cursor-pointer uppercase tracking-wider transition-colors"
+                  className="rounded-xl px-5 py-2.5 bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer shadow-xs"
                 >
                   Start Shopping
                 </button>
@@ -307,64 +802,45 @@ export const AccountView: React.FC = () => {
               orders.map((ord) => (
                 <div
                   key={ord.id}
-                  className="bg-white p-5 sm:p-6 border border-[#D4D4D4] hover:border-[#2B2B2B] transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 hover:border-slate-300 transition-all shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4"
                 >
-                  <div className="space-y-2 flex-1">
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                      <span className="font-bold font-mono text-[#2B2B2B] text-sm">
-                        #{ord.orderNumber}
+                  <div className="space-y-1.5 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono font-bold text-sm text-slate-900">
+                        Order #{ord.orderNumber}
                       </span>
-                      <span className="text-stone-400">·</span>
-                      <span className="text-stone-500">
-                        {new Date(ord.createdAt).toLocaleDateString('en-GB')}
-                      </span>
-                      <span className="text-stone-400">·</span>
                       <span
-                        className={`font-bold px-2 py-0.5 text-[10px] uppercase ${
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
                           ord.status === 'DELIVERED'
-                            ? 'bg-slate-900 text-white'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             : ord.status === 'SHIPPED'
-                            ? 'bg-blue-50 text-blue-800 border border-blue-200'
+                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
                             : ord.status === 'CANCELLED'
-                            ? 'bg-red-50 text-red-800 border border-red-200'
-                            : ord.status === 'CONFIRMED'
-                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
-                            : 'bg-stone-100 text-stone-800'
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200'
                         }`}
                       >
                         {ord.status}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-3 overflow-x-auto py-1">
-                      {ord.items.map((item) => (
-                        <div key={item.id} className="flex items-center gap-2 shrink-0">
-                          <img
-                            src={item.productImage}
-                            alt={item.productName}
-                            className="w-10 h-10 object-cover bg-stone-100 border border-[#D4D4D4]"
-                          />
-                          <div className="text-[11px] max-w-[140px] truncate">
-                            <span className="font-bold text-[#2B2B2B]">{item.productName}</span>
-                            <div className="text-stone-400">Qty: {item.quantity}</div>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="text-xs text-slate-500 font-mono">
+                      Placed on {new Date(ord.createdAt).toLocaleDateString('en-GB')} &bull; {ord.items.length} item(s)
+                    </div>
+
+                    <div className="text-xs text-slate-700 pt-1">
+                      Shipping to: <strong className="text-slate-900">{ord.shippingAddress.fullName}</strong> ({ord.shippingAddress.district})
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between md:flex-col md:items-end gap-2 border-t md:border-t-0 pt-3 md:pt-0 border-stone-200">
-                    <div className="text-right">
-                      <div className="text-[11px] text-stone-500 uppercase tracking-wider">Total</div>
-                      <div className="text-base font-bold font-mono text-[#E11D48] tabular-nums">
-                        {formatBDT(ord.totalAmount)}
-                      </div>
+                  <div className="flex md:flex-col items-end justify-between md:justify-center gap-3 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                    <div className="text-base font-black text-slate-900 font-mono">
+                      {formatBDT(ord.totalAmount)}
                     </div>
-
                     <button
                       type="button"
                       onClick={() => viewOrderDetail(ord.id)}
-                      className="rounded-none px-4 py-2 bg-[#2B2B2B] hover:bg-[#E11D48] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+                      className="px-4 py-2 bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                     >
                       <span>Track Order</span>
                       <ChevronRight className="w-3.5 h-3.5" />
@@ -376,175 +852,105 @@ export const AccountView: React.FC = () => {
           </div>
         )}
 
-        {/* Tab 2: Notifications / Updates & Alerts */}
+        {/* =========================================================================
+            TAB 4: NOTIFICATIONS & UPDATES (INCLUDING CHAT SUPPORT REPLIES)
+        ========================================================================= */}
         {activeTab === 'notifications' && (
           <div className="space-y-4">
             {loadingNotifications ? (
-              <div className="p-12 text-center text-stone-500 text-xs">Loading notifications...</div>
+              <div className="p-12 text-center text-slate-500 text-xs">Loading alerts...</div>
             ) : notifications.length === 0 ? (
-              <div className="bg-white p-12 text-center border border-[#D4D4D4]">
-                <div className="w-14 h-14 bg-rose-50 flex items-center justify-center mx-auto mb-3 text-stone-400 border border-rose-200">
-                  <Bell className="w-7 h-7 text-[#E11D48]" />
-                </div>
-                <h4 className="font-bold text-[#2B2B2B] text-base mb-1 uppercase tracking-wider">No notifications yet</h4>
-                <p className="text-xs text-stone-500 mb-4">
-                  Order updates, SMS dispatches, and email alerts will appear here in real-time.
+              <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 shadow-xs">
+                <Bell className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                <h4 className="font-bold text-slate-900 text-sm">No Notifications Yet</h4>
+                <p className="text-xs text-slate-500 mt-1">
+                  Updates on orders and direct replies from our admin team will appear here.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('orders')}
-                  className="rounded-none px-4 py-2 bg-[#2B2B2B] hover:bg-[#E11D48] text-white text-xs font-bold cursor-pointer uppercase tracking-wider transition-colors"
-                >
-                  View My Orders
-                </button>
               </div>
             ) : (
-              notifications.map((notif) => (
-                <div
-                  key={notif.id}
-                  className="bg-white p-5 sm:p-6 border border-[#D4D4D4] hover:border-[#2B2B2B] transition-colors flex flex-col md:flex-row md:items-start justify-between gap-4"
-                >
-                  <div className="space-y-2 flex-1">
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                      {/* Channel Badge */}
-                      <span
-                        className={`inline-flex items-center gap-1 font-bold px-2 py-0.5 text-[10px] uppercase ${
-                          notif.channel === 'EMAIL'
-                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        }`}
-                      >
-                        {notif.channel === 'EMAIL' ? <Mail className="w-3 h-3" /> : <Smartphone className="w-3 h-3" />}
-                        {notif.channel}
-                      </span>
+              notifications.map((notif) => {
+                const isSupportChat = notif.channel === 'SUPPORT' || notif.event === 'SUPPORT_INQUIRY';
+                return (
+                  <div
+                    key={notif.id}
+                    className={`bg-white p-5 sm:p-6 rounded-2xl border transition-all flex flex-col md:flex-row md:items-start justify-between gap-4 shadow-xs ${
+                      isSupportChat ? 'border-blue-200 bg-blue-50/20' : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="space-y-2 flex-1">
+                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                        {/* Channel Badge */}
+                        <span
+                          className={`inline-flex items-center gap-1 font-bold px-2 py-0.5 text-[10px] rounded-md uppercase tracking-wider ${
+                            isSupportChat
+                              ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                              : notif.channel === 'EMAIL'
+                              ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          }`}
+                        >
+                          {isSupportChat ? (
+                            <Headphones className="w-3 h-3" />
+                          ) : notif.channel === 'EMAIL' ? (
+                            <Mail className="w-3 h-3" />
+                          ) : (
+                            <Smartphone className="w-3 h-3" />
+                          )}
+                          {isSupportChat ? 'LIVE SUPPORT' : notif.channel}
+                        </span>
 
-                      {/* Event Badge */}
-                      <span
-                        className={`font-bold px-2 py-0.5 text-[10px] uppercase ${
-                          notif.event === 'ORDER_CONFIRMED'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : notif.event === 'ORDER_SHIPPED'
-                            ? 'bg-blue-100 text-blue-800'
-                            : notif.event === 'ORDER_DELIVERED'
-                            ? 'bg-slate-900 text-white'
-                            : notif.event === 'ORDER_CANCELLED'
-                            ? 'bg-rose-100 text-rose-800'
-                            : 'bg-stone-100 text-stone-800'
-                        }`}
-                      >
-                        {notif.event.replace('_', ' ')}
-                      </span>
+                        <span className="text-slate-400">&bull;</span>
+                        <span className="text-slate-500 font-mono text-[11px]">
+                          {new Date(notif.timestamp).toLocaleString('en-GB')}
+                        </span>
+                      </div>
 
-                      <span className="text-stone-400">·</span>
-                      <span className="text-stone-500 font-mono text-[11px]">
-                        {new Date(notif.timestamp).toLocaleString('en-GB')}
-                      </span>
-
-                      {notif.orderNumber && (
-                        <>
-                          <span className="text-stone-400">·</span>
-                          <span className="font-mono text-stone-700 font-bold text-[11px]">
-                            Order #{notif.orderNumber}
-                          </span>
-                        </>
+                      {notif.subject && (
+                        <h4 className="text-sm font-bold text-slate-900">{notif.subject}</h4>
                       )}
+
+                      <div className="text-xs text-slate-700 bg-white p-3.5 rounded-xl border border-slate-200 leading-relaxed font-sans shadow-2xs">
+                        {notif.message}
+                      </div>
                     </div>
 
-                    {notif.subject && (
-                      <h4 className="text-sm font-bold text-[#2B2B2B]">{notif.subject}</h4>
-                    )}
-
-                    <div className="text-xs text-stone-600 bg-[#F8F9FA] p-3 border border-[#E5E7EB] font-mono whitespace-pre-wrap leading-relaxed">
-                      {notif.message}
-                    </div>
-
-                    <div className="flex items-center gap-2 text-[11px] text-stone-400">
-                      <span>Recipient:</span>
-                      <span className="font-mono text-stone-600">{notif.recipient}</span>
+                    <div className="flex md:flex-col items-end shrink-0 pt-2 md:pt-0">
+                      {isSupportChat ? (
+                        <button
+                          type="button"
+                          onClick={openChat}
+                          className="px-4 py-2 bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>Open Live Chat</span>
+                        </button>
+                      ) : notif.orderId ? (
+                        <button
+                          type="button"
+                          onClick={() => viewOrderDetail(notif.orderId!)}
+                          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
+                        >
+                          <span>View Order</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      ) : null}
                     </div>
                   </div>
-
-                  {notif.orderId && (
-                    <div className="flex md:flex-col items-end shrink-0 pt-2 md:pt-0">
-                      <button
-                        type="button"
-                        onClick={() => viewOrderDetail(notif.orderId!)}
-                        className="rounded-none px-3 py-1.5 bg-[#2B2B2B] hover:bg-[#E11D48] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer"
-                      >
-                        <span>View Order</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}
 
-        {/* Tab 2: Addresses */}
-        {activeTab === 'addresses' && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {addresses.map((addr) => (
-                <div
-                  key={addr.id}
-                  className={`bg-white p-5 border-2 flex flex-col justify-between space-y-3 ${
-                    addr.isDefault ? 'border-[#2B2B2B] bg-[#F8F9FA]' : 'border-[#D4D4D4]'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-[#2B2B2B]">{addr.fullName}</span>
-                        <span className="text-[10px] font-bold text-stone-600 px-1.5 py-0.5 bg-stone-100 uppercase">
-                          {addr.type || 'HOME'}
-                        </span>
-                      </div>
-                      {addr.isDefault ? (
-                        <span className="text-[10px] font-bold text-white bg-[#2B2B2B] px-2 py-0.5 uppercase">
-                          Default
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleSetDefaultAddress(addr)}
-                          className="rounded-none text-[11px] text-[#E11D48] hover:underline font-bold cursor-pointer uppercase"
-                        >
-                          Set Default
-                        </button>
-                      )}
-                    </div>
-                    <div className="text-xs font-mono text-stone-500">{addr.phone}</div>
-                    <div className="text-xs text-stone-700 mt-2">{addr.streetAddress}</div>
-                    <div className="text-[11px] text-stone-500 font-medium">
-                      {addr.upazila}, {addr.district}, {addr.division}
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end pt-2 border-t border-[#D4D4D4]">
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteAddress(addr.id)}
-                      className="rounded-none text-xs text-red-700 hover:text-red-900 flex items-center gap-1 font-bold cursor-pointer uppercase tracking-wider"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tab 3: Security */}
+        {/* =========================================================================
+            TAB 5: SECURITY
+        ========================================================================= */}
         {activeTab === 'security' && (
-          <div className="max-w-md bg-white p-6 border border-[#D4D4D4] shadow-xs">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[#2B2B2B] mb-4">Change Account Password</h3>
+          <div className="max-w-md bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-xs">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 mb-4">Change Password</h3>
             <form onSubmit={handleChangePassword} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Current Password
                 </label>
                 <input
@@ -553,12 +959,12 @@ export const AccountView: React.FC = () => {
                   onChange={(e) => setOldPassword(e.target.value)}
                   required
                   placeholder="Enter current password"
-                  className="rounded-none w-full px-3 py-2 text-xs bg-[#F8F9FA] border border-[#D4D4D4]"
+                  className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-slate-800 focus:outline-none transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   New Password
                 </label>
                 <input
@@ -567,12 +973,12 @@ export const AccountView: React.FC = () => {
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
                   placeholder="Min 6 characters"
-                  className="rounded-none w-full px-3 py-2 text-xs bg-[#F8F9FA] border border-[#D4D4D4]"
+                  className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-slate-800 focus:outline-none transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Confirm New Password
                 </label>
                 <input
@@ -581,14 +987,14 @@ export const AccountView: React.FC = () => {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   placeholder="Re-enter new password"
-                  className="rounded-none w-full px-3 py-2 text-xs bg-[#F8F9FA] border border-[#D4D4D4]"
+                  className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-slate-800 focus:outline-none transition-all"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={passLoading}
-                className="rounded-none w-full py-2.5 bg-[#2B2B2B] hover:bg-[#E11D48] text-white text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                className="w-full py-3 bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer shadow-xs"
               >
                 {passLoading ? 'Updating...' : 'Update Password'}
               </button>
@@ -596,6 +1002,196 @@ export const AccountView: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* =========================================================================
+          DELIVERY ADDRESS UPDATE / ADD MODAL
+      ========================================================================= */}
+      {isAddressModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-[#0F172A] text-white p-4 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-emerald-400" />
+                <h3 className="text-sm font-bold uppercase tracking-wider">
+                  {editingAddress ? 'Update Delivery Address' : 'Add New Delivery Address'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddressModalOpen(false)}
+                className="w-7 h-7 rounded-full hover:bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAddress} className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Recipient Full Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={addressForm.fullName}
+                  onChange={(e) => setAddressForm({ ...addressForm, fullName: e.target.value })}
+                  placeholder="Recipient full name"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-slate-800 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Contact Mobile Number *
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={addressForm.phone}
+                  onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
+                  placeholder="e.g. 01700000000"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-slate-800 focus:outline-none font-mono"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Division *
+                  </label>
+                  <select
+                    value={addressForm.division}
+                    onChange={(e) => {
+                      const newDiv = e.target.value;
+                      const divObj = BANGLADESH_DIVISIONS.find((d) => d.name === newDiv);
+                      const firstDist = divObj?.districts[0] || 'Dhaka';
+                      setAddressForm({
+                        ...addressForm,
+                        division: newDiv,
+                        district: firstDist,
+                      });
+                    }}
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-slate-800 focus:outline-none cursor-pointer"
+                  >
+                    {BANGLADESH_DIVISIONS.map((d) => (
+                      <option key={d.name} value={d.name}>
+                        {d.name} Division
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    District *
+                  </label>
+                  <select
+                    value={addressForm.district}
+                    onChange={(e) => setAddressForm({ ...addressForm, district: e.target.value })}
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-slate-800 focus:outline-none cursor-pointer"
+                  >
+                    {(
+                      BANGLADESH_DIVISIONS.find((d) => d.name === addressForm.division)?.districts || [
+                        'Dhaka',
+                      ]
+                    ).map((dist) => (
+                      <option key={dist} value={dist}>
+                        {dist}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Thana / Upazila / Area *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={addressForm.upazila}
+                  onChange={(e) => setAddressForm({ ...addressForm, upazila: e.target.value })}
+                  placeholder="e.g. Dhanmondi, Gulshan, Uttara, Sadar"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-slate-800 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Street Address / House / Road Details *
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  value={addressForm.streetAddress}
+                  onChange={(e) => setAddressForm({ ...addressForm, streetAddress: e.target.value })}
+                  placeholder="House #, Road #, Sector/Block, Flat/Floor details"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-slate-800 focus:outline-none leading-relaxed"
+                />
+              </div>
+
+              {/* Address Type & Default */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+                <div className="flex items-center gap-3">
+                  <label className="font-bold text-slate-700 uppercase tracking-wider text-[11px]">Type:</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAddressForm({ ...addressForm, type: 'HOME' })}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+                        addressForm.type === 'HOME'
+                          ? 'bg-[#0F172A] text-white'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      Home
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAddressForm({ ...addressForm, type: 'OFFICE' })}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+                        addressForm.type === 'OFFICE'
+                          ? 'bg-[#0F172A] text-white'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      Office
+                    </button>
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={addressForm.isDefault}
+                    onChange={(e) => setAddressForm({ ...addressForm, isDefault: e.target.checked })}
+                    className="w-4 h-4 rounded accent-[#0F172A]"
+                  />
+                  <span className="text-xs text-slate-700 font-semibold">Set as default</span>
+                </label>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddressModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingAddress}
+                  className="px-5 py-2.5 rounded-xl bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-xs"
+                >
+                  {isSavingAddress ? 'Saving...' : editingAddress ? 'Update Address' : 'Save Address'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -53,6 +53,12 @@ import {
   updateSupportTicket,
   deleteSupportTicket,
   markSupportTicketRead,
+  updateUserProfile,
+  getChatConversations,
+  getChatConversation,
+  sendUserChatMessage,
+  sendAdminChatMessage,
+  markChatConversationRead,
 } from './dbStorage';
 import {
   Category,
@@ -73,6 +79,8 @@ import {
   SpecialOfferItem,
   SpecialOffersCampaign,
   SupportTicket,
+  ChatMessage,
+  ChatConversation,
 } from '../types';
 
 // Initialize localStorage on module load
@@ -1475,6 +1483,35 @@ export const apiService = {
       return wrapSuccess(getCurrentUser());
     },
 
+    updateProfile: async (data: Partial<User>): Promise<ApiResponse<User>> => {
+      try {
+        const res = await apiClient.patch<ApiResponse<any>>('/users/me', data);
+        if (res.data?.data) {
+          const u = res.data.data;
+          const user: User = {
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            phone: u.phone,
+            role: u.role,
+            avatarUrl: u.avatarUrl,
+            gender: u.gender,
+            age: u.age,
+            createdAt: u.createdAt || new Date().toISOString(),
+          };
+          updateUserProfile(user.id, user);
+          return wrapSuccess(user, 'Profile updated successfully');
+        }
+      } catch (err) {
+        // Fallback
+      }
+      await simulateDelay(60);
+      const current = getCurrentUser();
+      if (!current) throw new Error('Not authenticated');
+      const updated = updateUserProfile(current.id, data);
+      return wrapSuccess(updated, 'Profile updated successfully');
+    },
+
     switchDemoUser: async (role: 'CUSTOMER' | 'ADMIN'): Promise<ApiResponse<User>> => {
       if (role === 'ADMIN') {
         try {
@@ -1974,6 +2011,46 @@ export const apiService = {
     },
     markRead: async (id: string): Promise<ApiResponse<void>> => {
       markSupportTicketRead(id);
+      return wrapSuccess(undefined);
+    },
+  },
+  // =========================================================================
+  // LIVE SUPPORT CHATBOT (USER <-> ADMIN DIRECT MESSAGING)
+  // =========================================================================
+  chat: {
+    getConversations: async (): Promise<ApiResponse<ChatConversation[]>> => {
+      await simulateDelay(20);
+      return wrapSuccess(getChatConversations());
+    },
+    getConversation: async (id: string): Promise<ApiResponse<ChatConversation | null>> => {
+      await simulateDelay(20);
+      const conv = getChatConversation(id);
+      return wrapSuccess(conv || null);
+    },
+    sendUserMessage: async (payload: {
+      conversationId: string;
+      userId?: string;
+      userName: string;
+      userPhone?: string;
+      userEmail?: string;
+      userAvatar?: string;
+      text: string;
+    }): Promise<ApiResponse<ChatMessage>> => {
+      await simulateDelay(30);
+      const res = sendUserChatMessage(payload);
+      return wrapSuccess(res.message, 'Message sent to support team');
+    },
+    sendAdminReply: async (payload: {
+      conversationId: string;
+      adminName: string;
+      text: string;
+    }): Promise<ApiResponse<ChatMessage>> => {
+      await simulateDelay(30);
+      const res = sendAdminChatMessage(payload);
+      return wrapSuccess(res.message, 'Reply sent to customer');
+    },
+    markRead: async (conversationId: string, role: 'USER' | 'ADMIN'): Promise<ApiResponse<void>> => {
+      markChatConversationRead(conversationId, role);
       return wrapSuccess(undefined);
     },
   },

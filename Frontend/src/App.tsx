@@ -5,7 +5,7 @@ import { ToastContainer } from './components/ToastContainer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { Footer } from './components/Footer';
 import { CatalogView } from './views/CatalogView';
-import { WhatsAppChatWidget } from './components/WhatsAppChatWidget';
+import { LiveSupportChatbot } from './components/LiveSupportChatbot';
 
 // Code-split heavy customer modals
 const CartDrawer = lazy(() =>
@@ -114,7 +114,7 @@ const MainLayout: React.FC = () => {
       </Suspense>
 
       <ToastContainer />
-      <WhatsAppChatWidget />
+      <LiveSupportChatbot />
       <MobileBottomNav />
     </div>
   );

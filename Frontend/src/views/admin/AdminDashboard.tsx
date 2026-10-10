@@ -71,6 +71,7 @@ import { AdminSalesTrendChart } from './components/AdminSalesTrendChart';
 import { AdminPieChart } from './components/AdminPieChart';
 import { AdminFlashSaleTab } from './components/AdminFlashSaleTab';
 import { AdminSpecialOffersTab } from './components/AdminSpecialOffersTab';
+import { AdminLiveChatTab } from './components/AdminLiveChatTab';
 const ProductUploadModal = React.lazy(() =>
   import('./components/ProductUploadModal').then((m) => ({ default: m.ProductUploadModal }))
 );
@@ -91,7 +92,7 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'orders' | 'products' | 'flash-sale' | 'special-offers' | 'hero' | 'categories' | 'users' | 'faqs' | 'notifications'
+    'overview' | 'orders' | 'products' | 'flash-sale' | 'special-offers' | 'hero' | 'categories' | 'users' | 'faqs' | 'notifications' | 'live-chat'
   >('overview');
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -149,12 +150,13 @@ export const AdminDashboard: React.FC = () => {
   const [supportSearch, setSupportSearch] = useState<string>('');
   const [notificationSubTab, setNotificationSubTab] = useState<'SUPPORT' | 'LOGS'>('SUPPORT');
   const [ticketNotesInput, setTicketNotesInput] = useState<{ [ticketId: string]: string }>({});
+  const [unreadChatsCount, setUnreadChatsCount] = useState<number>(0);
 
   // Load all initial data from API service
   const loadData = async () => {
     setLoading(true);
     try {
-      const [sumRes, ordRes, prdRes, catRes, notRes, heroRes, usersRes, faqsRes, flashRes, offersRes, ticketsRes] = await Promise.all([
+      const [sumRes, ordRes, prdRes, catRes, notRes, heroRes, usersRes, faqsRes, flashRes, offersRes, ticketsRes, chatRes] = await Promise.all([
         apiService.admin.getDashboardSummary(),
         apiService.admin.getOrders(),
         apiService.products.getAll({ size: 100 }),
@@ -166,6 +168,7 @@ export const AdminDashboard: React.FC = () => {
         apiService.flashSale.getCampaign(),
         apiService.specialOffers.getCampaign(),
         apiService.support.getTickets(),
+        apiService.chat.getConversations(),
       ]);
       setSummary(sumRes.data);
       setOrders(ordRes.data);
@@ -180,6 +183,10 @@ export const AdminDashboard: React.FC = () => {
         setSpecialOffersCount(offersRes.data.items.filter((i) => i.active).length);
       }
       if (ticketsRes?.data) setSupportTickets(ticketsRes.data);
+      if (chatRes?.data) {
+        const unread = chatRes.data.reduce((acc, c) => acc + (c.unreadByAdmin || 0), 0);
+        setUnreadChatsCount(unread);
+      }
     } catch (err) {
       console.error(err);
       showToast('Error syncing admin metrics', 'error');
@@ -201,11 +208,22 @@ export const AdminDashboard: React.FC = () => {
       showToast('New Customer Support message received!', 'info');
     };
 
+    const handleChatUpdate = () => {
+      apiService.chat.getConversations().then((res) => {
+        if (res.data) {
+          const unread = res.data.reduce((acc, c) => acc + (c.unreadByAdmin || 0), 0);
+          setUnreadChatsCount(unread);
+        }
+      });
+    };
+
     window.addEventListener('deshi_support_ticket_added', handleTicketAdded);
     window.addEventListener('support_ticket_submitted', handleTicketAdded);
+    window.addEventListener('deshi_chat_updated', handleChatUpdate);
     return () => {
       window.removeEventListener('deshi_support_ticket_added', handleTicketAdded);
       window.removeEventListener('support_ticket_submitted', handleTicketAdded);
+      window.removeEventListener('deshi_chat_updated', handleChatUpdate);
     };
   }, []);
 
@@ -1026,6 +1044,30 @@ export const AdminDashboard: React.FC = () => {
               <span className="text-[10px] text-slate-500 font-mono">{supportTickets.length}</span>
             )}
           </button>
+
+          {/* Live Chat Direct Messaging */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('live-chat');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'live-chat'
+                ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900'
+            }`}
+          >
+            <MessageCircle className="w-4 h-4 text-emerald-400" />
+            <span className="flex-1 text-left">Live Chat Support</span>
+            {unreadChatsCount > 0 ? (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-white animate-pulse shadow-xs">
+                {unreadChatsCount} new
+              </span>
+            ) : (
+              <span className="text-[10px] text-emerald-400 font-mono font-medium">Direct</span>
+            )}
+          </button>
         </nav>
 
         {/* Sidebar Footer with Admin Profile & Sign Out */}
@@ -1096,11 +1138,28 @@ export const AdminDashboard: React.FC = () => {
               {activeTab === 'users' && 'Users'}
               {activeTab === 'faqs' && 'FAQs'}
               {activeTab === 'notifications' && `Inquiries & Notifications (${supportTickets.length})`}
+              {activeTab === 'live-chat' && `Direct Customer Live Chat (${unreadChatsCount > 0 ? `${unreadChatsCount} unread` : 'Connected'})`}
             </h1>
           </div>
 
           {/* Action buttons */}
           <div className="flex items-center gap-2">
+            {/* Direct Live Chat Button with Real-time Unread Badge */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('live-chat')}
+              className="relative p-2 sm:px-3 sm:py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer border border-slate-200 flex items-center gap-1.5"
+              title="Direct Customer Live Chat"
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="hidden md:inline text-xs font-semibold">Live Chat</span>
+              {unreadChatsCount > 0 && (
+                <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-black text-white bg-emerald-600 rounded-full animate-pulse shadow-sm">
+                  {unreadChatsCount}
+                </span>
+              )}
+            </button>
+
             {/* Direct Notification Bell Button with Real-time Unread Badge */}
             <button
               type="button"
@@ -2313,6 +2372,22 @@ export const AdminDashboard: React.FC = () => {
               </div>
             )}
           </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB: DIRECT CUSTOMER LIVE CHAT */}
+        {/* ========================================================================= */}
+        {activeTab === 'live-chat' && (
+          <AdminLiveChatTab
+            onInspectCustomer={(userId) => {
+              const target = usersList.find((u) => u.id === userId || u.phone === userId || u.email === userId);
+              if (target) {
+                setInspectingUser(target);
+              } else {
+                showToast(`Customer #${userId} profile details not found in database`, 'info');
+              }
+            }}
+          />
         )}
 
         {/* ========================================================================= */}

@@ -36,6 +36,8 @@ export const Header: React.FC = () => {
     setSelectedCategorySlug,
     openAuthModal,
     openSupportModal,
+    openChat,
+    chatUnreadCount,
     logout,
     navigateTo,
     lang,
@@ -84,9 +86,9 @@ export const Header: React.FC = () => {
             </button>
           </div>
 
-          {/* Search Bar */}
+          {/* Search Bar - Pixel-Perfect Proportioned Floating Pill */}
           <div className="flex-1 max-w-xl hidden md:block">
-            <div className="flex items-center h-10 border border-slate-300 bg-white focus-within:border-slate-800 rounded-full overflow-hidden transition-all shadow-2xs">
+            <div className="flex items-center h-11 border border-slate-300 bg-white focus-within:border-slate-900 focus-within:ring-2 focus-within:ring-slate-900/5 rounded-full pl-4 pr-1.5 transition-all shadow-2xs">
               <input
                 type="text"
                 value={searchQuery}
@@ -97,16 +99,17 @@ export const Header: React.FC = () => {
                   }
                 }}
                 placeholder={t('header.search.placeholder', 'Search phones, beauty, home & more...')}
-                className="flex-1 px-4 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none bg-transparent"
+                className="flex-1 text-xs sm:text-sm text-[#0F172A] placeholder-slate-400 focus:outline-none bg-transparent"
               />
 
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="px-2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                  className="p-1 mr-1 text-slate-400 hover:text-slate-700 cursor-pointer rounded-full"
+                  title="Clear search"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               )}
 
@@ -115,7 +118,7 @@ export const Header: React.FC = () => {
                 onClick={() => {
                   if (currentView !== 'catalog') setCurrentView('catalog');
                 }}
-                className="h-full px-5 bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="h-8 px-4 rounded-full bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-2xs"
               >
                 <Search className="w-3.5 h-3.5" />
                 <span>{t('header.search.button', 'Search')}</span>
@@ -311,15 +314,20 @@ export const Header: React.FC = () => {
               )}
             </div>
 
-            {/* Support Hotline / Form */}
+            {/* Support Live Chat */}
             <button
               type="button"
-              onClick={openSupportModal}
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700 hover:text-[#0F172A] transition-colors cursor-pointer"
-              title="Customer Support & Help Desk"
+              onClick={openChat}
+              className="relative hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700 hover:text-[#0F172A] transition-colors cursor-pointer"
+              title="Customer Support Live Chat"
             >
-              <Headphones className="w-3.5 h-3.5 text-rose-600" />
+              <Headphones className="w-3.5 h-3.5 text-slate-700" />
               <span className="hidden md:inline">{lang === 'bn' ? 'সাপোর্ট' : 'Support'}</span>
+              {chatUnreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center animate-pulse">
+                  {chatUnreadCount}
+                </span>
+              )}
             </button>
 
             {/* Wishlist - Redirects directly to liked products view */}
@@ -359,7 +367,7 @@ export const Header: React.FC = () => {
 
         {/* Mobile Search Input */}
         <div className="mt-2.5 md:hidden">
-          <div className="flex h-9 border border-slate-300 rounded-full bg-white overflow-hidden focus-within:border-slate-800">
+          <div className="flex items-center h-10 border border-slate-300 rounded-full bg-white pl-3.5 pr-1 focus-within:border-slate-900 shadow-2xs transition-all">
             <input
               type="text"
               value={searchQuery}
@@ -370,16 +378,26 @@ export const Header: React.FC = () => {
                 }
               }}
               placeholder={t('header.search.placeholder', 'Search in Bangladesh...')}
-              className="flex-1 px-3 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none bg-transparent"
+              className="flex-1 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none bg-transparent"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="p-1 mr-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
                 if (currentView !== 'catalog') setCurrentView('catalog');
               }}
-              className="px-3 bg-[#0F172A] text-white text-xs font-semibold"
+              className="h-8 px-3.5 rounded-full bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-semibold flex items-center justify-center gap-1 shrink-0 cursor-pointer shadow-2xs"
             >
               <Search className="w-3.5 h-3.5" />
+              <span>Search</span>
             </button>
           </div>
         </div>

@@ -28,6 +28,7 @@ interface AppContextType {
   registerWithGoogle: (payload: { email: string; name: string; avatarUrl?: string; googleId?: string }) => Promise<void>;
   logout: () => void;
   switchUserRole: (role: 'CUSTOMER' | 'ADMIN') => Promise<void>;
+  updateUserProfile: (data: Partial<User>) => Promise<User | null>;
 
   // Cart
   cart: Cart;
@@ -63,11 +64,16 @@ interface AppContextType {
   selectedOrderId: string | null;
   viewOrderDetail: (orderId: string) => void;
 
-  // Support Contact Modal
+  // Support Contact Modal & Chatbot
   isSupportModalOpen: boolean;
   setIsSupportModalOpen: (open: boolean) => void;
   openSupportModal: () => void;
   closeSupportModal: () => void;
+  isChatOpen: boolean;
+  setIsChatOpen: (open: boolean) => void;
+  openChat: () => void;
+  closeChat: () => void;
+  chatUnreadCount: number;
 
   // Search
   searchQuery: string;
@@ -135,7 +141,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  // Check chat unread count for current user
+  useEffect(() => {
+    const checkUnread = async () => {
+      try {
+        const convs = await apiService.chat.getConversations();
+        if (convs.data) {
+          const guestChatId = typeof window !== 'undefined' ? localStorage.getItem('deshi_guest_chat_id') : null;
+          const userConv = user
+            ? convs.data.find((c) => c.userId === user.id)
+            : convs.data.find((c) => c.id === guestChatId);
+          if (userConv) {
+            setChatUnreadCount(userConv.unreadUserCount || 0);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    };
+    checkUnread();
+
+    const handler = () => checkUnread();
+    window.addEventListener('deshi_chat_updated', handler);
+    window.addEventListener('deshi_user_notif_updated', handler);
+    return () => {
+      window.removeEventListener('deshi_chat_updated', handler);
+      window.removeEventListener('deshi_user_notif_updated', handler);
+    };
+  }, [user]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -325,6 +362,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const updateUserProfile = async (data: Partial<User>) => {
+    try {
+      const res = await apiService.auth.updateProfile(data);
+      if (res.data) {
+        setUser(res.data);
+        showToast('Profile updated successfully!', 'success');
+        return res.data;
+      }
+    } catch (e: any) {
+      showToast(e.message || 'Failed to update profile', 'error');
+    }
+    return null;
+  };
+
   const addToCart = async (productId: string, quantity = 1) => {
     try {
       const res = await apiService.cart.addItem(productId, quantity);
@@ -394,6 +445,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         registerWithGoogle,
         logout,
         switchUserRole,
+        updateUserProfile,
         cart,
         isCartOpen,
         openCart: () => setIsCartOpen(true),
@@ -434,6 +486,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsSupportModalOpen,
         openSupportModal: () => setIsSupportModalOpen(true),
         closeSupportModal: () => setIsSupportModalOpen(false),
+        isChatOpen,
+        setIsChatOpen,
+        openChat: () => setIsChatOpen(true),
+        closeChat: () => setIsChatOpen(false),
+        chatUnreadCount,
         toasts,
         showToast,
         dismissToast,
