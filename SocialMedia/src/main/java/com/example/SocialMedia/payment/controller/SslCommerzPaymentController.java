@@ -50,8 +50,8 @@ public class SslCommerzPaymentController {
     @PostMapping("/ipn")
     public ResponseEntity<ApiResponse<SslCommerzCallbackResponse>> handleIpn(
             @RequestParam Map<String, String> payload) {
-        SslCommerzCallbackResponse response = sslCommerzService.handleSuccess(payload);
-        return ResponseEntity.ok(ApiResponse.success("SSLCommerz IPN processed", response));
+        SslCommerzCallbackResponse response = sslCommerzService.handleIpn(payload);
+        return ResponseEntity.ok(ApiResponse.success("SSLCommerz IPN processed successfully", response));
     }
 
     @PostMapping("/simulate-success/{orderId}")

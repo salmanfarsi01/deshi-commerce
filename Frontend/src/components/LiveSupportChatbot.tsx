@@ -81,8 +81,21 @@ export const LiveSupportChatbot: React.FC = () => {
     };
 
     window.addEventListener('deshi_chat_updated', handleUpdate);
-    return () => window.removeEventListener('deshi_chat_updated', handleUpdate);
-  }, [user]);
+    window.addEventListener('storage', handleUpdate);
+
+    // Real-time synchronization polling every 3.5s when active
+    const pollInterval = setInterval(() => {
+      if (isChatOpen) {
+        loadConversation();
+      }
+    }, 3500);
+
+    return () => {
+      window.removeEventListener('deshi_chat_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+      clearInterval(pollInterval);
+    };
+  }, [user, isChatOpen]);
 
   // When chat opens, mark user unread messages as read
   useEffect(() => {

@@ -2022,15 +2022,31 @@ export const apiService = {
     },
   },
   // =========================================================================
-  // LIVE SUPPORT CHATBOT (USER <-> ADMIN DIRECT MESSAGING)
+  // LIVE SUPPORT CHATBOT (USER <-> ADMIN DIRECT MESSAGING & REAL-TIME SYNC)
   // =========================================================================
   chat: {
     getConversations: async (): Promise<ApiResponse<ChatConversation[]>> => {
-      await simulateDelay(20);
+      try {
+        const res = await apiClient.get<ApiResponse<ChatConversation[]>>('/chat/conversations');
+        if (res.data && Array.isArray(res.data.data)) {
+          // Sync with local storage for offline resiliency
+          safeLocalStorage.setItem('deshi_chat_conversations_v1', JSON.stringify(res.data.data));
+          return res.data;
+        }
+      } catch (e) {
+        // Fallback to local storage if backend offline
+      }
       return wrapSuccess(getChatConversations());
     },
     getConversation: async (id: string): Promise<ApiResponse<ChatConversation | null>> => {
-      await simulateDelay(20);
+      try {
+        const res = await apiClient.get<ApiResponse<ChatConversation>>(`/chat/conversations/${encodeURIComponent(id)}`);
+        if (res.data && res.data.data) {
+          return res.data;
+        }
+      } catch (e) {
+        // Fallback
+      }
       const conv = getChatConversation(id);
       return wrapSuccess(conv || null);
     },
@@ -2043,7 +2059,15 @@ export const apiService = {
       userAvatar?: string;
       text: string;
     }): Promise<ApiResponse<ChatMessage>> => {
-      await simulateDelay(30);
+      try {
+        const res = await apiClient.post<ApiResponse<ChatMessage>>('/chat/send-user', payload);
+        if (res.data && res.data.data) {
+          sendUserChatMessage(payload);
+          return res.data;
+        }
+      } catch (e) {
+        // Fallback
+      }
       const res = sendUserChatMessage(payload);
       return wrapSuccess(res.message, 'Message sent to support team');
     },
@@ -2052,16 +2076,37 @@ export const apiService = {
       adminName: string;
       text: string;
     }): Promise<ApiResponse<ChatMessage>> => {
-      await simulateDelay(30);
+      try {
+        const res = await apiClient.post<ApiResponse<ChatMessage>>('/chat/reply-admin', payload);
+        if (res.data && res.data.data) {
+          sendAdminChatMessage(payload);
+          return res.data;
+        }
+      } catch (e) {
+        // Fallback
+      }
       const res = sendAdminChatMessage(payload);
       return wrapSuccess(res.message, 'Reply sent to customer');
     },
     markRead: async (conversationId: string, role: 'USER' | 'ADMIN'): Promise<ApiResponse<void>> => {
+      try {
+        await apiClient.put(`/chat/conversations/${encodeURIComponent(conversationId)}/read?role=${role}`, { role });
+      } catch (e) {
+        // Fallback
+      }
       markChatConversationRead(conversationId, role);
       return wrapSuccess(undefined);
     },
     deleteConversation: async (conversationId: string): Promise<ApiResponse<boolean>> => {
-      await simulateDelay(20);
+      try {
+        const res = await apiClient.delete<ApiResponse<boolean>>(`/chat/conversations/${encodeURIComponent(conversationId)}`);
+        if (res.data && res.data.success) {
+          deleteChatConversation(conversationId);
+          return res.data;
+        }
+      } catch (e) {
+        // Fallback
+      }
       const res = deleteChatConversation(conversationId);
       return wrapSuccess(res, 'Conversation permanently deleted');
     },

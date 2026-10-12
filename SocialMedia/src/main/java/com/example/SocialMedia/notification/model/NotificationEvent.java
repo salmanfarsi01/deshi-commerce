@@ -6,5 +6,6 @@ public enum NotificationEvent {
     ORDER_SHIPPED,
     ORDER_DELIVERED,
     ORDER_CANCELLED,
-    PAYMENT_RECEIVED
+    PAYMENT_RECEIVED,
+    SUPPORT_INQUIRY
 }

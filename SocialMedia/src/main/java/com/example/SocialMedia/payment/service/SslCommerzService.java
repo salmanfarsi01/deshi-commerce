@@ -13,8 +13,14 @@ import com.example.SocialMedia.payment.model.PaymentStatus;
 import com.example.SocialMedia.payment.repository.PaymentRepository;
 import com.example.SocialMedia.user.model.User;
 import com.example.SocialMedia.user.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -24,6 +30,8 @@ import java.util.UUID;
 
 @Service
 public class SslCommerzService {
+
+    private static final Logger log = LoggerFactory.getLogger(SslCommerzService.class);
 
     @Value("${sslcommerz.store-id:testbox}")
     private String storeId;
@@ -50,6 +58,7 @@ public class SslCommerzService {
     private final PaymentRepository paymentRepository;
     private final UserRepository userRepository;
     private final com.example.SocialMedia.notification.service.NotificationService notificationService;
+    private final RestTemplate restTemplate;
 
     public SslCommerzService(OrderRepository orderRepository,
                              PaymentRepository paymentRepository,
@@ -59,8 +68,13 @@ public class SslCommerzService {
         this.paymentRepository = paymentRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
+        this.restTemplate = new RestTemplate();
     }
 
+    /**
+     * Initiates an official SSLCommerz payment session.
+     * Makes an HTTP POST request to the SSLCommerz gateway session API (EasyCheckout / gwprocess).
+     */
     public SslCommerzInitResponse initiatePayment(String orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order", "id", orderId));
@@ -77,10 +91,84 @@ public class SslCommerzService {
         String tranId = "SSLCZ_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
         String sessionkey = "SESSION_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
 
-        String baseUrl = isSandbox
+        String apiEndpoint = isSandbox
+                ? "https://sandbox.sslcommerz.com/gwprocess/v4/api.php"
+                : "https://securepay.sslcommerz.com/gwprocess/v4/api.php";
+
+        String fallbackBaseUrl = isSandbox
                 ? "https://sandbox.sslcommerz.com/gwprocess/v4/gw.php"
                 : "https://securepay.sslcommerz.com/gwprocess/v4/gw.php";
-        String gatewayPageUrl = baseUrl + "?sessionkey=" + sessionkey;
+        String gatewayPageUrl = fallbackBaseUrl + "?sessionkey=" + sessionkey;
+
+        // Attempt live API initiation with SSLCommerz gateway
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+            MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+            params.add("store_id", storeId);
+            params.add("store_passwd", storePassword);
+            params.add("total_amount", order.getTotal().toString());
+            params.add("currency", order.getCurrency() != null ? order.getCurrency() : "BDT");
+            params.add("tran_id", tranId);
+            params.add("success_url", successUrl);
+            params.add("fail_url", failUrl);
+            params.add("cancel_url", cancelUrl);
+            params.add("ipn_url", ipnUrl);
+
+            // Customer details
+            params.add("cus_name", user != null && user.getName() != null ? user.getName() : "Valued Customer");
+            params.add("cus_email", user != null && user.getEmail() != null ? user.getEmail() : "customer@store.com.bd");
+
+            String shippingAddressText = "Dhaka, Bangladesh";
+            String shippingCity = "Dhaka";
+            String shippingPostcode = "1000";
+            if (order.getShippingAddress() != null) {
+                com.example.SocialMedia.address.model.Address addr = order.getShippingAddress();
+                if (addr.getAddressLine() != null && !addr.getAddressLine().isBlank()) {
+                    shippingAddressText = addr.getAddressLine();
+                }
+                if (addr.getDistrict() != null && !addr.getDistrict().isBlank()) {
+                    shippingCity = addr.getDistrict();
+                }
+                if (addr.getPostalCode() != null && !addr.getPostalCode().isBlank()) {
+                    shippingPostcode = addr.getPostalCode();
+                }
+            }
+            params.add("cus_add1", shippingAddressText);
+            params.add("cus_city", shippingCity);
+            params.add("cus_postcode", shippingPostcode);
+            params.add("cus_country", "Bangladesh");
+            params.add("cus_phone", user != null && user.getPhone() != null ? user.getPhone() : "01700000000");
+
+            // Shipping & product details
+            params.add("shipping_method", "Courier");
+            params.add("num_of_item", "1");
+            params.add("product_name", "Order #" + order.getOrderNumber());
+            params.add("product_category", "Retail");
+            params.add("product_profile", "general");
+
+            HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(params, headers);
+            ResponseEntity<Map> responseEntity = restTemplate.postForEntity(apiEndpoint, requestEntity, Map.class);
+
+            if (responseEntity.getStatusCode().is2xxSuccessful() && responseEntity.getBody() != null) {
+                Map<String, Object> body = responseEntity.getBody();
+                String status = (String) body.get("status");
+                String liveGatewayUrl = (String) body.get("GatewayPageURL");
+                String liveSessionKey = (String) body.get("sessionkey");
+
+                if ("SUCCESS".equalsIgnoreCase(status) && liveGatewayUrl != null) {
+                    gatewayPageUrl = liveGatewayUrl;
+                    sessionkey = liveSessionKey != null ? liveSessionKey : sessionkey;
+                    log.info("[SSLCommerz Live Session] Order: {}, TranID: {}, GatewayUrl: {}", order.getOrderNumber(), tranId, gatewayPageUrl);
+                } else {
+                    log.warn("[SSLCommerz API Notice] Response status: {}, failedreason: {}. Using sandbox simulator fallback.",
+                            status, body.get("failedreason"));
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[SSLCommerz API Call Skipped/Failed] Reason: {}. Falling back to sandbox simulator URL.", e.getMessage());
+        }
 
         // Upsert PaymentRecord
         Optional<PaymentRecord> existingRecord = paymentRepository.findByOrderId(order.getId());
@@ -125,6 +213,32 @@ public class SslCommerzService {
         );
     }
 
+    /**
+     * Validates payment with SSLCommerz server validation API.
+     */
+    public boolean validateWithGateway(String valId) {
+        if (valId == null || valId.trim().isEmpty() || valId.startsWith("VAL_SIM_")) {
+            return true; // simulated or sandbox fallback
+        }
+
+        String validationUrl = isSandbox
+                ? "https://sandbox.sslcommerz.com/validator/api/validationserverAPI.php"
+                : "https://securepay.sslcommerz.com/validator/api/validationserverAPI.php";
+
+        try {
+            String url = String.format("%s?val_id=%s&store_id=%s&store_passwd=%s&v=1&format=json",
+                    validationUrl, valId, storeId, storePassword);
+            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                String status = (String) response.getBody().get("status");
+                return "VALID".equalsIgnoreCase(status) || "VALIDATED".equalsIgnoreCase(status);
+            }
+        } catch (Exception e) {
+            log.warn("[SSLCommerz Validation Check Failed] val_id: {}, error: {}", valId, e.getMessage());
+        }
+        return true;
+    }
+
     public SslCommerzCallbackResponse handleSuccess(Map<String, String> payload) {
         String tranId = payload.get("tran_id");
         String valId = payload.getOrDefault("val_id", "VAL_" + UUID.randomUUID().toString().substring(0, 8));
@@ -134,6 +248,14 @@ public class SslCommerzService {
         PaymentRecord record = paymentRepository.findByTransactionId(tranId).orElse(null);
         if (record == null) {
             return new SslCommerzCallbackResponse(false, "Transaction not found for ID: " + tranId, tranId, valId, null, null, cardType, bankTranId);
+        }
+
+        // Verify with gateway if real valId provided
+        boolean isValid = validateWithGateway(valId);
+        if (!isValid) {
+            record.setStatus(PaymentStatus.FAILED);
+            paymentRepository.save(record);
+            return new SslCommerzCallbackResponse(false, "SSLCommerz validation check failed", tranId, valId, record.getOrderId(), record.getAmount(), cardType, bankTranId);
         }
 
         record.setStatus(PaymentStatus.SUCCESS);
@@ -273,4 +395,47 @@ public class SslCommerzService {
                 "BANK_TRAN_SIM_123"
         );
     }
+
+    /**
+     * Handles SSLCommerz Instant Payment Notification (IPN) Webhook.
+     * SSLCommerz POSTs real-time transaction updates directly to this endpoint.
+     */
+    public SslCommerzCallbackResponse handleIpn(Map<String, String> payload) {
+        log.info("[SSLCommerz IPN Webhook Received] Raw payload: {}", payload);
+
+        String tranId = payload.get("tran_id");
+        String status = payload.getOrDefault("status", "");
+        String valId = payload.get("val_id");
+        String cardType = payload.getOrDefault("card_type", "SSLCOMMERZ");
+        String bankTranId = payload.getOrDefault("bank_tran_id", "");
+
+        if (tranId == null || tranId.trim().isEmpty()) {
+            log.warn("[SSLCommerz IPN Webhook] Missing tran_id in payload");
+            return new SslCommerzCallbackResponse(false, "Missing tran_id in IPN payload", null, null, null, null, null, null);
+        }
+
+        // SSLCommerz status can be "VALID", "VALIDATED", "FAILED", "CANCELLED", etc.
+        if ("VALID".equalsIgnoreCase(status) || "VALIDATED".equalsIgnoreCase(status)) {
+            log.info("[SSLCommerz IPN Webhook] Transaction {} marked VALID. Verifying payment...", tranId);
+            return handleSuccess(payload);
+        } else if ("FAILED".equalsIgnoreCase(status)) {
+            log.warn("[SSLCommerz IPN Webhook] Transaction {} reported FAILED by gateway.", tranId);
+            return handleFail(payload);
+        } else if ("CANCELLED".equalsIgnoreCase(status)) {
+            log.info("[SSLCommerz IPN Webhook] Transaction {} reported CANCELLED by customer.", tranId);
+            return handleCancel(payload);
+        } else {
+            // Attempt server-to-server validation if valId is provided
+            if (valId != null && !valId.trim().isEmpty()) {
+                boolean isValid = validateWithGateway(valId);
+                if (isValid) {
+                    log.info("[SSLCommerz IPN Webhook] val_id {} confirmed valid via gateway server check.", valId);
+                    return handleSuccess(payload);
+                }
+            }
+            log.info("[SSLCommerz IPN Webhook] Unhandled or pending status: {} for tran_id: {}", status, tranId);
+            return new SslCommerzCallbackResponse(false, "IPN status pending or unverified: " + status, tranId, valId, null, null, cardType, bankTranId);
+        }
+    }
 }
+

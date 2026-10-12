@@ -69,7 +69,18 @@ export const AdminLiveChatTab: React.FC<AdminLiveChatTabProps> = ({ onInspectCus
     };
 
     window.addEventListener('deshi_chat_updated', handleUpdate);
-    return () => window.removeEventListener('deshi_chat_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+
+    // Multi-workstation real-time background sync polling every 3.5s
+    const pollInterval = setInterval(() => {
+      fetchConversations();
+    }, 3500);
+
+    return () => {
+      window.removeEventListener('deshi_chat_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+      clearInterval(pollInterval);
+    };
   }, [activePopupConv?.id]);
 
   const activeConv = conversations.find((c) => c.id === selectedConvId) || conversations[0] || null;

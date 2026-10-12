@@ -184,7 +184,7 @@ export const AdminDashboard: React.FC = () => {
       }
       if (ticketsRes?.data) setSupportTickets(ticketsRes.data);
       if (chatRes?.data) {
-        const unread = chatRes.data.reduce((acc, c) => acc + (c.unreadByAdmin || 0), 0);
+        const unread = chatRes.data.reduce((acc, c) => acc + (c.unreadAdminCount || 0), 0);
         setUnreadChatsCount(unread);
       }
     } catch (err) {
@@ -211,7 +211,7 @@ export const AdminDashboard: React.FC = () => {
     const handleChatUpdate = () => {
       apiService.chat.getConversations().then((res) => {
         if (res.data) {
-          const unread = res.data.reduce((acc, c) => acc + (c.unreadByAdmin || 0), 0);
+          const unread = res.data.reduce((acc, c) => acc + (c.unreadAdminCount || 0), 0);
           setUnreadChatsCount(unread);
         }
       });

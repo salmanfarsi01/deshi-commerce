@@ -105,6 +105,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/payments/methods").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/payments/verify").permitAll()
                         .requestMatchers("/api/v1/payments/sslcommerz/**").permitAll()
+                        // Public Live Chat & WebSocket Endpoints
+                        .requestMatchers("/api/v1/chat/**").permitAll()
+                        .requestMatchers("/ws-chat/**").permitAll()
                         // Admin Endpoints require ROLE_ADMIN
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         // Customer Endpoints require Authentication
