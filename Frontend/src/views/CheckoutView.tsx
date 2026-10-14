@@ -8,6 +8,7 @@ import {
   AlertCircle,
   Truck,
   CheckCircle2,
+  Lock,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/apiClient';
@@ -124,7 +125,6 @@ export const CheckoutView: React.FC = () => {
       const newOrder = orderRes.data;
 
       if (paymentMethod === 'SSLCOMMERZ') {
-        // Trigger simulated SSLCommerz Gateway Modal
         setPendingOrder(newOrder);
         setIsSSLModalOpen(true);
         setLoading(false);
@@ -151,59 +151,59 @@ export const CheckoutView: React.FC = () => {
   if (cart.items.length === 0 && !pendingOrder) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-20 text-center">
-        <h3 className="text-xl font-bold text-[#2B2B2B] mb-2 font-serif uppercase">Your Shopping Bag is Empty</h3>
-        <p className="text-xs text-stone-500 mb-6">Add items before proceeding to checkout.</p>
+        <h3 className="text-xl font-bold text-[#0F172A] mb-2 uppercase">Your Shopping Bag is Empty</h3>
+        <p className="text-xs text-slate-500 mb-6">Add items before proceeding to checkout.</p>
         <button
           type="button"
           onClick={() => setCurrentView('catalog')}
-          className="rounded-none px-6 py-3 bg-[#2B2B2B] hover:bg-[#E11D48] text-white text-xs font-bold transition-colors cursor-pointer uppercase tracking-wider"
+          className="rounded-lg px-6 py-3 bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-semibold transition-colors cursor-pointer"
         >
-          Return to Store Catalog
+          Return to Catalog
         </button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen pb-20 bg-white">
+    <div className="min-h-screen pb-20 bg-white font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-        {/* Back link */}
+        {/* Navigation back */}
         <button
           type="button"
           onClick={() => setCurrentView('catalog')}
-          className="rounded-none flex items-center gap-1.5 text-xs text-stone-600 hover:text-[#E11D48] font-bold uppercase tracking-wider mb-6 transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-[#0F172A] font-semibold mb-6 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Continue Shopping</span>
         </button>
 
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#2B2B2B] tracking-tight mb-6 font-serif uppercase">
-          Checkout &amp; Bangladesh Delivery
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] tracking-tight mb-6">
+          Checkout &amp; Delivery Details
         </h1>
 
         {!user && (
-          <div className="mb-8 p-4 bg-white border border-[#D4D4D4] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="mb-8 p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
                 G
               </div>
               <div className="text-xs">
-                <span className="font-bold text-[#2B2B2B]">Have a Google Mail account? </span>
-                <span className="text-stone-600">Sign in for saved shipping destinations and instant order tracking.</span>
+                <span className="font-bold text-[#0F172A]">Have an account? </span>
+                <span className="text-slate-600">Sign in to use your saved addresses and track your orders in real time.</span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => openAuthModal('login')}
-                className="rounded-none px-3.5 py-1.5 border border-[#2B2B2B] text-xs font-bold text-[#2B2B2B] hover:bg-[#2B2B2B] hover:text-white uppercase tracking-wider transition-colors cursor-pointer"
+                className="rounded-lg px-3.5 py-1.5 border border-slate-300 text-xs font-semibold text-[#0F172A] hover:bg-white transition-colors cursor-pointer"
               >
                 Sign In
               </button>
               <button
                 type="button"
                 onClick={() => openAuthModal('register')}
-                className="rounded-none px-3.5 py-1.5 bg-[#E11D48] text-white hover:bg-[#BE123C] text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-xs"
+                className="rounded-lg px-3.5 py-1.5 bg-[#0F172A] text-white hover:bg-slate-800 text-xs font-semibold transition-colors cursor-pointer"
               >
                 Sign Up
               </button>
@@ -215,13 +215,13 @@ export const CheckoutView: React.FC = () => {
           {/* Left Column: Delivery Address & Payment Method */}
           <div className="lg:col-span-8 space-y-6">
             {/* Step 1: Delivery Address */}
-            <div className="bg-white p-6 border border-[#D4D4D4] shadow-xs space-y-5">
-              <div className="flex items-center justify-between pb-3 border-b border-[#D4D4D4]">
+            <div className="bg-white p-6 border border-slate-200 rounded-xl shadow-2xs space-y-5">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2.5">
-                  <span className="w-6 h-6 bg-[#2B2B2B] text-white font-bold text-xs flex items-center justify-center">
+                  <span className="w-6 h-6 rounded-md bg-[#0F172A] text-white font-bold text-xs flex items-center justify-center">
                     1
                   </span>
-                  <h2 className="font-bold text-[#2B2B2B] text-sm uppercase tracking-wider">
+                  <h2 className="font-bold text-[#0F172A] text-sm uppercase tracking-wider">
                     Delivery Address
                   </h2>
                 </div>
@@ -229,7 +229,7 @@ export const CheckoutView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsNewAddressOpen(!isNewAddressOpen)}
-                  className="rounded-none text-xs text-[#E11D48] hover:text-[#2B2B2B] font-bold flex items-center gap-1 cursor-pointer uppercase tracking-wider"
+                  className="rounded-lg text-xs text-[#0F172A] hover:text-slate-700 font-bold flex items-center gap-1 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>{isNewAddressOpen ? 'Close Form' : 'Add New Address'}</span>
@@ -245,10 +245,10 @@ export const CheckoutView: React.FC = () => {
                     return (
                       <label
                         key={addr.id}
-                        className={`p-4 border-2 block cursor-pointer transition-all ${
+                        className={`p-4 rounded-xl border block cursor-pointer transition-all ${
                           isSelected
-                            ? 'border-[#2B2B2B] bg-[#F8F9FA]'
-                            : 'border-[#D4D4D4] hover:border-stone-400 bg-white'
+                            ? 'border-[#0F172A] bg-slate-50 shadow-2xs'
+                            : 'border-slate-200 hover:border-slate-300 bg-white'
                         }`}
                       >
                         <div className="flex items-start justify-between">
@@ -258,20 +258,20 @@ export const CheckoutView: React.FC = () => {
                               name="addressSelection"
                               checked={isSelected}
                               onChange={() => setSelectedAddressId(addr.id)}
-                              className="mt-1 w-4 h-4 rounded-none accent-[#E11D48]"
+                              className="mt-1 w-4 h-4 accent-[#0F172A]"
                             />
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="font-bold text-xs text-[#2B2B2B]">{addr.fullName}</span>
-                                <span className="text-[11px] font-mono text-stone-500">({addr.phone})</span>
+                                <span className="font-bold text-xs text-[#0F172A]">{addr.fullName}</span>
+                                <span className="text-[11px] font-mono text-slate-500">({addr.phone})</span>
                                 {addr.isDefault && (
-                                  <span className="text-[10px] font-bold text-white bg-[#2B2B2B] px-1.5 py-0.5 uppercase">
+                                  <span className="text-[10px] font-semibold text-slate-800 bg-slate-200 px-1.5 py-0.5 rounded">
                                     Default
                                   </span>
                                 )}
                               </div>
-                              <p className="text-xs text-stone-600 mt-1">{addr.streetAddress}</p>
-                              <div className="text-[11px] text-stone-500 mt-0.5 font-medium">
+                              <p className="text-xs text-slate-600 mt-1">{addr.streetAddress}</p>
+                              <div className="text-[11px] text-slate-500 mt-0.5 font-medium">
                                 {addr.upazila}, {addr.district}, {addr.division}
                               </div>
                             </div>
@@ -279,10 +279,10 @@ export const CheckoutView: React.FC = () => {
 
                           <div className="text-right">
                             <span
-                              className={`text-[11px] font-bold px-2 py-0.5 uppercase tracking-wider ${
+                              className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${
                                 isInsideDhaka
-                                  ? 'bg-rose-50 text-[#E11D48] border border-rose-200'
-                                  : 'bg-stone-100 text-[#2B2B2B] border border-[#D4D4D4]'
+                                  ? 'bg-slate-100 text-slate-800 border border-slate-200'
+                                  : 'bg-slate-100 text-slate-800 border border-slate-200'
                               }`}
                             >
                               {isInsideDhaka ? 'Dhaka (৳60)' : 'Outside Dhaka (৳120)'}
@@ -299,14 +299,14 @@ export const CheckoutView: React.FC = () => {
               {isNewAddressOpen && (
                 <form
                   onSubmit={handleSaveNewAddress}
-                  className="bg-[#F8F9FA] p-5 border border-[#D4D4D4] space-y-4"
+                  className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4"
                 >
-                  <h3 className="font-bold text-xs text-[#2B2B2B] uppercase tracking-wider">
+                  <h3 className="font-bold text-xs text-[#0F172A] uppercase tracking-wider">
                     New Delivery Destination
                   </h3>
 
                   {addressError && (
-                    <div className="p-3 bg-red-50 text-red-700 text-xs flex items-center gap-2 border border-red-200">
+                    <div className="p-3 bg-red-50 text-red-700 text-xs flex items-center gap-2 border border-red-200 rounded-lg">
                       <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
                       <span>{addressError}</span>
                     </div>
@@ -314,21 +314,21 @@ export const CheckoutView: React.FC = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
                         Recipient Full Name
                       </label>
                       <input
                         type="text"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        placeholder="e.g. Karim Ahmed"
+                        placeholder="e.g. Tanvir Hasan"
                         required
-                        className="rounded-none w-full px-3 py-2 text-xs bg-white border border-[#D4D4D4]"
+                        className="rounded-lg w-full px-3 py-2 text-xs bg-white border border-slate-300 focus:outline-none focus:border-[#0F172A]"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
                         Contact Mobile (11 Digits)
                       </label>
                       <input
@@ -337,20 +337,20 @@ export const CheckoutView: React.FC = () => {
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="017XXXXXXXX"
                         required
-                        className="rounded-none w-full px-3 py-2 text-xs bg-white border border-[#D4D4D4]"
+                        className="rounded-lg w-full px-3 py-2 text-xs bg-white border border-slate-300 focus:outline-none focus:border-[#0F172A]"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
                         Division
                       </label>
                       <select
                         value={division}
                         onChange={(e) => handleDivisionChange(e.target.value)}
-                        className="rounded-none w-full px-3 py-2 text-xs bg-white border border-[#D4D4D4] cursor-pointer"
+                        className="rounded-lg w-full px-3 py-2 text-xs bg-white border border-slate-300 focus:outline-none focus:border-[#0F172A] cursor-pointer"
                       >
                         {BANGLADESH_DIVISIONS.map((d) => (
                           <option key={d.name} value={d.name}>
@@ -361,13 +361,13 @@ export const CheckoutView: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
                         District
                       </label>
                       <select
                         value={district}
                         onChange={(e) => setDistrict(e.target.value)}
-                        className="rounded-none w-full px-3 py-2 text-xs bg-white border border-[#D4D4D4] cursor-pointer"
+                        className="rounded-lg w-full px-3 py-2 text-xs bg-white border border-slate-300 focus:outline-none focus:border-[#0F172A] cursor-pointer"
                       >
                         {activeDivisionObj.districts.map((dst) => (
                           <option key={dst} value={dst}>
@@ -378,22 +378,22 @@ export const CheckoutView: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
                         Upazila / Area
                       </label>
                       <input
                         type="text"
                         value={upazila}
                         onChange={(e) => setUpazila(e.target.value)}
-                        placeholder="e.g. Dhanmondi"
+                        placeholder="e.g. Dhanmondi / Gulshan"
                         required
-                        className="rounded-none w-full px-3 py-2 text-xs bg-white border border-[#D4D4D4]"
+                        className="rounded-lg w-full px-3 py-2 text-xs bg-white border border-slate-300 focus:outline-none focus:border-[#0F172A]"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Street Address (House, Road, Area)
                     </label>
                     <textarea
@@ -402,32 +402,32 @@ export const CheckoutView: React.FC = () => {
                       placeholder="e.g. House 12, Road 5, Apt 4B, Dhanmondi R/A"
                       rows={2}
                       required
-                      className="rounded-none w-full px-3 py-2 text-xs bg-white border border-[#D4D4D4]"
+                      className="rounded-lg w-full px-3 py-2 text-xs bg-white border border-slate-300 focus:outline-none focus:border-[#0F172A]"
                     />
                   </div>
 
                   <div className="flex items-center justify-between pt-1">
-                    <label className="flex items-center gap-2 text-xs font-medium text-stone-700 cursor-pointer">
+                    <label className="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={isDefault}
                         onChange={(e) => setIsDefault(e.target.checked)}
-                        className="w-4 h-4 rounded-none accent-[#E11D48]"
+                        className="w-4 h-4 accent-[#0F172A]"
                       />
-                      <span>Save as default shipping address</span>
+                      <span>Set as default shipping address</span>
                     </label>
 
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => setIsNewAddressOpen(false)}
-                        className="rounded-none px-3 py-2 text-xs text-stone-600 hover:text-stone-900 cursor-pointer uppercase font-bold"
+                        className="rounded-lg px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 cursor-pointer font-semibold"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
-                        className="rounded-none px-4 py-2 bg-[#2B2B2B] text-white text-xs font-bold hover:bg-[#E11D48] cursor-pointer uppercase tracking-wider"
+                        className="rounded-lg px-4 py-1.5 bg-[#0F172A] text-white text-xs font-semibold hover:bg-slate-800 cursor-pointer"
                       >
                         Save Address
                       </button>
@@ -438,12 +438,12 @@ export const CheckoutView: React.FC = () => {
             </div>
 
             {/* Step 2: Payment Method Selection */}
-            <div className="bg-white p-6 border border-[#D4D4D4] shadow-xs space-y-4">
-              <div className="flex items-center gap-2.5 pb-3 border-b border-[#D4D4D4]">
-                <span className="w-6 h-6 bg-[#2B2B2B] text-white font-bold text-xs flex items-center justify-center">
+            <div className="bg-white p-6 border border-slate-200 rounded-xl shadow-2xs space-y-4">
+              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+                <span className="w-6 h-6 rounded-md bg-[#0F172A] text-white font-bold text-xs flex items-center justify-center">
                   2
                 </span>
-                <h2 className="font-bold text-[#2B2B2B] text-sm uppercase tracking-wider">
+                <h2 className="font-bold text-[#0F172A] text-sm uppercase tracking-wider">
                   Payment Method
                 </h2>
               </div>
@@ -451,10 +451,10 @@ export const CheckoutView: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Cash on Delivery */}
                 <label
-                  className={`p-4 border-2 flex items-start gap-3 cursor-pointer transition-all ${
+                  className={`p-4 rounded-xl border flex items-start gap-3 cursor-pointer transition-all ${
                     paymentMethod === 'COD'
-                      ? 'border-[#2B2B2B] bg-[#F8F9FA]'
-                      : 'border-[#D4D4D4] hover:border-stone-400 bg-white'
+                      ? 'border-[#0F172A] bg-slate-50 shadow-2xs'
+                      : 'border-slate-200 hover:border-slate-300 bg-white'
                   }`}
                 >
                   <input
@@ -463,14 +463,14 @@ export const CheckoutView: React.FC = () => {
                     value="COD"
                     checked={paymentMethod === 'COD'}
                     onChange={() => setPaymentMethod('COD')}
-                    className="mt-1 w-4 h-4 rounded-none accent-[#E11D48]"
+                    className="mt-1 w-4 h-4 accent-[#0F172A]"
                   />
                   <div>
                     <div className="flex items-center gap-2">
-                      <Banknote className="w-4 h-4 text-[#E11D48]" />
-                      <span className="font-bold text-xs text-[#2B2B2B] uppercase">Cash on Delivery (COD)</span>
+                      <Banknote className="w-4 h-4 text-emerald-600" />
+                      <span className="font-bold text-xs text-[#0F172A]">Cash on Delivery (COD)</span>
                     </div>
-                    <p className="text-[11px] text-stone-500 mt-1">
+                    <p className="text-[11px] text-slate-500 mt-1">
                       Pay cash upon doorstep delivery inspection anywhere in Bangladesh.
                     </p>
                   </div>
@@ -478,10 +478,10 @@ export const CheckoutView: React.FC = () => {
 
                 {/* SSLCommerz Online */}
                 <label
-                  className={`p-4 border-2 flex items-start gap-3 cursor-pointer transition-all ${
+                  className={`p-4 rounded-xl border flex items-start gap-3 cursor-pointer transition-all ${
                     paymentMethod === 'SSLCOMMERZ'
-                      ? 'border-[#2B2B2B] bg-[#F8F9FA]'
-                      : 'border-[#D4D4D4] hover:border-stone-400 bg-white'
+                      ? 'border-[#0F172A] bg-slate-50 shadow-2xs'
+                      : 'border-slate-200 hover:border-slate-300 bg-white'
                   }`}
                 >
                   <input
@@ -490,15 +490,15 @@ export const CheckoutView: React.FC = () => {
                     value="SSLCOMMERZ"
                     checked={paymentMethod === 'SSLCOMMERZ'}
                     onChange={() => setPaymentMethod('SSLCOMMERZ')}
-                    className="mt-1 w-4 h-4 rounded-none accent-[#E11D48]"
+                    className="mt-1 w-4 h-4 accent-[#0F172A]"
                   />
                   <div>
                     <div className="flex items-center gap-2">
-                      <CreditCard className="w-4 h-4 text-[#E11D48]" />
-                      <span className="font-bold text-xs text-[#2B2B2B] uppercase">SSLCOMMERZ Gateway</span>
+                      <CreditCard className="w-4 h-4 text-[#0F172A]" />
+                      <span className="font-bold text-xs text-[#0F172A]">Online Payment (SSLCommerz)</span>
                     </div>
-                    <p className="text-[11px] text-stone-500 mt-1">
-                      Instant payment via <strong>bKash, Nagad, Rocket</strong>, or Visa/Mastercard.
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Pay instantly with <strong>bKash, Nagad, Rocket</strong>, or Visa/Mastercard.
                     </p>
                   </div>
                 </label>
@@ -506,24 +506,24 @@ export const CheckoutView: React.FC = () => {
             </div>
 
             {/* Step 3: Customer Delivery Note */}
-            <div className="bg-white p-6 border border-[#D4D4D4] shadow-xs space-y-2">
-              <label className="block text-xs font-bold text-[#2B2B2B] uppercase tracking-wider">
+            <div className="bg-white p-6 border border-slate-200 rounded-xl shadow-2xs space-y-2">
+              <label className="block text-xs font-bold text-[#0F172A] uppercase tracking-wider">
                 Special Delivery Instructions (Optional)
               </label>
               <input
                 type="text"
                 value={customerNote}
                 onChange={(e) => setCustomerNote(e.target.value)}
-                placeholder="e.g. Please call before delivery, deliver after 5 PM"
-                className="rounded-none w-full px-3.5 py-2.5 text-xs bg-[#F8F9FA] border border-[#D4D4D4] focus:outline-none focus:border-[#2B2B2B]"
+                placeholder="e.g. Please call before delivery, deliver after 3 PM"
+                className="rounded-lg w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 focus:outline-none focus:border-[#0F172A]"
               />
             </div>
           </div>
 
           {/* Right Column: Order Summary */}
           <div className="lg:col-span-4 space-y-5 sticky top-24">
-            <div className="bg-white p-6 border border-[#D4D4D4] shadow-xs space-y-5">
-              <h3 className="font-bold text-[#2B2B2B] text-sm uppercase tracking-wider pb-3 border-b border-[#D4D4D4]">
+            <div className="bg-white p-6 border border-slate-200 rounded-xl shadow-2xs space-y-5">
+              <h3 className="font-bold text-[#0F172A] text-sm uppercase tracking-wider pb-3 border-b border-slate-100">
                 Order Summary ({cart.itemCount} items)
               </h3>
 
@@ -533,15 +533,15 @@ export const CheckoutView: React.FC = () => {
                     <img
                       src={item.product.images[0]}
                       alt={item.product.name}
-                      className="w-12 h-12 object-cover bg-stone-100 shrink-0 border border-[#D4D4D4]"
+                      className="w-12 h-12 object-contain bg-slate-50 shrink-0 border border-slate-200 rounded-lg p-1"
                     />
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-[#2B2B2B] truncate">{item.product.name}</h4>
-                      <div className="text-[11px] text-stone-500">
+                      <h4 className="font-semibold text-[#0F172A] truncate">{item.product.name}</h4>
+                      <div className="text-[11px] text-slate-500">
                         Qty: {item.quantity} · {formatBDT(item.price)}
                       </div>
                     </div>
-                    <span className="font-mono font-bold text-[#2B2B2B] tabular-nums">
+                    <span className="font-mono font-bold text-[#0F172A] tabular-nums">
                       {formatBDT(item.totalPrice)}
                     </span>
                   </div>
@@ -549,57 +549,58 @@ export const CheckoutView: React.FC = () => {
               </div>
 
               {/* Price Calculations */}
-              <div className="space-y-2 text-xs pt-3 border-t border-[#D4D4D4]">
-                <div className="flex justify-between text-stone-600">
+              <div className="space-y-2.5 text-xs pt-3 border-t border-slate-100">
+                <div className="flex justify-between text-slate-600">
                   <span>Bag Subtotal</span>
-                  <span className="font-mono font-bold text-[#2B2B2B] tabular-nums">
+                  <span className="font-mono font-semibold text-[#0F172A] tabular-nums">
                     {formatBDT(cart.subtotal)}
                   </span>
                 </div>
 
-                <div className="flex justify-between items-center text-stone-600">
+                <div className="flex justify-between items-center text-slate-600">
                   <div className="flex items-center gap-1.5">
-                    <span>Delivery Charge</span>
-                    <span className="text-[11px] text-stone-400">({effectiveDistrict})</span>
+                    <span>Delivery Fee</span>
+                    <span className="text-[11px] text-slate-400">({effectiveDistrict})</span>
                   </div>
                   {deliveryCharge === 0 ? (
-                    <span className="font-bold text-[#E11D48] bg-rose-50 px-2 py-0.5 border border-rose-200 text-[11px]">
+                    <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200 rounded text-[11px]">
                       FREE
                     </span>
                   ) : (
-                    <span className="font-mono font-bold text-[#2B2B2B] tabular-nums">
+                    <span className="font-mono font-semibold text-[#0F172A] tabular-nums">
                       {formatBDT(deliveryCharge)}
                     </span>
                   )}
                 </div>
 
-                <div className="pt-3 border-t border-[#D4D4D4] flex justify-between items-baseline font-bold text-[#2B2B2B]">
-                  <span className="text-sm uppercase tracking-wider">Grand Total</span>
-                  <span className="text-xl font-mono text-[#E11D48] tabular-nums font-extrabold">
+                <div className="pt-3 border-t border-slate-200 flex justify-between items-baseline font-bold text-[#0F172A]">
+                  <span className="text-sm uppercase tracking-wider">Total Payable</span>
+                  <span className="text-xl font-mono text-[#0F172A] tabular-nums font-extrabold">
                     {formatBDT(grandTotal)}
                   </span>
                 </div>
               </div>
 
-              {/* Submit Order CTA (Strictly zero radius) */}
+              {/* Submit Order CTA */}
               <button
                 type="button"
                 disabled={loading || !selectedAddressId}
                 onClick={handlePlaceOrder}
-                className="rounded-none w-full py-4 bg-[#E11D48] hover:bg-[#BE123C] text-white font-extrabold text-xs uppercase tracking-wider shadow-md transition-all cursor-pointer disabled:opacity-50 active:scale-[0.99] flex items-center justify-center gap-2"
+                className="rounded-lg w-full py-3.5 bg-[#0F172A] hover:bg-slate-800 text-white font-semibold text-xs tracking-wide shadow-xs transition-all cursor-pointer disabled:opacity-50 active:scale-[0.99] flex items-center justify-center gap-2"
               >
+                <Lock className="w-3.5 h-3.5" />
                 <span>
                   {loading
-                    ? 'Creating Order...'
+                    ? 'Processing Order...'
                     : paymentMethod === 'SSLCOMMERZ'
-                    ? `Pay with SSLCOMMERZ • ${formatBDT(grandTotal)}`
-                    : `Place Order • ${formatBDT(grandTotal)}`}
+                    ? `Pay with SSLCommerz • ${formatBDT(grandTotal)}`
+                    : `Confirm Order (Cash on Delivery) • ${formatBDT(grandTotal)}`}
                 </span>
               </button>
 
-              <div className="pt-2 text-center text-[11px] text-stone-500 flex items-center justify-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#E11D48]" />
-                <span>Deshi commerce Escrow Protection Guaranteed</span>
+              <div className="pt-2 text-center text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>100% Secure Checkout &amp; Buyer Protection</span>
               </div>
             </div>
           </div>

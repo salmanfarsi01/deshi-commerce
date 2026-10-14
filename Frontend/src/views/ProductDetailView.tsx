@@ -355,7 +355,7 @@ export const ProductDetailView: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleBuyNow}
-                    className="h-[44px] rounded-lg px-4 bg-[#E11D48] hover:bg-[#BE123C] text-white font-semibold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+                    className="h-[44px] rounded-lg px-4 bg-[#C2410C] hover:bg-[#9A3412] text-white font-semibold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
                   >
                     <Zap className="w-4 h-4" />
                     <span>{t('product.buy', 'Buy Now')}</span>

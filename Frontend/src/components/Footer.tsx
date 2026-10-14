@@ -185,8 +185,28 @@ export const Footer: React.FC = () => {
         </div>
       </div>
 
+      {/* Payment Methods & Courier Partners Strip */}
+      <div className="border-t border-slate-200 bg-slate-50/75 py-4 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-slate-700">Supported Payments:</span>
+            <span className="px-2 py-0.5 rounded bg-white border border-slate-200 font-semibold text-slate-800 text-[11px]">bKash</span>
+            <span className="px-2 py-0.5 rounded bg-white border border-slate-200 font-semibold text-slate-800 text-[11px]">Nagad</span>
+            <span className="px-2 py-0.5 rounded bg-white border border-slate-200 font-semibold text-slate-800 text-[11px]">Rocket</span>
+            <span className="px-2 py-0.5 rounded bg-white border border-slate-200 font-semibold text-slate-800 text-[11px]">Visa / Mastercard</span>
+            <span className="px-2 py-0.5 rounded bg-white border border-slate-200 font-semibold text-emerald-700 text-[11px]">Cash on Delivery</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-slate-700">Courier Partners:</span>
+            <span className="px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-800 font-semibold text-[11px]">Pathao Courier</span>
+            <span className="px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-800 font-semibold text-[11px]">Steadfast Courier</span>
+          </div>
+        </div>
+      </div>
+
       {/* Bottom Copyright Strip */}
-      <div className="border-t border-slate-100 py-4 px-4 sm:px-6 lg:px-8 text-[11px] text-slate-500 text-center">
+      <div className="border-t border-slate-100 py-3.5 px-4 sm:px-6 lg:px-8 text-[11px] text-slate-500 text-center">
         <div className="max-w-7xl mx-auto">
           &copy; {new Date().getFullYear()} Deshi Commerce Bangladesh. {t('footer.rights', 'All rights reserved.')}
         </div>
