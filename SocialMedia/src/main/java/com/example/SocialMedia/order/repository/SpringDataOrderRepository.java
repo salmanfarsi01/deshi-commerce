@@ -13,6 +13,8 @@ public interface SpringDataOrderRepository extends JpaRepository<Order, String> 
 
     Optional<Order> findByOrderNumberIgnoreCase(String orderNumber);
 
+    Optional<Order> findByTrackingNumber(String trackingNumber);
+
     List<Order> findByUserIdOrderByCreatedAtDesc(String userId);
 
     List<Order> findAllByOrderByCreatedAtDesc();

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Order } from '../../../types';
 import { Truck, X, ExternalLink, Sparkles, Send, Check } from 'lucide-react';
 import { formatBDT } from '../../../data/bangladeshGeo';
+import { apiService } from '../../../services/apiClient';
 
 interface Props {
   order: Order | null;
@@ -35,6 +36,8 @@ export const CourierDispatchModal: React.FC<Props> = ({
   const [estimatedDelivery, setEstimatedDelivery] = useState('');
   const [advanceToShipped, setAdvanceToShipped] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [isAutoBooking, setIsAutoBooking] = useState(false);
+  const [apiBookedNotice, setApiBookedNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (order) {
@@ -62,6 +65,26 @@ export const CourierDispatchModal: React.FC<Props> = ({
     const provider = COURIER_PROVIDERS.find((p) => p.name === selectedCourier);
     if (provider && provider.urlPattern) {
       setCustomTrackingUrl(`${provider.urlPattern}${val}`);
+    }
+  };
+
+  const handleAutoBookApi = async () => {
+    try {
+      setIsAutoBooking(true);
+      const courierCode = selectedCourier.includes('Pathao') ? 'PATHAO' : 'STEADFAST';
+      const res = await apiService.admin.bookConsignment({
+        orderId: order.id,
+        courier: courierCode,
+        specialInstruction: 'Doorstep parcel delivery nationwide',
+      });
+      if (res.data?.trackingCode) {
+        setTrackingNumber(res.data.trackingCode);
+        setCustomTrackingUrl(res.data.trackingUrl);
+        setSelectedCourier(res.data.courierName);
+        setApiBookedNotice(`⚡ Booked with ${res.data.courierName} API (Consignment: ${res.data.consignmentId})`);
+      }
+    } finally {
+      setIsAutoBooking(false);
     }
   };
 
@@ -151,21 +174,33 @@ export const CourierDispatchModal: React.FC<Props> = ({
 
           {/* 2. Tracking / Consignment Number */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center justify-between">
-              <span>Consignment / Tracking Number *</span>
-              <button
-                type="button"
-                onClick={() => {
-                  const p = COURIER_PROVIDERS.find((cp) => cp.name === selectedCourier) || COURIER_PROVIDERS[0];
-                  const code = `${p.prefix}${Math.floor(100000 + Math.random() * 900000)}`;
-                  handleTrackingNumberChange(code);
-                }}
-                className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 cursor-pointer font-normal"
-              >
-                <Sparkles className="w-3 h-3" />
-                Generate New Code
-              </button>
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Consignment / Tracking Number *
+              </label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={isAutoBooking}
+                  onClick={handleAutoBookApi}
+                  className="text-[10px] bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md font-semibold flex items-center gap-1 cursor-pointer transition-colors border border-blue-200"
+                >
+                  <Sparkles className="w-3 h-3 text-blue-600" />
+                  <span>{isAutoBooking ? 'Booking...' : '⚡ Auto-Book via API'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const p = COURIER_PROVIDERS.find((cp) => cp.name === selectedCourier) || COURIER_PROVIDERS[0];
+                    const code = `${p.prefix}${Math.floor(100000 + Math.random() * 900000)}`;
+                    handleTrackingNumberChange(code);
+                  }}
+                  className="text-[10px] text-slate-500 hover:text-slate-800 hover:underline flex items-center gap-1 cursor-pointer font-normal"
+                >
+                  Regenerate
+                </button>
+              </div>
+            </div>
             <input
               type="text"
               required
@@ -173,6 +208,11 @@ export const CourierDispatchModal: React.FC<Props> = ({
               onChange={(e) => handleTrackingNumberChange(e.target.value)}
               className="w-full px-3 py-2 text-xs font-mono font-bold border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
             />
+            {apiBookedNotice && (
+              <p className="text-[10px] text-emerald-600 font-semibold mt-1">
+                {apiBookedNotice}
+              </p>
+            )}
           </div>
 
           {/* 3. Tracking Link Live Preview */}

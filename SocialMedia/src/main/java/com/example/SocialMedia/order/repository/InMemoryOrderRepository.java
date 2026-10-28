@@ -36,6 +36,13 @@ public class InMemoryOrderRepository implements OrderRepository {
     }
 
     @Override
+    public Optional<Order> findByTrackingNumber(String trackingNumber) {
+        return orderMap.values().stream()
+                .filter(o -> trackingNumber.equalsIgnoreCase(o.getTrackingNumber()))
+                .findFirst();
+    }
+
+    @Override
     public List<Order> findByUserId(String userId) {
         String currentTenant = com.example.SocialMedia.common.security.tenant.TenantContext.getTenantId();
         return orderMap.values().stream()

@@ -1,51 +1,30 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Package,
-  Search,
-  Truck,
-  Plus,
-  Edit,
-  Trash2,
-  UserCheck,
-  X,
-  Mail,
-  Smartphone,
   Layers,
-  ArrowUpRight,
-  Download,
-  ExternalLink,
-  Filter,
-  CheckCircle2,
-  Clock,
-  AlertTriangle,
-  RefreshCw,
   ShoppingBag,
-  SlidersHorizontal,
-  ChevronRight,
   TrendingUp,
   CreditCard,
-  Eye,
   Sparkles,
-  UploadCloud,
-  ChevronUp,
-  ChevronDown,
-  Image as ImageIcon,
   Users,
   HelpCircle,
-  Shield,
-  DollarSign,
   Menu,
   Zap,
-  LogOut,
   Gift,
   Bell,
-  Phone,
   MessageCircle,
-  CheckCheck,
-  Check,
+  LogOut,
+  ExternalLink,
+  RefreshCw,
+  Download,
+  Plus,
+  X,
+  UserCheck,
+  ChevronRight,
+  Trash2,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { apiService } from '../../services/apiClient';
+import { apiService, checkBackendConnection } from '../../services/apiClient';
 import footerLogo from '../../images/footer logo.png';
 import {
   AdminDashboardSummary,
@@ -66,12 +45,22 @@ import {
 } from '../../types';
 import { INITIAL_HERO_SHOWCASE } from '../../services/dbStorage';
 import { formatBDT } from '../../data/bangladeshGeo';
+
+// Modular Tab Components
 import { AdminKpiCards } from './components/AdminKpiCards';
 import { AdminSalesTrendChart } from './components/AdminSalesTrendChart';
 import { AdminPieChart } from './components/AdminPieChart';
 import { AdminFlashSaleTab } from './components/AdminFlashSaleTab';
 import { AdminSpecialOffersTab } from './components/AdminSpecialOffersTab';
 import { AdminLiveChatTab } from './components/AdminLiveChatTab';
+import { AdminOrdersTab } from './components/AdminOrdersTab';
+import { AdminProductsTab } from './components/AdminProductsTab';
+import { AdminCategoriesTab } from './components/AdminCategoriesTab';
+import { AdminHeroTab } from './components/AdminHeroTab';
+import { AdminUsersTab } from './components/AdminUsersTab';
+import { AdminFaqsTab } from './components/AdminFaqsTab';
+import { AdminSupportTab } from './components/AdminSupportTab';
+
 const ProductUploadModal = React.lazy(() =>
   import('./components/ProductUploadModal').then((m) => ({ default: m.ProductUploadModal }))
 );
@@ -98,6 +87,9 @@ export const AdminDashboard: React.FC = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [flashCampaign, setFlashCampaign] = useState<FlashSaleCampaign | null>(null);
   const [specialOffersCount, setSpecialOffersCount] = useState<number>(0);
+
+  // Connectivity status indicator (Live PostgreSQL vs Offline Local Sandbox)
+  const [isBackendConnected, setIsBackendConnected] = useState<boolean | null>(null);
 
   // Summary & Datasets
   const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
@@ -152,9 +144,16 @@ export const AdminDashboard: React.FC = () => {
   const [ticketNotesInput, setTicketNotesInput] = useState<{ [ticketId: string]: string }>({});
   const [unreadChatsCount, setUnreadChatsCount] = useState<number>(0);
 
+  // Verify backend health & sync data
+  const checkConnectivity = async () => {
+    const isLive = await checkBackendConnection();
+    setIsBackendConnected(isLive);
+  };
+
   // Load all initial data from API service
   const loadData = async () => {
     setLoading(true);
+    checkConnectivity();
     try {
       const [sumRes, ordRes, prdRes, catRes, notRes, heroRes, usersRes, faqsRes, flashRes, offersRes, ticketsRes, chatRes] = await Promise.all([
         apiService.admin.getDashboardSummary(),
@@ -231,41 +230,16 @@ export const AdminDashboard: React.FC = () => {
     return supportTickets.filter((t) => t.status === 'OPEN').length;
   }, [supportTickets]);
 
-  const filteredSupportTickets = useMemo(() => {
-    return supportTickets.filter((ticket) => {
-      const matchesFilter = supportFilter === 'ALL' || ticket.status === supportFilter;
-      const q = supportSearch.toLowerCase().trim();
-      const matchesSearch =
-        !q ||
-        ticket.name.toLowerCase().includes(q) ||
-        ticket.contact.toLowerCase().includes(q) ||
-        ticket.topic.toLowerCase().includes(q) ||
-        ticket.message.toLowerCase().includes(q) ||
-        ticket.id.toLowerCase().includes(q) ||
-        (ticket.orderNumber && ticket.orderNumber.toLowerCase().includes(q));
-      return matchesFilter && matchesSearch;
-    });
-  }, [supportTickets, supportFilter, supportSearch]);
-
   const handleUpdateTicketStatus = async (
     ticketId: string,
-    status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED',
-    notes?: string
+    newStatus: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED'
   ) => {
     try {
-      const res = await apiService.support.updateTicket(ticketId, {
-        status,
-        ...(notes !== undefined ? { adminNotes: notes } : {}),
-      });
-      if (res.data) {
-        setSupportTickets((prev) => prev.map((t) => (t.id === ticketId ? res.data! : t)));
-        showToast(
-          status === 'RESOLVED'
-            ? 'Support inquiry marked as Resolved!'
-            : `Ticket status updated to ${status}`,
-          'success'
-        );
-      }
+      await apiService.support.updateTicket(ticketId, { status: newStatus });
+      setSupportTickets((prev) =>
+        prev.map((t) => (t.id === ticketId ? { ...t, status: newStatus } : t))
+      );
+      showToast(`Support inquiry #${ticketId} status changed to ${newStatus}`, 'success');
     } catch {
       showToast('Failed to update ticket status', 'error');
     }
@@ -275,80 +249,63 @@ export const AdminDashboard: React.FC = () => {
     const note = ticketNotesInput[ticketId];
     if (note === undefined) return;
     try {
-      const res = await apiService.support.updateTicket(ticketId, { adminNotes: note });
-      if (res.data) {
-        setSupportTickets((prev) => prev.map((t) => (t.id === ticketId ? res.data! : t)));
-        showToast('Resolution note saved for ticket', 'success');
-      }
+      await apiService.support.updateTicket(ticketId, { adminNotes: note.trim() });
+      setSupportTickets((prev) =>
+        prev.map((t) => (t.id === ticketId ? { ...t, adminNotes: note.trim() } : t))
+      );
+      showToast('Resolution note saved', 'success');
     } catch {
-      showToast('Failed to save note', 'error');
+      showToast('Failed to save resolution note', 'error');
     }
   };
 
   const handleDeleteTicket = async (ticketId: string) => {
-    if (!window.confirm('Are you sure you want to delete this customer inquiry?')) return;
+    if (!confirm('Are you sure you want to delete this customer inquiry?')) return;
     try {
       await apiService.support.deleteTicket(ticketId);
       setSupportTickets((prev) => prev.filter((t) => t.id !== ticketId));
-      showToast('Inquiry removed successfully', 'info');
+      showToast('Support ticket deleted', 'info');
     } catch {
       showToast('Failed to delete ticket', 'error');
     }
   };
 
-
-  // 1. Dynamic Trend Data based on Timeframe Slicer
+  // Sales Trend & Data Points
   const trendData: TrendDataPoint[] = useMemo(() => {
     if (timeframe === 'day') {
-      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      return days.map((day, i) => {
-        const rev = 48000 + (i * 19500) % 62000 + (i >= 4 ? 38000 : 0);
-        const orderCount = Math.max(4, Math.round(rev / 3200));
-        return {
-          label: day,
-          subLabel: `Day ${i + 1}`,
-          revenue: rev,
-          orders: orderCount,
-          units: orderCount * 2 + (i % 2),
-        };
-      });
-    } else if (timeframe === 'week') {
       return [
-        { label: 'Wk 1', subLabel: 'Aug 04', revenue: 290000, orders: 48, units: 98 },
-        { label: 'Wk 2', subLabel: 'Aug 11', revenue: 325000, orders: 55, units: 115 },
-        { label: 'Wk 3', subLabel: 'Aug 18', revenue: 380000, orders: 62, units: 130 },
-        { label: 'Wk 4', subLabel: 'Aug 25', revenue: 410000, orders: 70, units: 145 },
-        { label: 'Wk 5', subLabel: 'Sep 01', revenue: 440000, orders: 74, units: 152 },
-        { label: 'Wk 6', subLabel: 'Sep 08', revenue: 465000, orders: 79, units: 168 },
-        { label: 'Wk 7', subLabel: 'Sep 15', revenue: 512000, orders: 88, units: 184 },
-        { label: 'Wk 8', subLabel: 'Sep 22', revenue: 548000, orders: 94, units: 196 },
-      ];
-    } else if (timeframe === 'year') {
-      return [
-        { label: '2024', subLabel: 'FY24', revenue: 6800000, orders: 1250, units: 2840 },
-        { label: '2025', subLabel: 'FY25', revenue: 11400000, orders: 2180, units: 4950 },
-        { label: '2026', subLabel: 'FY26', revenue: 14829000, orders: 2940, units: 6820 },
-      ];
-    } else {
-      // Monthly 12-month progression
-      return [
-        { label: 'Jan', revenue: 580000, orders: 92, units: 180 },
-        { label: 'Feb', revenue: 640000, orders: 104, units: 210 },
-        { label: 'Mar', revenue: 720000, orders: 118, units: 245 },
-        { label: 'Apr', revenue: 820000, orders: 135, units: 280 },
-        { label: 'May', revenue: 960000, orders: 154, units: 320 },
-        { label: 'Jun', revenue: 1120000, orders: 178, units: 375 },
-        { label: 'Jul', revenue: 1250000, orders: 195, units: 410 },
-        { label: 'Aug', revenue: 1390000, orders: 215, units: 460 },
-        { label: 'Sep', revenue: 1482900, orders: 232, units: 504 },
-        { label: 'Oct', revenue: 1560000, orders: 245, units: 530 },
-        { label: 'Nov', revenue: 1690000, orders: 268, units: 580 },
-        { label: 'Dec', revenue: 1890000, orders: 305, units: 660 },
+        { label: '00:00', revenue: 12000, orders: 4 },
+        { label: '04:00', revenue: 4500, orders: 1 },
+        { label: '08:00', revenue: 38000, orders: 11 },
+        { label: '12:00', revenue: 95000, orders: 28 },
+        { label: '16:00', revenue: 142000, orders: 42 },
+        { label: '20:00', revenue: 188000, orders: 55 },
+        { label: '23:59', revenue: 84000, orders: 22 },
       ];
     }
+    if (timeframe === 'week') {
+      return [
+        { label: 'Mon', revenue: 145000, orders: 42 },
+        { label: 'Tue', revenue: 182000, orders: 51 },
+        { label: 'Wed', revenue: 210000, orders: 63 },
+        { label: 'Thu', revenue: 195000, orders: 58 },
+        { label: 'Fri', revenue: 320000, orders: 94 },
+        { label: 'Sat', revenue: 290000, orders: 85 },
+        { label: 'Sun', revenue: 245000, orders: 72 },
+      ];
+    }
+    return [
+      { label: 'Jan', revenue: 820000, orders: 240 },
+      { label: 'Feb', revenue: 940000, orders: 280 },
+      { label: 'Mar', revenue: 1120000, orders: 340 },
+      { label: 'Apr', revenue: 1050000, orders: 310 },
+      { label: 'May', revenue: 1380000, orders: 410 },
+      { label: 'Jun', revenue: 1590000, orders: 480 },
+      { label: 'Jul', revenue: 1482900, orders: 452 },
+    ];
   }, [timeframe]);
 
-  // 2. Computed KPI aggregates
+  // Computed KPI aggregates
   const totalRevenue = useMemo(() => {
     return orders
       .filter((o) => o.status !== 'CANCELLED')
@@ -374,7 +331,7 @@ export const AdminDashboard: React.FC = () => {
     return products.filter((p) => p.stock <= 5).length;
   }, [products]);
 
-  // 3. Category Distribution Slices
+  // Category Distribution Slices
   const categorySlices: DonutSlice[] = useMemo(() => {
     const catMap: Record<string, { count: number; revenue: number }> = {};
     products.forEach((p) => {
@@ -383,48 +340,35 @@ export const AdminDashboard: React.FC = () => {
       catMap[catName].count++;
       catMap[catName].revenue += p.price * Math.max(1, p.stock);
     });
-    const total = Object.values(catMap).reduce((s, v) => s + v.revenue, 0) || 1;
     const colors = ['#0F172A', '#E11D48', '#2563EB', '#059669', '#D97706', '#7C3AED', '#DB2777'];
     return Object.entries(catMap).map(([name, data], idx) => ({
       label: name,
       value: data.revenue,
-      percentage: Math.max(1, Math.round((data.revenue / total) * 100)),
+      percentage: Math.round((data.count / Math.max(1, products.length)) * 100),
       color: colors[idx % colors.length],
-      formattedValue: formatBDT(data.revenue),
+      formattedValue: `${data.count} items`,
     }));
   }, [products]);
 
-  // 4. Status Distribution Slices
+  // Order Pipeline Status Slices
   const statusSlices: DonutSlice[] = useMemo(() => {
     const total = orders.length || 1;
-    const statusCounts: Record<OrderStatus, number> = {
-      DELIVERED: orders.filter((o) => o.status === 'DELIVERED').length,
-      SHIPPED: orders.filter((o) => o.status === 'SHIPPED').length,
-      PROCESSING: orders.filter((o) => o.status === 'PROCESSING').length,
-      CONFIRMED: orders.filter((o) => o.status === 'CONFIRMED').length,
-      PENDING: orders.filter((o) => o.status === 'PENDING').length,
-      CANCELLED: orders.filter((o) => o.status === 'CANCELLED').length,
-    };
-    const colorMap: Record<OrderStatus, string> = {
-      DELIVERED: '#059669',
-      SHIPPED: '#2563EB',
-      PROCESSING: '#D97706',
-      CONFIRMED: '#4F46E5',
-      PENDING: '#E11D48',
-      CANCELLED: '#64748B',
-    };
-    return (Object.entries(statusCounts) as [OrderStatus, number][])
-      .filter(([_, count]) => count > 0)
-      .map(([status, count]) => ({
-        label: status,
-        value: count,
-        percentage: Math.round((count / total) * 100),
-        color: colorMap[status] || '#94A3B8',
-        formattedValue: `${count} orders`,
-      }));
+    const pending = orders.filter((o) => o.status === 'PENDING').length;
+    const processing = orders.filter((o) => o.status === 'CONFIRMED' || o.status === 'PROCESSING').length;
+    const shipped = orders.filter((o) => o.status === 'SHIPPED').length;
+    const delivered = orders.filter((o) => o.status === 'DELIVERED').length;
+    const cancelled = orders.filter((o) => o.status === 'CANCELLED').length;
+
+    return [
+      { label: 'Delivered', value: delivered || 24, percentage: Math.round(((delivered || 24) / total) * 100), color: '#10B981', formattedValue: `${delivered || 24} orders` },
+      { label: 'Shipped', value: shipped || 8, percentage: Math.round(((shipped || 8) / total) * 100), color: '#3B82F6', formattedValue: `${shipped || 8} orders` },
+      { label: 'Processing', value: processing || 5, percentage: Math.round(((processing || 5) / total) * 100), color: '#F59E0B', formattedValue: `${processing || 5} orders` },
+      { label: 'Pending', value: pending || 3, percentage: Math.round(((pending || 3) / total) * 100), color: '#8B5CF6', formattedValue: `${pending || 3} orders` },
+      { label: 'Cancelled', value: cancelled || 2, percentage: Math.round(((cancelled || 2) / total) * 100), color: '#EF4444', formattedValue: `${cancelled || 2} orders` },
+    ];
   }, [orders]);
 
-  // 5. Payment Channel Slices
+  // Payment Method Distribution Slices
   const paymentSlices: DonutSlice[] = useMemo(() => {
     const total = orders.length || 1;
     const ssl = orders.filter((o) => o.paymentMethod === 'SSLCOMMERZ').length;
@@ -432,87 +376,11 @@ export const AdminDashboard: React.FC = () => {
     const bkash = orders.filter((o) => o.paymentMethod === 'BKASH' || o.paymentMethod === 'NAGAD').length;
 
     return [
-      {
-        label: 'SSLCommerz Cards/Net',
-        value: ssl || 14,
-        percentage: Math.round(((ssl || 14) / (total + 8)) * 100),
-        color: '#6366F1',
-        formattedValue: `${ssl || 14} orders`,
-      },
-      {
-        label: 'Cash on Delivery (COD)',
-        value: cod || 18,
-        percentage: Math.round(((cod || 18) / (total + 8)) * 100),
-        color: '#0284C7',
-        formattedValue: `${cod || 18} orders`,
-      },
-      {
-        label: 'bKash / Nagad Direct',
-        value: bkash || 7,
-        percentage: Math.round(((bkash || 7) / (total + 8)) * 100),
-        color: '#EC4899',
-        formattedValue: `${bkash || 7} orders`,
-      },
+      { label: 'SSLCommerz Gateway', value: ssl || 14, percentage: Math.round(((ssl || 14) / (total + 8)) * 100), color: '#6366F1', formattedValue: `${ssl || 14} orders` },
+      { label: 'Cash on Delivery (COD)', value: cod || 18, percentage: Math.round(((cod || 18) / (total + 8)) * 100), color: '#0284C7', formattedValue: `${cod || 18} orders` },
+      { label: 'bKash / Nagad Direct', value: bkash || 7, percentage: Math.round(((bkash || 7) / (total + 8)) * 100), color: '#EC4899', formattedValue: `${bkash || 7} orders` },
     ];
   }, [orders]);
-
-  // 6. Filtered Orders list
-  const filteredOrders = useMemo(() => {
-    return orders.filter((o) => {
-      if (orderStatusFilter !== 'ALL' && o.status !== orderStatusFilter) return false;
-      if (orderSearch.trim()) {
-        const q = orderSearch.toLowerCase();
-        return (
-          o.orderNumber.toLowerCase().includes(q) ||
-          o.customerName.toLowerCase().includes(q) ||
-          o.customerPhone.includes(q) ||
-          o.shippingAddress?.district?.toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [orders, orderStatusFilter, orderSearch]);
-
-  // 7. Filtered Products list
-  const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
-      if (productCategoryFilter !== 'ALL' && p.categoryId !== productCategoryFilter) return false;
-      if (productStockFilter === 'LOW_STOCK' && p.stock > 5) return false;
-      if (productStockFilter === 'OUT_OF_STOCK' && p.stock > 0) return false;
-      if (productStockFilter === 'IN_STOCK' && p.stock <= 0) return false;
-      if (productSearch.trim()) {
-        const q = productSearch.toLowerCase();
-        return (
-          p.name.toLowerCase().includes(q) ||
-          p.sku.toLowerCase().includes(q) ||
-          p.brand.toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [products, productCategoryFilter, productStockFilter, productSearch]);
-
-  // 8. Filtered Users list
-  const filteredUsers = useMemo(() => {
-    return usersList.filter((u) => {
-      if (!userSearch.trim()) return true;
-      const q = userSearch.toLowerCase();
-      return (
-        (u.name && u.name.toLowerCase().includes(q)) ||
-        (u.email && u.email.toLowerCase().includes(q)) ||
-        (u.phone && u.phone.includes(q)) ||
-        (u.id && u.id.toLowerCase().includes(q))
-      );
-    });
-  }, [usersList, userSearch]);
-
-  // 9. Filtered FAQs list
-  const filteredFaqs = useMemo(() => {
-    return faqsList.filter((f) => {
-      if (faqCategoryFilter !== 'ALL' && f.category !== faqCategoryFilter) return false;
-      return true;
-    });
-  }, [faqsList, faqCategoryFilter]);
 
   // Handlers
   const handleDeleteUser = async (userId: string, userName: string) => {
@@ -560,6 +428,7 @@ export const AdminDashboard: React.FC = () => {
       showToast(err?.message || 'Failed to delete FAQ', 'error');
     }
   };
+
   const handleAssignCourier = async (
     orderId: string,
     courierData: {
@@ -582,24 +451,20 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
-    // Optimistic update: instantly reflect the change in table dropdown
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
     );
-
     try {
       const res = await apiService.admin.updateStatus(orderId, newStatus);
       showToast(
         res.message || `Order #${res.data?.orderNumber || orderId} status changed to ${newStatus}`,
         'success'
       );
-      // Sync fresh list in background
       const ordRes = await apiService.admin.getOrders();
       setOrders(ordRes.data);
     } catch (err: any) {
       console.error('Failed to update status:', err);
       showToast(err?.message || 'Failed to update status', 'error');
-      // Revert if error
       const ordRes = await apiService.admin.getOrders();
       setOrders(ordRes.data);
     }
@@ -789,10 +654,7 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex text-slate-900 font-sans">
-      {/* ========================================================================= */}
       {/* 1. LEFT SIDEBAR NAVIGATION */}
-      {/* ========================================================================= */}
-      {/* Mobile Backdrop Overlay */}
       {isMobileSidebarOpen && (
         <div
           className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-xs"
@@ -801,63 +663,65 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-950 text-white flex flex-col border-r border-slate-800 transition-transform duration-200 lg:static lg:translate-x-0 ${
-          isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed lg:sticky top-0 left-0 h-screen w-64 bg-slate-950 text-slate-200 z-50 flex flex-col transition-transform duration-300 ease-in-out border-r border-slate-800 ${
+          isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        {/* Brand & Portal Badge */}
+        {/* Brand & Mobile Close */}
         <div className="p-4 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <img src={footerLogo} alt="Deshi Commerce" className="h-6 w-auto object-contain" />
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 border-l border-slate-800 pl-2.5">
-              Admin
-            </span>
+            <img src={footerLogo} alt="Deshi Commerce" className="h-8 w-auto object-contain brightness-0 invert" />
+            <div>
+              <span className="text-xs font-bold text-white tracking-wider uppercase block">Deshi Admin</span>
+              <span className="text-[10px] text-emerald-400 font-mono font-medium block">Executive Portal</span>
+            </div>
           </div>
           <button
             type="button"
             onClick={() => setIsMobileSidebarOpen(false)}
-            className="lg:hidden p-1 text-slate-400 hover:text-white"
+            className="lg:hidden p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Sidebar Nav Items */}
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {/* Dashboard */}
+        <nav className="flex-1 overflow-y-auto p-3 space-y-1 text-xs">
+          {/* Overview */}
           <button
             type="button"
             onClick={() => {
               setActiveTab('overview');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold transition-all cursor-pointer ${
               activeTab === 'overview'
                 ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
             <TrendingUp className="w-4 h-4 text-emerald-400" />
-            <span>Dashboard</span>
+            <span className="flex-1 text-left">Dashboard</span>
+            <span className="text-[10px] font-mono text-emerald-400 font-bold">KPI</span>
           </button>
 
-          {/* Orders */}
+          {/* Customer Orders */}
           <button
             type="button"
             onClick={() => {
               setActiveTab('orders');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold transition-all cursor-pointer ${
               activeTab === 'orders'
                 ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
-            <Truck className="w-4 h-4 text-blue-400" />
-            <span className="flex-1 text-left">Orders</span>
+            <ShoppingBag className="w-4 h-4 text-blue-400" />
+            <span className="flex-1 text-left">Orders &amp; Dispatch</span>
             {pendingOrdersCount > 0 ? (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-slate-950 animate-pulse">
                 {pendingOrdersCount}
               </span>
             ) : (
@@ -865,98 +729,74 @@ export const AdminDashboard: React.FC = () => {
             )}
           </button>
 
-          {/* Products */}
+          {/* Products & Inventory */}
           <button
             type="button"
             onClick={() => {
               setActiveTab('products');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold transition-all cursor-pointer ${
               activeTab === 'products'
                 ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
             <Package className="w-4 h-4 text-indigo-400" />
-            <span className="flex-1 text-left">Products</span>
-            {lowStockCount > 0 ? (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
-                {lowStockCount} low
-              </span>
-            ) : (
-              <span className="text-[10px] text-slate-500 font-mono">{products.length}</span>
-            )}
+            <span className="flex-1 text-left">Products Catalog</span>
+            <span className="text-[10px] text-slate-500 font-mono">{products.length}</span>
           </button>
 
-          {/* FLASH SALE CAMPAIGN */}
+          {/* Flash Sale Campaign */}
           <button
             type="button"
             onClick={() => {
               setActiveTab('flash-sale');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold transition-all cursor-pointer ${
               activeTab === 'flash-sale'
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
+                ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
-            <Zap
-              className={`w-4 h-4 ${
-                flashCampaign?.enabled ? 'text-amber-400 fill-amber-400 animate-pulse' : 'text-slate-500'
-              }`}
-            />
+            <Zap className="w-4 h-4 text-amber-400" />
             <span className="flex-1 text-left">Flash Sale</span>
-            {flashCampaign?.enabled ? (
-              <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
-                {flashCampaign.discountPercentage}% OFF
-              </span>
-            ) : (
-              <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-slate-800 text-slate-500 font-medium">
-                OFF
+            {flashCampaign?.active && (
+              <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider animate-pulse">
+                Live
               </span>
             )}
           </button>
 
-          {/* SPECIAL OFFERS / BOGO DEALS */}
+          {/* Special Offers / BOGO */}
           <button
             type="button"
             onClick={() => {
               setActiveTab('special-offers');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold transition-all cursor-pointer ${
               activeTab === 'special-offers'
-                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-xs'
+                ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
           >
-            <Gift
-              className={`w-4 h-4 ${
-                specialOffersCount > 0 ? 'text-rose-400 fill-rose-400/20' : 'text-slate-500'
-              }`}
-            />
+            <Gift className="w-4 h-4 text-purple-400" />
             <span className="flex-1 text-left">Special Offers</span>
-            {specialOffersCount > 0 ? (
-              <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30">
-                {specialOffersCount} Active
-              </span>
-            ) : (
-              <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-slate-800 text-slate-500 font-medium">
-                0
-              </span>
-            )}
+            <span className="px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              {specialOffersCount} Deals
+            </span>
           </button>
 
-          {/* Hero Showcase */}
+          {/* Hero Section Showcase */}
           <button
             type="button"
             onClick={() => {
               setActiveTab('hero');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold transition-all cursor-pointer ${
               activeTab === 'hero'
                 ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
@@ -974,7 +814,7 @@ export const AdminDashboard: React.FC = () => {
               setActiveTab('categories');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold transition-all cursor-pointer ${
               activeTab === 'categories'
                 ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
@@ -992,7 +832,7 @@ export const AdminDashboard: React.FC = () => {
               setActiveTab('users');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold transition-all cursor-pointer ${
               activeTab === 'users'
                 ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
@@ -1010,7 +850,7 @@ export const AdminDashboard: React.FC = () => {
               setActiveTab('faqs');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold transition-all cursor-pointer ${
               activeTab === 'faqs'
                 ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
@@ -1028,7 +868,7 @@ export const AdminDashboard: React.FC = () => {
               setActiveTab('notifications');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold transition-all cursor-pointer ${
               activeTab === 'notifications'
                 ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
@@ -1052,7 +892,7 @@ export const AdminDashboard: React.FC = () => {
               setActiveTab('live-chat');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold transition-all cursor-pointer ${
               activeTab === 'live-chat'
                 ? 'bg-slate-800 text-white shadow-xs ring-1 ring-slate-700'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
@@ -1099,78 +939,79 @@ export const AdminDashboard: React.FC = () => {
               <ExternalLink className="w-3.5 h-3.5" />
               <span>Storefront</span>
             </button>
-
             <button
               type="button"
               onClick={handleSignOut}
-              className="px-2.5 py-1.5 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-rose-200 text-xs font-semibold rounded-lg border border-rose-800/60 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-              title="Sign Out of Admin Console"
+              className="px-2.5 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 hover:text-rose-100 text-xs font-semibold rounded-lg border border-rose-900/50 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+              title="Sign Out"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>Sign Out</span>
+              <span>Logout</span>
             </button>
           </div>
         </div>
       </aside>
 
-      {/* ========================================================================= */}
-      {/* 2. RIGHT MAIN VIEW AREA */}
-      {/* ========================================================================= */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Sticky Top Header Bar */}
-        <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 sticky top-0 z-30 shadow-xs flex items-center justify-between gap-4">
+      {/* 2. MAIN VIEW AREA */}
+      <div className="flex-1 min-w-0 flex flex-col">
+        {/* Top Header Bar */}
+        <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setIsMobileSidebarOpen(true)}
-              className="lg:hidden p-1.5 text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer"
+              className="lg:hidden p-2 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 cursor-pointer"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <h1 className="text-base sm:text-lg font-semibold text-slate-900 tracking-tight">
-              {activeTab === 'overview' && 'Dashboard'}
-              {activeTab === 'orders' && `Orders (${orders.length})`}
-              {activeTab === 'products' && `Products (${products.length})`}
-              {activeTab === 'flash-sale' && 'Flash Sale'}
-              {activeTab === 'special-offers' && 'Special Offers & BOGO Deals'}
-              {activeTab === 'hero' && 'Hero Banners'}
-              {activeTab === 'categories' && 'Categories'}
-              {activeTab === 'users' && 'Users'}
-              {activeTab === 'faqs' && 'FAQs'}
-              {activeTab === 'notifications' && `Inquiries & Notifications (${supportTickets.length})`}
-              {activeTab === 'live-chat' && `Direct Customer Live Chat (${unreadChatsCount > 0 ? `${unreadChatsCount} unread` : 'Connected'})`}
-            </h1>
+            <div>
+              <h1 className="text-base sm:text-lg font-black text-slate-900 capitalize tracking-tight flex items-center gap-2">
+                <span>
+                  {activeTab === 'overview' && 'Executive Analytics Overview'}
+                  {activeTab === 'orders' && 'Customer Orders & Dispatches'}
+                  {activeTab === 'products' && 'Product Inventory Catalog'}
+                  {activeTab === 'flash-sale' && 'Flash Sale Campaign Control'}
+                  {activeTab === 'special-offers' && 'Special Deals & BOGO Bundles'}
+                  {activeTab === 'hero' && 'Homepage Hero Showcase'}
+                  {activeTab === 'categories' && 'Catalog Category Architecture'}
+                  {activeTab === 'users' && 'Customer User Management'}
+                  {activeTab === 'faqs' && 'Store FAQ & Help Center Editor'}
+                  {activeTab === 'notifications' && 'Customer Inquiries & Audit Trail'}
+                  {activeTab === 'live-chat' && 'Live Customer Chat Console'}
+                </span>
+
+                {/* 3.3 LIVE VS MOCK CONNECTIVITY INDICATOR BADGE */}
+                {isBackendConnected === true && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Live PostgreSQL API
+                  </span>
+                )}
+                {isBackendConnected === false && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs" title="Connected to Local Browser Sandbox (Spring Boot offline)">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    Offline Demo Sandbox
+                  </span>
+                )}
+              </h1>
+              <p className="text-xs text-slate-500 hidden sm:block">
+                Deshi Commerce BD &bull; Enterprise Admin Console
+              </p>
+            </div>
           </div>
 
-          {/* Action buttons */}
+          {/* Quick Header Actions */}
           <div className="flex items-center gap-2">
-            {/* Direct Live Chat Button with Real-time Unread Badge */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('live-chat')}
-              className="relative p-2 sm:px-3 sm:py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer border border-slate-200 flex items-center gap-1.5"
-              title="Direct Customer Live Chat"
-            >
-              <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="hidden md:inline text-xs font-semibold">Live Chat</span>
-              {unreadChatsCount > 0 && (
-                <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-black text-white bg-emerald-600 rounded-full animate-pulse shadow-sm">
-                  {unreadChatsCount}
-                </span>
-              )}
-            </button>
-
-            {/* Direct Notification Bell Button with Real-time Unread Badge */}
             <button
               type="button"
               onClick={() => setActiveTab('notifications')}
-              className="relative p-2 sm:px-3 sm:py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer border border-slate-200 flex items-center gap-1.5"
-              title="Customer Support Inquiries & Alerts"
+              className="relative p-2 sm:px-3 sm:py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-colors cursor-pointer flex items-center gap-1.5"
+              title="Customer Support Inquiries"
             >
               <Bell className="w-3.5 h-3.5 text-slate-700" />
               <span className="hidden md:inline text-xs font-semibold">Inquiries</span>
               {openTicketsCount > 0 && (
-                <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-black text-white bg-rose-600 rounded-full animate-pulse shadow-sm">
+                <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-black text-white bg-rose-600 rounded-full animate-pulse shadow-xs">
                   {openTicketsCount}
                 </span>
               )}
@@ -1240,9 +1081,7 @@ export const AdminDashboard: React.FC = () => {
 
         {/* 3. MAIN DASHBOARD CONTENT */}
         <main className="p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24">
-          {/* ========================================================================= */}
-          {/* TAB: FLASH SALE CAMPAIGN MANAGEMENT (NEW) */}
-          {/* ========================================================================= */}
+          {/* TAB: FLASH SALE */}
           {activeTab === 'flash-sale' && (
             <AdminFlashSaleTab
               products={products}
@@ -1251,9 +1090,7 @@ export const AdminDashboard: React.FC = () => {
             />
           )}
 
-          {/* ========================================================================= */}
-          {/* TAB: SPECIAL PROMOTIONAL & BOGO OFFERS MANAGEMENT (NEW) */}
-          {/* ========================================================================= */}
+          {/* TAB: SPECIAL OFFERS */}
           {activeTab === 'special-offers' && (
             <AdminSpecialOffersTab
               products={products}
@@ -1261,1837 +1098,316 @@ export const AdminDashboard: React.FC = () => {
               onOffersUpdated={loadData}
             />
           )}
-        {/* ========================================================================= */}
-        {/* TAB 1: EXECUTIVE ANALYTICS DASHBOARD & SLICER */}
-        {/* ========================================================================= */}
-        {activeTab === 'overview' && (
-          <div className="space-y-6">
-            {/* KPI Cards Strip */}
-            <AdminKpiCards
-              totalRevenue={totalRevenue}
-              totalOrders={orders.length}
-              totalUnitsSold={totalUnitsSold}
-              averageOrderValue={averageOrderValue}
-              pendingOrders={pendingOrdersCount}
-              lowStockProducts={lowStockCount}
-              monthlyGrowthRate={summary?.monthlyGrowthRate || 18.4}
-              ordersFulfilledRate={summary?.ordersFulfilledRate || 75}
-              onFilterPendingOrders={() => {
-                setOrderStatusFilter('PENDING');
-                setActiveTab('orders');
-              }}
-              onFilterLowStock={() => {
-                setProductStockFilter('LOW_STOCK');
-                setActiveTab('products');
-              }}
-            />
 
-            {/* Sales Trend Visualizer with Timeframe Slicers */}
-            <AdminSalesTrendChart
-              timeframe={timeframe}
-              onTimeframeChange={setTimeframe}
-              data={trendData}
-            />
-
-            {/* 3 Pie / Donut Charts: Category Distribution, Pipeline Status, and Payment Methods */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Pie Chart 1: Revenue by Category */}
-              <AdminPieChart
-                title="Sales by Category"
-                subtitle="Share of catalog inventory &amp; sales"
-                slices={categorySlices}
-                centerSubtitle="Catalog"
-                centerTitle={`${products.length} Items`}
+          {/* TAB 1: EXECUTIVE ANALYTICS DASHBOARD */}
+          {activeTab === 'overview' && (
+            <div className="space-y-6">
+              {/* KPI Cards Strip */}
+              <AdminKpiCards
+                totalRevenue={totalRevenue}
+                totalOrders={orders.length}
+                totalUnitsSold={totalUnitsSold}
+                averageOrderValue={averageOrderValue}
+                pendingOrders={pendingOrdersCount}
+                lowStockProducts={lowStockCount}
+                monthlyGrowthRate={summary?.monthlyGrowthRate || 18.4}
+                ordersFulfilledRate={summary?.ordersFulfilledRate || 75}
+                onFilterPendingOrders={() => {
+                  setOrderStatusFilter('PENDING');
+                  setActiveTab('orders');
+                }}
+                onFilterLowStock={() => {
+                  setProductStockFilter('LOW_STOCK');
+                  setActiveTab('products');
+                }}
               />
 
-              {/* Pie Chart 2: Order Status Pipeline */}
-              <AdminPieChart
-                title="Order Status Pipeline"
-                subtitle="Live customer delivery stages"
-                slices={statusSlices}
-                centerSubtitle="Total"
-                centerTitle={`${orders.length} Orders`}
+              {/* Sales Trend Visualizer */}
+              <AdminSalesTrendChart
+                timeframe={timeframe}
+                onTimeframeChange={setTimeframe}
+                data={trendData}
               />
 
-              {/* Pie Chart 3: Payment Method Share */}
-              <AdminPieChart
-                title="Payment Methods Share"
-                subtitle="SSLCommerz Gateway vs COD"
-                slices={paymentSlices}
-                centerSubtitle="Gateway"
-                centerTitle="SSL + COD"
-              />
-            </div>
-
-            {/* Recent Orders Snapshot in Dashboard */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-                <div>
-                  <h3 className="font-bold text-slate-900 text-sm">
-                    Recent Customer Transactions
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Latest orders received across Inside Dhaka &amp; Outside Dhaka
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('orders')}
-                  className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
-                >
-                  <span>View All {orders.length} Orders</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              <div className="overflow-x-auto mt-3">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-600 uppercase font-semibold text-[10px]">
-                    <tr>
-                      <th className="py-2.5 px-3">Order #</th>
-                      <th className="py-2.5 px-3">Customer</th>
-                      <th className="py-2.5 px-3">Region</th>
-                      <th className="py-2.5 px-3">Amount</th>
-                      <th className="py-2.5 px-3">Status</th>
-                      <th className="py-2.5 px-3">Courier</th>
-                      <th className="py-2.5 px-3 text-right">Quick Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {orders.slice(0, 5).map((o) => {
-                      const isDhaka = o.shippingAddress?.district?.toLowerCase() === 'dhaka';
-                      return (
-                        <tr key={o.id} className="hover:bg-slate-50/70 transition-colors">
-                          <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
-                            #{o.orderNumber}
-                          </td>
-                          <td className="py-2.5 px-3">
-                            <span className="font-semibold text-slate-800 block">
-                              {o.customerName}
-                            </span>
-                            <span className="text-[10px] text-slate-500 font-mono">
-                              {o.customerPhone}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-3">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              isDhaka ? 'bg-emerald-100 text-emerald-800' : 'bg-purple-100 text-purple-800'
-                            }`}>
-                              {isDhaka ? 'Dhaka (৳60)' : `${o.shippingAddress?.district || 'Outside'} (৳120)`}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
-                            {formatBDT(o.totalAmount)}
-                          </td>
-                          <td className="py-2.5 px-3">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              o.status === 'DELIVERED'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : o.status === 'SHIPPED'
-                                ? 'bg-blue-100 text-blue-800'
-                                : o.status === 'CANCELLED'
-                                ? 'bg-rose-100 text-rose-800'
-                                : 'bg-amber-100 text-amber-800'
-                            }`}>
-                              {o.status}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-3">
-                            {o.courier ? (
-                              <span className="text-[11px] font-medium text-slate-700">
-                                {o.courier.courierName} ({o.courier.trackingNumber})
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-slate-400 italic">
-                                Unassigned
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-2.5 px-3 text-right">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedOrderForCourier(o);
-                              }}
-                              className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md transition-colors cursor-pointer"
-                            >
-                              Dispatch
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB 2: CUSTOMER ORDERS & DISPATCH TRACKING */}
-        {/* ========================================================================= */}
-        {activeTab === 'orders' && (
-          <div className="space-y-4">
-            {/* Search and Slicer Header */}
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-              {/* Search Bar */}
-              <div className="relative flex-1 max-w-md">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={orderSearch}
-                  onChange={(e) => setOrderSearch(e.target.value)}
-                  placeholder="Search by order #, customer, phone, district..."
-                  className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+              {/* 3 Pie / Donut Charts */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <AdminPieChart
+                  title="Sales by Category"
+                  subtitle="Share of catalog inventory &amp; sales"
+                  slices={categorySlices}
+                  centerSubtitle="Catalog"
+                  centerTitle={`${products.length} Items`}
+                />
+                <AdminPieChart
+                  title="Order Status Pipeline"
+                  subtitle="Live customer delivery stages"
+                  slices={statusSlices}
+                  centerSubtitle="Total"
+                  centerTitle={`${orders.length} Orders`}
+                />
+                <AdminPieChart
+                  title="Payment Methods Share"
+                  subtitle="SSLCommerz Gateway vs COD"
+                  slices={paymentSlices}
+                  centerSubtitle="Gateway"
+                  centerTitle="SSL + COD"
                 />
               </div>
 
-              {/* Status Slicer Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-                {['ALL', 'PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((st) => (
+              {/* Recent Orders Snapshot in Dashboard */}
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm">
+                      Recent Customer Transactions
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Latest orders received across Inside Dhaka &amp; Outside Dhaka
+                    </p>
+                  </div>
                   <button
-                    key={st}
                     type="button"
-                    onClick={() => setOrderStatusFilter(st)}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
-                      orderStatusFilter === st
-                        ? 'bg-slate-900 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
+                    onClick={() => setActiveTab('orders')}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
                   >
-                    {st === 'ALL' ? 'All Orders' : st}
+                    <span>View All {orders.length} Orders</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
                   </button>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            {/* Orders Table */}
-            <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-600 uppercase font-semibold text-[10px] border-b border-slate-200">
-                    <tr>
-                      <th className="py-3 px-4">Order Number</th>
-                      <th className="py-3 px-4">Customer &amp; Phone</th>
-                      <th className="py-3 px-4">Delivery Region</th>
-                      <th className="py-3 px-4">Items / Total</th>
-                      <th className="py-3 px-4">Payment</th>
-                      <th className="py-3 px-4">Order Status</th>
-                      <th className="py-3 px-4">Courier Tracking</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredOrders.length === 0 ? (
+                <div className="overflow-x-auto mt-3">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-600 uppercase font-semibold text-[10px]">
                       <tr>
-                        <td colSpan={8} className="py-12 text-center text-slate-400">
-                          No customer orders match the selected filters.
-                        </td>
+                        <th className="py-2.5 px-3">Order #</th>
+                        <th className="py-2.5 px-3">Customer</th>
+                        <th className="py-2.5 px-3">Region</th>
+                        <th className="py-2.5 px-3">Amount</th>
+                        <th className="py-2.5 px-3">Status</th>
+                        <th className="py-2.5 px-3">Courier</th>
+                        <th className="py-2.5 px-3 text-right">Quick Action</th>
                       </tr>
-                    ) : (
-                      filteredOrders.map((o) => {
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {orders.slice(0, 5).map((o) => {
                         const isDhaka = o.shippingAddress?.district?.toLowerCase() === 'dhaka';
                         return (
                           <tr key={o.id} className="hover:bg-slate-50/70 transition-colors">
-                            <td className="py-3 px-4">
-                              <span className="font-mono font-bold text-slate-900 block">
-                                #{o.orderNumber}
-                              </span>
-                              <span className="text-[10px] text-slate-400">
-                                {new Date(o.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                              </span>
+                            <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
+                              #{o.orderNumber}
                             </td>
-
-                            <td className="py-3 px-4">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenCustomer360(o.userId)}
-                                className="font-semibold text-blue-600 hover:underline block text-left cursor-pointer"
-                                title="Click to view Customer 360 profile"
-                              >
+                            <td className="py-2.5 px-3">
+                              <span className="font-semibold text-slate-800 block">
                                 {o.customerName}
-                              </button>
-                              <span className="text-[10px] font-mono text-slate-500">
+                              </span>
+                              <span className="text-[10px] text-slate-500 font-mono">
                                 {o.customerPhone}
                               </span>
                             </td>
-
-                            <td className="py-3 px-4">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            <td className="py-2.5 px-3">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                 isDhaka ? 'bg-emerald-100 text-emerald-800' : 'bg-purple-100 text-purple-800'
                               }`}>
-                                {isDhaka ? 'Inside Dhaka (৳60)' : `${o.shippingAddress?.district || 'Outside'} (৳120)`}
-                              </span>
-                              <span className="text-[10px] text-slate-500 block truncate max-w-[140px] mt-0.5">
-                                {o.shippingAddress?.streetAddress}
+                                {isDhaka ? 'Dhaka (৳60)' : `${o.shippingAddress?.district || 'Outside'} (৳120)`}
                               </span>
                             </td>
-
-                            <td className="py-3 px-4">
-                              <span className="font-mono font-bold text-slate-900 block">
-                                {formatBDT(o.totalAmount)}
-                              </span>
-                              <span className="text-[10px] text-slate-500">
-                                {o.items.length} item(s)
-                              </span>
+                            <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
+                              {formatBDT(o.totalAmount)}
                             </td>
-
-                            <td className="py-3 px-4">
+                            <td className="py-2.5 px-3">
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                o.paymentStatus === 'PAID'
+                                o.status === 'DELIVERED'
                                   ? 'bg-emerald-100 text-emerald-800'
+                                  : o.status === 'SHIPPED'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : o.status === 'CANCELLED'
+                                  ? 'bg-rose-100 text-rose-800'
                                   : 'bg-amber-100 text-amber-800'
                               }`}>
-                                {o.paymentMethod} &bull; {o.paymentStatus}
+                                {o.status}
                               </span>
                             </td>
-
-                            <td className="py-3 px-4">
-                              <select
-                                value={o.status}
-                                onChange={(e) => handleStatusChange(o.id, e.target.value as OrderStatus)}
-                                className="px-2 py-1 text-[11px] font-bold rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 cursor-pointer"
-                              >
-                                <option value="PENDING">PENDING</option>
-                                <option value="CONFIRMED">CONFIRMED</option>
-                                <option value="PROCESSING">PROCESSING</option>
-                                <option value="SHIPPED">SHIPPED</option>
-                                <option value="DELIVERED">DELIVERED</option>
-                                <option value="CANCELLED">CANCELLED</option>
-                              </select>
-                            </td>
-
-                            <td className="py-3 px-4">
+                            <td className="py-2.5 px-3">
                               {o.courier ? (
-                                <div>
-                                  <span className="font-semibold text-slate-800 block text-[11px]">
-                                    {o.courier.courierName}
-                                  </span>
-                                  <a
-                                    href={o.courier.trackingUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="font-mono text-[10px] text-blue-600 hover:underline flex items-center gap-1"
-                                  >
-                                    <span>{o.courier.trackingNumber}</span>
-                                    <ExternalLink className="w-3 h-3" />
-                                  </a>
-                                </div>
+                                <span className="text-[11px] font-medium text-slate-700">
+                                  {o.courier.courierName} ({o.courier.trackingNumber})
+                                </span>
                               ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedOrderForCourier(o)}
-                                  className="px-2.5 py-1 text-[11px] font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-md transition-colors cursor-pointer flex items-center gap-1"
-                                >
-                                  <Truck className="w-3 h-3" />
-                                  <span>Assign Courier</span>
-                                </button>
+                                <span className="text-[10px] text-slate-400 italic">
+                                  Unassigned
+                                </span>
                               )}
                             </td>
-
-                            <td className="py-3 px-4 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => setInspectingOrder(o)}
-                                  className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md cursor-pointer"
-                                  title="View invoice details"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedOrderForCourier(o)}
-                                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md cursor-pointer"
-                                  title="Update courier tracking"
-                                >
-                                  <Truck className="w-4 h-4" />
-                                </button>
-                              </div>
+                            <td className="py-2.5 px-3 text-right">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedOrderForCourier(o)}
+                                className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md transition-colors cursor-pointer"
+                              >
+                                Dispatch
+                              </button>
                             </td>
                           </tr>
                         );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB 3: PRODUCT INVENTORY & UPLOAD */}
-        {/* ========================================================================= */}
-        {activeTab === 'products' && (
-          <div className="space-y-4">
-            {/* Search and Slicer Header */}
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-              {/* Search */}
-              <div className="relative flex-1 max-w-sm">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                  placeholder="Search products by title, SKU, brand..."
-                  className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                />
-              </div>
-
-              {/* Slicers: Category & Stock status */}
-              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                {/* Category Slicer */}
-                <select
-                  value={productCategoryFilter}
-                  onChange={(e) => setProductCategoryFilter(e.target.value)}
-                  className="px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 font-semibold text-slate-700"
-                >
-                  <option value="ALL">All Categories ({products.length})</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-
-                {/* Stock Level Slicer */}
-                <select
-                  value={productStockFilter}
-                  onChange={(e) => setProductStockFilter(e.target.value)}
-                  className="px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 font-semibold text-slate-700"
-                >
-                  <option value="ALL">All Stock Levels</option>
-                  <option value="IN_STOCK">In Stock (&gt; 0)</option>
-                  <option value="LOW_STOCK">Low Stock Alert (&le; 5)</option>
-                  <option value="OUT_OF_STOCK">Out of Stock (0)</option>
-                </select>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingProduct(null);
-                    setIsProductModalOpen(true);
-                  }}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Upload Product</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Products Table */}
-            <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-600 uppercase font-semibold text-[10px] border-b border-slate-200">
-                    <tr>
-                      <th className="py-3 px-4">Item &amp; Image</th>
-                      <th className="py-3 px-4">Category &amp; Brand</th>
-                      <th className="py-3 px-4">Buying Cost</th>
-                      <th className="py-3 px-4">Selling / Offer Price</th>
-                      <th className="py-3 px-4">Profit / Unit (Margin)</th>
-                      <th className="py-3 px-4">Stock Level (Quick Adjust)</th>
-                      <th className="py-3 px-4">Status &amp; Rating</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredProducts.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="py-12 text-center text-slate-400">
-                          No catalog items found matching your filters.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredProducts.map((p) => {
-                        const hasDiscount = p.discountPrice && p.discountPrice < p.price;
-                        const sellingPrice = hasDiscount ? p.discountPrice! : p.price;
-                        const buyingCost = p.buyingPrice || 0;
-                        const unitProfit = sellingPrice - buyingCost;
-                        const profitMargin = sellingPrice > 0 && buyingCost > 0 ? Math.round((unitProfit / sellingPrice) * 100) : null;
-                        const isLoss = buyingCost > 0 && unitProfit < 0;
-
-                        return (
-                          <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-lg border border-slate-200 overflow-hidden bg-slate-50 shrink-0">
-                                  <img
-                                    src={p.images?.[0] || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&q=80'}
-                                    alt={p.name}
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                                <div className="min-w-0">
-                                  <span className="font-bold text-slate-900 block truncate max-w-[220px]">
-                                    {p.name}
-                                  </span>
-                                  <span className="font-mono text-[10px] text-slate-400">
-                                    SKU: {p.sku}
-                                  </span>
-                                </div>
-                              </div>
-                            </td>
-
-                            <td className="py-3 px-4">
-                              <span className="font-semibold text-slate-800 block">
-                                {p.categoryName || 'General'}
-                              </span>
-                              <span className="text-[10px] text-slate-500">
-                                Brand: {p.brand}
-                              </span>
-                            </td>
-
-                            {/* Buying Cost */}
-                            <td className="py-3 px-4">
-                              {buyingCost > 0 ? (
-                                <span className="font-mono font-semibold text-slate-700 block">
-                                  {formatBDT(buyingCost)}
-                                </span>
-                              ) : (
-                                <span className="text-slate-400 font-mono text-[11px]">Not set</span>
-                              )}
-                            </td>
-
-                            {/* Selling Price / Offer */}
-                            <td className="py-3 px-4">
-                              <span className="font-mono font-bold text-slate-900 block">
-                                {formatBDT(sellingPrice)}
-                              </span>
-                              {hasDiscount && (
-                                <span className="font-mono text-[10px] text-slate-400 line-through block">
-                                  {formatBDT(p.price)}
-                                </span>
-                              )}
-                            </td>
-
-                            {/* Profit / Unit (Margin %) */}
-                            <td className="py-3 px-4">
-                              {buyingCost > 0 ? (
-                                <div>
-                                  <span className={`font-mono font-bold block ${isLoss ? 'text-rose-600' : 'text-emerald-700'}`}>
-                                    {isLoss ? '-' : '+'}{formatBDT(Math.abs(unitProfit))}
-                                  </span>
-                                  <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold mt-0.5 ${
-                                    isLoss ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-800'
-                                  }`}>
-                                    {profitMargin !== null ? `${profitMargin}% margin` : '0%'}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-slate-400 font-mono text-[11px]">—</span>
-                              )}
-                            </td>
-
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => handleStockQuickAdjust(p.id, -1)}
-                                  className="w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
-                                  title="Decrease stock by 1"
-                                >
-                                  -
-                                </button>
-                                <span className={`font-mono font-bold px-2 py-0.5 rounded-md ${
-                                  p.stock <= 0
-                                    ? 'bg-rose-100 text-rose-700'
-                                    : p.stock <= 5
-                                    ? 'bg-amber-100 text-amber-800'
-                                    : 'bg-slate-100 text-slate-900'
-                                }`}>
-                                  {p.stock} units
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleStockQuickAdjust(p.id, +1)}
-                                  className="w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
-                                  title="Increase stock by 1"
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </td>
-
-                            <td className="py-3 px-4">
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                p.isAvailable ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
-                              }`}>
-                                {p.isAvailable ? 'Active In Store' : 'Draft / Hidden'}
-                              </span>
-                              <span className="text-[10px] text-amber-600 font-semibold block mt-0.5">
-                                &#9733; {p.rating || 4.8} ({p.reviewCount || 12})
-                              </span>
-                            </td>
-
-                            <td className="py-3 px-4 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingProduct(p);
-                                    setIsProductModalOpen(true);
-                                  }}
-                                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md cursor-pointer"
-                                  title="Edit Product"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteProduct(p.id, p.name)}
-                                  className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-md cursor-pointer"
-                                  title="Delete Product"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB 4: CATEGORIES MANAGEMENT */}
-        {/* ========================================================================= */}
-        {activeTab === 'categories' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm">
-                  Store Categories Management
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Organize items into customer navigation groups
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingCategory({ name: '', slug: '', description: '', active: true });
-                  setIsCategoryModalOpen(true);
-                }}
-                className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1.5"
-              >
-                <Plus className="w-4 h-4" />
-                <span>+ Add Category</span>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {categories.map((c) => {
-                const count = products.filter((p) => p.categoryId === c.id).length;
-                return (
-                  <div key={c.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="w-8 h-8 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center font-bold text-xs">
-                          <Layers className="w-4 h-4" />
-                        </span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
-                          {count} Products
-                        </span>
-                      </div>
-                      <h4 className="font-bold text-slate-900 text-sm mt-3">{c.name}</h4>
-                      {c.nameBn && <p className="text-xs text-slate-500">{c.nameBn}</p>}
-                      <p className="text-xs text-slate-600 mt-1 line-clamp-2">{c.description}</p>
-                    </div>
-
-                    <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs">
-                      <span className="font-mono text-[10px] text-slate-400">/{c.slug}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingCategory(c);
-                          setIsCategoryModalOpen(true);
-                        }}
-                        className="text-blue-600 hover:underline font-semibold cursor-pointer"
-                      >
-                        Edit
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB 5: AUDIT TRAIL & SMS NOTIFICATION LOGS */}
-        {/* ========================================================================= */}
-        {/* ========================================================================= */}
-        {/* TAB 5: CUSTOMER SUPPORT INQUIRIES & DIRECT CLIENT REACH-OUT               */}
-        {/* ========================================================================= */}
-        {activeTab === 'notifications' && (
-          <div className="space-y-5">
-            {/* Top Sub-Tab Switcher */}
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setNotificationSubTab('SUPPORT')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-                    notificationSubTab === 'SUPPORT'
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  <MessageCircle className="w-4 h-4 text-emerald-400" />
-                  <span>Customer Support Inquiries</span>
-                  {openTicketsCount > 0 ? (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white animate-pulse">
-                      {openTicketsCount} New
-                    </span>
-                  ) : (
-                    <span className="text-[10px] opacity-75 font-mono">({supportTickets.length})</span>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setNotificationSubTab('LOGS')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-                    notificationSubTab === 'LOGS'
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  <Mail className="w-4 h-4 text-sky-400" />
-                  <span>SMS &amp; Email Dispatch Logs</span>
-                  <span className="text-[10px] opacity-75 font-mono">({notifications.length})</span>
-                </button>
-              </div>
-
-              <div className="text-xs text-slate-500 font-medium">
-                {notificationSubTab === 'SUPPORT' ? 'Direct Customer Assistance' : 'Communication Audit Trail'}
-              </div>
-            </div>
-
-            {/* SUB-VIEW 1: CUSTOMER SUPPORT INQUIRIES & DIRECT REACH-OUT */}
-            {notificationSubTab === 'SUPPORT' && (
-              <div className="space-y-4">
-                {/* Metric Strip */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Inquiries</div>
-                    <div className="text-xl font-black text-slate-900 mt-1 font-mono">{supportTickets.length}</div>
-                  </div>
-                  <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs">
-                    <div className="text-[10px] font-bold text-rose-500 uppercase tracking-wider flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-rose-600 animate-pulse" />
-                      Needs Action
-                    </div>
-                    <div className="text-xl font-black text-rose-600 mt-1 font-mono">{openTicketsCount}</div>
-                  </div>
-                  <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs">
-                    <div className="text-[10px] font-bold text-amber-500 uppercase tracking-wider flex items-center gap-1">
-                      <Clock className="w-2.5 h-2.5" />
-                      In Progress
-                    </div>
-                    <div className="text-xl font-black text-amber-600 mt-1 font-mono">
-                      {supportTickets.filter((t) => t.status === 'IN_PROGRESS').length}
-                    </div>
-                  </div>
-                  <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs">
-                    <div className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider flex items-center gap-1">
-                      <CheckCircle2 className="w-2.5 h-2.5" />
-                      Resolved
-                    </div>
-                    <div className="text-xl font-black text-emerald-600 mt-1 font-mono">
-                      {supportTickets.filter((t) => t.status === 'RESOLVED').length}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Filter & Search Bar */}
-                <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Status:</span>
-                    {[
-                      { id: 'ALL', label: `All (${supportTickets.length})` },
-                      { id: 'OPEN', label: `🔴 Needs Action (${openTicketsCount})` },
-                      { id: 'IN_PROGRESS', label: `🟡 In Progress (${supportTickets.filter((t) => t.status === 'IN_PROGRESS').length})` },
-                      { id: 'RESOLVED', label: `🟢 Resolved (${supportTickets.filter((t) => t.status === 'RESOLVED').length})` },
-                    ].map((f) => (
-                      <button
-                        key={f.id}
-                        type="button"
-                        onClick={() => setSupportFilter(f.id as any)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                          supportFilter === f.id
-                            ? 'bg-slate-900 text-white shadow-xs'
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                      >
-                        {f.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="w-full md:w-72">
-                    <div className="relative">
-                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="text"
-                        value={supportSearch}
-                        onChange={(e) => setSupportSearch(e.target.value)}
-                        placeholder="Search client, phone, topic, ticket..."
-                        className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-slate-500 bg-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Inquiry Cards List */}
-                {filteredSupportTickets.length === 0 ? (
-                  <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-3">
-                    <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
-                      <HelpCircle className="w-6 h-6" />
-                    </div>
-                    <div className="text-sm font-bold text-slate-800">No Support Inquiries Found</div>
-                    <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                      {supportSearch
-                        ? 'No inquiries match your current search query.'
-                        : 'All incoming customer messages will appear here with complete contact info for immediate resolution.'}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {filteredSupportTickets.map((ticket) => {
-                      const cleanPhone = (ticket.phone || ticket.contact || '').replace(/[^0-9+]/g, '');
-                      const isPhone = !!cleanPhone && cleanPhone.length >= 10;
-                      const isEmail = ticket.contact.includes('@');
-
-                      return (
-                        <div
-                          key={ticket.id}
-                          className={`bg-white border rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow space-y-4 ${
-                            ticket.status === 'OPEN'
-                              ? 'border-rose-200 ring-1 ring-rose-100'
-                              : ticket.status === 'IN_PROGRESS'
-                              ? 'border-amber-200'
-                              : 'border-slate-200'
-                          }`}
-                        >
-                          {/* Card Header: Client Info & Status Badge */}
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-                            <div className="flex items-center gap-3">
-                              <div className="w-11 h-11 rounded-xl bg-slate-900 text-white font-black flex items-center justify-center shrink-0 text-base shadow-xs">
-                                {ticket.name.charAt(0).toUpperCase()}
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <h4 className="font-bold text-slate-900 text-sm sm:text-base">{ticket.name}</h4>
-                                  <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded font-bold">
-                                    #{ticket.id}
-                                  </span>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 font-mono mt-0.5">
-                                  <span className="font-bold text-slate-800">{ticket.contact}</span>
-                                  <span className="text-slate-300">&bull;</span>
-                                  <span className="text-slate-400 text-[11px]">{ticket.createdAt}</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                                {ticket.topic}
-                              </span>
-
-                              {ticket.status === 'OPEN' && (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-rose-600 text-white shadow-xs animate-pulse">
-                                  <AlertTriangle className="w-3.5 h-3.5" />
-                                  Needs Action
-                                </span>
-                              )}
-                              {ticket.status === 'IN_PROGRESS' && (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                                  <Clock className="w-3.5 h-3.5 text-amber-700" />
-                                  In Progress
-                                </span>
-                              )}
-                              {ticket.status === 'RESOLVED' && (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                                  Resolved
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Message Body & Associated Order */}
-                          <div className="bg-slate-50 rounded-xl p-4 border border-slate-200/90 space-y-2">
-                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                              Client Inquiry Message:
-                            </div>
-                            <p className="text-xs sm:text-sm text-slate-900 leading-relaxed font-medium whitespace-pre-wrap">
-                              {ticket.message}
-                            </p>
-
-                            {ticket.orderNumber && (
-                              <div className="pt-2 border-t border-slate-200 flex flex-wrap items-center gap-2">
-                                <span className="text-xs font-bold text-slate-500">Linked Order:</span>
-                                <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                                  {ticket.orderNumber}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setOrderStatusFilter('ALL');
-                                    setOrderSearch(ticket.orderNumber || '');
-                                    setActiveTab('orders');
-                                  }}
-                                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline cursor-pointer ml-1"
-                                >
-                                  View Order #{ticket.orderNumber} &rarr;
-                                </button>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* DIRECT CLIENT REACH-OUT ACTIONS (Call, WhatsApp, Email) */}
-                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-xs font-bold text-slate-700 mr-1">Reach Client:</span>
-
-                              {/* Call Customer Button */}
-                              {isPhone ? (
-                                <a
-                                  href={`tel:${cleanPhone}`}
-                                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
-                                  title={`Call ${cleanPhone} directly`}
-                                >
-                                  <Phone className="w-3.5 h-3.5" />
-                                  <span>Call {cleanPhone}</span>
-                                </a>
-                              ) : (
-                                <button
-                                  type="button"
-                                  disabled
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-400 text-xs font-semibold cursor-not-allowed"
-                                >
-                                  <Phone className="w-3.5 h-3.5" />
-                                  <span>No Phone</span>
-                                </button>
-                              )}
-
-                              {/* WhatsApp Direct Chat */}
-                              {isPhone && (
-                                <a
-                                  href={`https://wa.me/${cleanPhone.replace('+', '')}?text=${encodeURIComponent(
-                                    `Hello ${ticket.name}, thank you for contacting Deshi Commerce regarding support inquiry #${ticket.id} (${ticket.topic}). How can I assist you today?`
-                                  )}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition-all cursor-pointer active:scale-95"
-                                  title="Open direct WhatsApp conversation"
-                                >
-                                  <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span>WhatsApp</span>
-                                </a>
-                              )}
-
-                              {/* Direct Email */}
-                              {(isEmail || ticket.email) && (
-                                <a
-                                  href={`mailto:${ticket.email || ticket.contact}?subject=${encodeURIComponent(
-                                    `Regarding Support Inquiry #${ticket.id} - Deshi Commerce`
-                                  )}&body=${encodeURIComponent(
-                                    `Dear ${ticket.name},\n\nThank you for contacting Deshi Commerce Customer Care regarding your inquiry #${ticket.id} (${ticket.topic}).\n\n\nBest regards,\nCustomer Support Team\nDeshi Commerce`
-                                  )}`}
-                                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-xs font-bold transition-all cursor-pointer active:scale-95"
-                                  title="Send email to client"
-                                >
-                                  <Mail className="w-3.5 h-3.5 text-sky-600" />
-                                  <span>Email</span>
-                                </a>
-                              )}
-                            </div>
-
-                            {/* Status Resolution Controls */}
-                            <div className="flex items-center gap-2">
-                              {ticket.status !== 'RESOLVED' ? (
-                                <>
-                                  {ticket.status !== 'IN_PROGRESS' && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleUpdateTicketStatus(ticket.id, 'IN_PROGRESS')}
-                                      className="px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold cursor-pointer transition-colors"
-                                    >
-                                      Mark In Progress
-                                    </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleUpdateTicketStatus(ticket.id, 'RESOLVED')}
-                                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-                                  >
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                                    <span>Mark as Solved</span>
-                                  </button>
-                                </>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateTicketStatus(ticket.id, 'OPEN')}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer border border-slate-200 transition-colors"
-                                >
-                                  <span>Re-open Inquiry</span>
-                                </button>
-                              )}
-
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteTicket(ticket.id)}
-                                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                                title="Delete Inquiry"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Admin Resolution Notes Strip */}
-                          <div className="pt-2 border-t border-slate-100 space-y-2">
-                            {ticket.adminNotes && (
-                              <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200/90 text-xs text-emerald-950">
-                                <div className="font-bold text-[10px] text-emerald-700 uppercase tracking-wider mb-0.5">
-                                  Saved Resolution / Action Taken:
-                                </div>
-                                <div className="font-medium">{ticket.adminNotes}</div>
-                                {ticket.resolvedAt && (
-                                  <div className="text-[10px] text-emerald-600 mt-1 font-mono">
-                                    Resolved on: {new Date(ticket.resolvedAt).toLocaleString()}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                value={ticketNotesInput[ticket.id] !== undefined ? ticketNotesInput[ticket.id] : (ticket.adminNotes || '')}
-                                onChange={(e) => setTicketNotesInput({ ...ticketNotesInput, [ticket.id]: e.target.value })}
-                                placeholder="Add resolution note (e.g. Called customer, confirmed redelivery address, solved)..."
-                                className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 bg-white"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => handleSaveTicketNote(ticket.id)}
-                                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-200 cursor-pointer transition-colors"
-                              >
-                                Save Note
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* SUB-VIEW 2: AUTOMATED SMS & EMAIL NOTIFICATION LOGS */}
-            {notificationSubTab === 'LOGS' && (
-              <div className="space-y-4">
-                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-                  <h3 className="font-bold text-slate-900 text-sm">
-                    SMS &amp; Email Notification Dispatch Logs
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Audit trail of all automated customer communications triggered by order status, courier dispatches, and system events
-                  </p>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-50 text-slate-600 uppercase font-semibold text-[10px] border-b border-slate-200">
-                        <tr>
-                          <th className="py-3 px-4">Timestamp</th>
-                          <th className="py-3 px-4">Channel</th>
-                          <th className="py-3 px-4">Event</th>
-                          <th className="py-3 px-4">Recipient</th>
-                          <th className="py-3 px-4">Message Content</th>
-                          <th className="py-3 px-4">Delivery Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {notifications.map((n) => (
-                          <tr key={n.id} className="hover:bg-slate-50/70">
-                            <td className="py-3 px-4 font-mono text-[11px] text-slate-500 whitespace-nowrap">
-                              {n.timestamp}
-                            </td>
-                            <td className="py-3 px-4">
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                n.channel === 'SMS'
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : n.channel === 'SUPPORT'
-                                  ? 'bg-rose-100 text-rose-800'
-                                  : 'bg-blue-100 text-blue-800'
-                              }`}>
-                                {n.channel}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 font-semibold text-slate-800">
-                              {n.event}
-                            </td>
-                            <td className="py-3 px-4 font-mono text-slate-600">
-                              {n.recipient}
-                            </td>
-                            <td className="py-3 px-4 text-slate-700 max-w-md">
-                              {n.message}
-                            </td>
-                            <td className="py-3 px-4">
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                                {n.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
 
-        {/* ========================================================================= */}
-        {/* TAB: DIRECT CUSTOMER LIVE CHAT */}
-        {/* ========================================================================= */}
-        {activeTab === 'live-chat' && (
-          <AdminLiveChatTab
-            onInspectCustomer={(userId) => {
-              const target = usersList.find((u) => u.id === userId || u.phone === userId || u.email === userId);
-              if (target) {
-                setInspectingUser(target);
-              } else {
-                showToast(`Customer #${userId} profile details not found in database`, 'info');
+          {/* TAB 2: ORDERS */}
+          {activeTab === 'orders' && (
+            <AdminOrdersTab
+              orders={orders}
+              orderSearch={orderSearch}
+              onOrderSearchChange={setOrderSearch}
+              orderStatusFilter={orderStatusFilter}
+              onOrderStatusFilterChange={setOrderStatusFilter}
+              onStatusChange={handleStatusChange}
+              onOpenCustomer360={handleOpenCustomer360}
+              onSelectCourier={setSelectedOrderForCourier}
+              onInspectOrder={setInspectingOrder}
+            />
+          )}
+
+          {/* TAB 3: PRODUCTS */}
+          {activeTab === 'products' && (
+            <AdminProductsTab
+              products={products}
+              categories={categories}
+              productSearch={productSearch}
+              onProductSearchChange={setProductSearch}
+              productCategoryFilter={productCategoryFilter}
+              onProductCategoryFilterChange={setProductCategoryFilter}
+              productStockFilter={productStockFilter}
+              onProductStockFilterChange={setProductStockFilter}
+              onUploadClick={() => {
+                setEditingProduct(null);
+                setIsProductModalOpen(true);
+              }}
+              onEditProduct={(p) => {
+                setEditingProduct(p);
+                setIsProductModalOpen(true);
+              }}
+              onDeleteProduct={handleDeleteProduct}
+              onStockQuickAdjust={handleStockQuickAdjust}
+            />
+          )}
+
+          {/* TAB 4: HERO SECTION SHOWCASE */}
+          {activeTab === 'hero' && (
+            <AdminHeroTab
+              heroSlides={heroSlides}
+              previewSlideIndex={previewSlideIndex}
+              onPreviewSlideIndexChange={setPreviewSlideIndex}
+              isHeroSaving={isHeroSaving}
+              uploadingHeroIndex={uploadingHeroIndex}
+              onAddSlide={handleAddHeroSlide}
+              onDeleteSlide={handleDeleteHeroSlide}
+              onMoveSlide={handleMoveHeroSlide}
+              onResetSlides={handleResetHeroSlides}
+              onSaveSlides={handleSaveHeroSlides}
+              onFieldChange={handleHeroFieldChange}
+              onImageUpload={handleHeroImageUpload}
+            />
+          )}
+
+          {/* TAB 5: CATEGORIES */}
+          {activeTab === 'categories' && (
+            <AdminCategoriesTab
+              categories={categories}
+              products={products}
+              onAddCategory={() => {
+                setEditingCategory(null);
+                setIsCategoryModalOpen(true);
+              }}
+              onEditCategory={(c) => {
+                setEditingCategory(c);
+                setIsCategoryModalOpen(true);
+              }}
+            />
+          )}
+
+          {/* TAB 6: USERS */}
+          {activeTab === 'users' && (
+            <AdminUsersTab
+              usersList={usersList}
+              orders={orders}
+              userSearch={userSearch}
+              onUserSearchChange={setUserSearch}
+              onInspectUser={setInspectingUser}
+              onDeleteUser={handleDeleteUser}
+            />
+          )}
+
+          {/* TAB 7: FAQS */}
+          {activeTab === 'faqs' && (
+            <AdminFaqsTab
+              faqsList={faqsList}
+              faqCategoryFilter={faqCategoryFilter}
+              onFaqCategoryFilterChange={setFaqCategoryFilter}
+              onAddFaq={() => {
+                setEditingFaq({
+                  category: 'general',
+                  question: '',
+                  questionBn: '',
+                  answer: '',
+                  answerBn: '',
+                });
+                setIsFaqModalOpen(true);
+              }}
+              onEditFaq={(faq) => {
+                setEditingFaq(faq);
+                setIsFaqModalOpen(true);
+              }}
+              onDeleteFaq={handleDeleteFaq}
+            />
+          )}
+
+          {/* TAB 8: CUSTOMER INQUIRIES & DISPATCH AUDIT LOGS */}
+          {activeTab === 'notifications' && (
+            <AdminSupportTab
+              supportTickets={supportTickets}
+              openTicketsCount={openTicketsCount}
+              supportFilter={supportFilter}
+              onSupportFilterChange={setSupportFilter}
+              supportSearch={supportSearch}
+              onSupportSearchChange={setSupportSearch}
+              notifications={notifications}
+              notificationSubTab={notificationSubTab}
+              onNotificationSubTabChange={setNotificationSubTab}
+              ticketNotesInput={ticketNotesInput}
+              onTicketNotesInputChange={(id, val) =>
+                setTicketNotesInput((prev) => ({ ...prev, [id]: val }))
               }
-            }}
-          />
-        )}
+              onSaveTicketNote={handleSaveTicketNote}
+              onUpdateTicketStatus={handleUpdateTicketStatus}
+              onDeleteTicket={handleDeleteTicket}
+              onViewOrder={(ordNum) => {
+                setOrderStatusFilter('ALL');
+                setOrderSearch(ordNum);
+                setActiveTab('orders');
+              }}
+            />
+          )}
 
-        {/* ========================================================================= */}
-        {/* TAB 4: HERO SECTION SHOWCASE & BANNER MANAGEMENT */}
-        {/* ========================================================================= */}
-        {activeTab === 'hero' && (
-          <div className="space-y-6">
-            {/* Header Actions */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="p-2 bg-amber-50 text-amber-600 rounded-lg">
-                    <Sparkles className="w-5 h-5" />
-                  </span>
-                  <div>
-                    <h2 className="text-base font-bold text-slate-900">
-                      Hero Section Product Showcase
-                    </h2>
-                    <p className="text-xs text-slate-500">
-                      Upload and manage the featured product photos, titles, prices, and links rotating on the homepage hero banner.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
-                <button
-                  type="button"
-                  onClick={handleResetHeroSlides}
-                  className="px-3 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors cursor-pointer"
-                >
-                  Reset Defaults
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAddHeroSlide}
-                  className="px-3.5 py-2 text-xs font-bold text-slate-900 bg-amber-400 hover:bg-amber-300 rounded-lg shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Slide</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveHeroSlides}
-                  disabled={isHeroSaving}
-                  className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg shadow-sm transition-colors cursor-pointer flex items-center gap-2 disabled:opacity-50"
-                >
-                  {isHeroSaving ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="w-4 h-4" />
-                  )}
-                  <span>{isHeroSaving ? 'Saving Changes...' : 'Save Showcase Changes'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Main Content Layout: Slides Editor + Live Storefront Preview */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* Left Column: Slide Cards (7 cols) */}
-              <div className="lg:col-span-7 space-y-4">
-                {heroSlides.map((slide, idx) => (
-                  <div
-                    key={slide.id || idx}
-                    className={`bg-white rounded-2xl border transition-all duration-200 p-5 shadow-xs ${
-                      previewSlideIndex === idx
-                        ? 'border-amber-400 ring-2 ring-amber-400/20'
-                        : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    {/* Slide Top Bar */}
-                    <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-slate-900 text-white text-[11px] font-bold flex items-center justify-center font-mono">
-                          {idx + 1}
-                        </span>
-                        <span className="text-xs font-bold text-slate-800">
-                          Slide #{idx + 1}
-                        </span>
-                        {idx === 0 && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                            Default First
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setPreviewSlideIndex(idx)}
-                          className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors cursor-pointer flex items-center gap-1 ${
-                            previewSlideIndex === idx
-                              ? 'bg-amber-100 text-amber-900 font-bold'
-                              : 'text-slate-500 hover:bg-slate-100'
-                          }`}
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>Preview</span>
-                        </button>
-                        <button
-                          type="button"
-                          disabled={idx === 0}
-                          onClick={() => handleMoveHeroSlide(idx, 'up')}
-                          className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md disabled:opacity-30 cursor-pointer"
-                          title="Move Up"
-                        >
-                          <ChevronUp className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={idx === heroSlides.length - 1}
-                          onClick={() => handleMoveHeroSlide(idx, 'down')}
-                          className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md disabled:opacity-30 cursor-pointer"
-                          title="Move Down"
-                        >
-                          <ChevronDown className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteHeroSlide(idx)}
-                          className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-md cursor-pointer ml-1"
-                          title="Delete Slide"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Slide Body: Image Picker on Left, Fields on Right */}
-                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
-                      {/* Image Preview & Upload (5 cols) */}
-                      <div className="sm:col-span-5 flex flex-col gap-2.5">
-                        <div className="relative aspect-4/3 w-full bg-slate-100 rounded-xl overflow-hidden border border-slate-200 group">
-                          {slide.image ? (
-                            <img
-                              src={slide.image}
-                              alt={slide.title}
-                              className="w-full h-full object-cover object-center"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
-                              <ImageIcon className="w-8 h-8 mb-1" />
-                              <span className="text-[11px]">No Image Selected</span>
-                            </div>
-                          )}
-                          {uploadingHeroIndex === idx && (
-                            <div className="absolute inset-0 bg-slate-950/70 flex flex-col items-center justify-center text-white text-xs gap-1.5 backdrop-blur-xs">
-                              <RefreshCw className="w-5 h-5 animate-spin text-amber-400" />
-                              <span>Uploading image...</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Upload Button */}
-                        <label className="w-full py-2 px-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-xs">
-                          <UploadCloud className="w-4 h-4 text-amber-400" />
-                          <span>Upload From PC</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleHeroImageUpload(idx, file);
-                              e.target.value = '';
-                            }}
-                          />
-                        </label>
-
-                        {/* Or URL input */}
-                        <div>
-                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                            Or Image URL / Link
-                          </label>
-                          <input
-                            type="text"
-                            value={slide.image || ''}
-                            placeholder="https://images.unsplash.com/..."
-                            onChange={(e) => handleHeroFieldChange(idx, 'image', e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-[11px] font-mono border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-900 bg-slate-50/60"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Text Fields (7 cols) */}
-                      <div className="sm:col-span-7 space-y-3">
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                            Product Title *
-                          </label>
-                          <input
-                            type="text"
-                            value={slide.title || ''}
-                            placeholder="e.g. Aarong Festive Embroidered Panjabi"
-                            onChange={(e) => handleHeroFieldChange(idx, 'title', e.target.value)}
-                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 font-medium"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                            Store / Seller Badge *
-                          </label>
-                          <input
-                            type="text"
-                            value={slide.store || ''}
-                            placeholder="e.g. Feminine & Heritage Store"
-                            onChange={(e) => handleHeroFieldChange(idx, 'store', e.target.value)}
-                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                              Price (BDT ৳) *
-                            </label>
-                            <input
-                              type="number"
-                              min={0}
-                              value={slide.price || 0}
-                              onChange={(e) => handleHeroFieldChange(idx, 'price', Number(e.target.value) || 0)}
-                              className="w-full px-3 py-2 text-xs font-mono font-bold border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                              Product Slug / Link
-                            </label>
-                            <input
-                              type="text"
-                              value={slide.slug || ''}
-                              placeholder="e.g. aarong-festive-panjabi"
-                              onChange={(e) => handleHeroFieldChange(idx, 'slug', e.target.value)}
-                              className="w-full px-3 py-2 text-xs font-mono border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="pt-2 flex items-center justify-between text-[11px] text-slate-500">
-                          <span className="font-mono text-slate-400">ID: {slide.id}</span>
-                          <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Ready to publish
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Add Slide Bottom Action */}
-                <button
-                  type="button"
-                  onClick={handleAddHeroSlide}
-                  className="w-full py-4 border-2 border-dashed border-slate-300 hover:border-slate-500 rounded-2xl text-slate-600 hover:text-slate-900 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer bg-slate-50/50 hover:bg-slate-100/50"
-                >
-                  <Plus className="w-4 h-4 text-emerald-600" />
-                  <span>Add Another Slide to Hero Showcase</span>
-                </button>
-              </div>
-
-              {/* Right Column: Live Storefront Preview (5 cols) */}
-              <div className="lg:col-span-5 sticky top-24 space-y-4">
-                <div className="bg-slate-950 text-white rounded-3xl p-6 border border-slate-800 shadow-xl relative overflow-hidden">
-                  {/* Glowing background halo */}
-                  <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-
-                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800/80">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                        Live Storefront Preview
-                      </span>
-                    </div>
-                    <span className="text-[11px] font-mono text-slate-400">
-                      Slide {previewSlideIndex + 1} of {heroSlides.length}
-                    </span>
-                  </div>
-
-                  {/* Render exact Hero Showcase Widget as seen on customer home */}
-                  {heroSlides[previewSlideIndex] && (
-                    <div className="space-y-4">
-                      <div className="relative rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-900/90 shadow-2xl aspect-4/3 flex items-center justify-center group">
-                        {/* Slide Image */}
-                        <img
-                          src={heroSlides[previewSlideIndex].image}
-                          alt={heroSlides[previewSlideIndex].title}
-                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                        />
-
-                        {/* Top Store Badge */}
-                        <div className="absolute top-3.5 left-3.5 z-10 flex items-center gap-1.5 px-3 py-1 bg-slate-950/75 backdrop-blur-md border border-white/10 rounded-full text-[11px] font-medium text-slate-200">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                          <span className="truncate max-w-[160px]">
-                            {heroSlides[previewSlideIndex].store || 'Featured Store'}
-                          </span>
-                        </div>
-
-                        {/* Carousel Arrows */}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setPreviewSlideIndex((prev) =>
-                              prev === 0 ? heroSlides.length - 1 : prev - 1
-                            )
-                          }
-                          className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-950/70 hover:bg-slate-950 text-white flex items-center justify-center backdrop-blur-xs transition-colors cursor-pointer border border-white/10"
-                        >
-                          <ChevronUp className="w-4 h-4 -rotate-90" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setPreviewSlideIndex((prev) =>
-                              (prev + 1) % heroSlides.length
-                            )
-                          }
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-950/70 hover:bg-slate-950 text-white flex items-center justify-center backdrop-blur-xs transition-colors cursor-pointer border border-white/10"
-                        >
-                          <ChevronUp className="w-4 h-4 rotate-90" />
-                        </button>
-
-                        {/* Bottom Floating Card */}
-                        <div className="absolute bottom-3 left-3 right-3 p-3 bg-slate-950/85 backdrop-blur-md rounded-xl border border-white/10 flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-white truncate">
-                              {heroSlides[previewSlideIndex].title}
-                            </p>
-                            <p className="text-xs font-bold text-emerald-400 font-mono">
-                              {formatBDT(heroSlides[previewSlideIndex].price)}
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            className="shrink-0 px-3 py-1.5 bg-white text-slate-950 hover:bg-slate-100 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                          >
-                            <span>View</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Pagination Dots */}
-                      <div className="flex items-center justify-center gap-2 pt-1">
-                        {heroSlides.map((_, dotIdx) => (
-                          <button
-                            key={dotIdx}
-                            type="button"
-                            onClick={() => setPreviewSlideIndex(dotIdx)}
-                            className={`h-2 rounded-full transition-all cursor-pointer ${
-                              previewSlideIndex === dotIdx
-                                ? 'w-6 bg-white'
-                                : 'w-2 bg-slate-700 hover:bg-slate-500'
-                            }`}
-                          />
-                        ))}
-                      </div>
-
-                      {/* Bottom Info Tip */}
-                      <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
-                        <p className="font-semibold text-slate-300">
-                          &bull; Auto-slides on customer storefront every 4.5 seconds.
-                        </p>
-                        <p>
-                          &bull; When visitors click "View &rarr;", they are taken directly to the product details page.
-                        </p>
-                      </div>
-
-                      {/* Save Button in Sidebar as well */}
-                      <button
-                        type="button"
-                        onClick={handleSaveHeroSlides}
-                        disabled={isHeroSaving}
-                        className="w-full py-3 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
-                      >
-                        {isHeroSaving ? (
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <CheckCircle2 className="w-4 h-4" />
-                        )}
-                        <span>{isHeroSaving ? 'Saving...' : 'Save Showcase Changes'}</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB 6: USERS & SIGN-UP INFO MANAGEMENT */}
-        {/* ========================================================================= */}
-        {activeTab === 'users' && (
-          <div className="space-y-4">
-            {/* Header and Search */}
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="p-2 bg-sky-50 text-sky-600 rounded-lg">
-                    <Users className="w-5 h-5" />
-                  </span>
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-sm">
-                      Customer Accounts &amp; Sign-Up Directory
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      View registered users, inspect their sign-up information, and manage or delete customer accounts.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Search */}
-              <div className="relative flex-1 max-w-sm">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                  placeholder="Search by name, email, phone, or ID..."
-                  className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                />
-              </div>
-            </div>
-
-            {/* Users Table */}
-            <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-600 uppercase font-semibold text-[10px] border-b border-slate-200">
-                    <tr>
-                      <th className="py-3 px-4">User</th>
-                      <th className="py-3 px-4">Contact Info</th>
-                      <th className="py-3 px-4">Auth Method</th>
-                      <th className="py-3 px-4">Role</th>
-                      <th className="py-3 px-4">Sign-Up Date</th>
-                      <th className="py-3 px-4">Orders &amp; Spend</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredUsers.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="py-12 text-center text-slate-400">
-                          No users found matching your search.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredUsers.map((u) => {
-                        const userOrders = orders.filter((o) => o.userId === u.id);
-                        const userSpend = userOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-                        const formattedDate = u.createdAt
-                          ? new Date(u.createdAt).toLocaleDateString('en-GB', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
-                            })
-                          : 'Recent';
-
-                        return (
-                          <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-sky-100 text-sky-800 font-bold flex items-center justify-center shrink-0 uppercase text-xs">
-                                  {u.avatarUrl ? (
-                                    <img src={u.avatarUrl} alt={u.name} className="w-full h-full rounded-full object-cover" />
-                                  ) : (
-                                    u.name?.charAt(0) || 'U'
-                                  )}
-                                </div>
-                                <div className="min-w-0">
-                                  <span className="font-bold text-slate-900 block truncate max-w-[200px]">
-                                    {u.name || 'Anonymous User'}
-                                  </span>
-                                  <span className="font-mono text-[10px] text-slate-400">
-                                    ID: {u.id?.slice(0, 8)}...
-                                  </span>
-                                </div>
-                              </div>
-                            </td>
-
-                            <td className="py-3 px-4">
-                              <span className="text-slate-800 font-semibold block">{u.email || 'No email provided'}</span>
-                              <span className="text-slate-500 font-mono text-[11px] block mt-0.5">
-                                {u.phone || 'No phone provided'}
-                              </span>
-                            </td>
-
-                            <td className="py-3 px-4">
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 capitalize">
-                                {u.authProvider || 'Phone OTP'}
-                              </span>
-                            </td>
-
-                            <td className="py-3 px-4">
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                  u.role === 'ADMIN'
-                                    ? 'bg-rose-100 text-rose-800'
-                                    : 'bg-emerald-100 text-emerald-800'
-                                }`}
-                              >
-                                {u.role || 'CUSTOMER'}
-                              </span>
-                            </td>
-
-                            <td className="py-3 px-4 font-mono text-slate-600 text-[11px]">
-                              {formattedDate}
-                            </td>
-
-                            <td className="py-3 px-4">
-                              <span className="font-bold text-slate-900 block">
-                                {userOrders.length} orders
-                              </span>
-                              <span className="font-mono text-slate-500 text-[10px]">
-                                {formatBDT(userSpend)}
-                              </span>
-                            </td>
-
-                            <td className="py-3 px-4 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => setInspectingUser(u)}
-                                  className="px-2.5 py-1 text-sky-600 hover:bg-sky-50 rounded-md cursor-pointer flex items-center gap-1 font-semibold text-xs border border-sky-200"
-                                  title="View full sign-up information"
-                                >
-                                  <Eye className="w-3.5 h-3.5" />
-                                  <span>View Info</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteUser(u.id, u.name)}
-                                  className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-md cursor-pointer border border-rose-200"
-                                  title="Delete user account"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB 7: STORE FAQ MANAGEMENT */}
-        {/* ========================================================================= */}
-        {activeTab === 'faqs' && (
-          <div className="space-y-4">
-            {/* Header */}
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="p-2 bg-teal-50 text-teal-600 rounded-lg">
-                    <HelpCircle className="w-5 h-5" />
-                  </span>
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-sm">
-                      Store FAQs &amp; Help Center
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      Add, update, or delete FAQ questions. Any change saved here immediately updates on the customer storefront.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingFaq({
-                    category: 'general',
-                    question: '',
-                    questionBn: '',
-                    answer: '',
-                    answerBn: '',
-                  });
-                  setIsFaqModalOpen(true);
-                }}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1.5 shrink-0"
-              >
-                <Plus className="w-4 h-4" />
-                <span>+ Add FAQ Question</span>
-              </button>
-            </div>
-
-            {/* Category Filter Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
-              {[
-                { key: 'ALL', label: `All FAQs (${faqsList.length})` },
-                { key: 'delivery', label: 'Delivery & Shipping' },
-                { key: 'payment', label: 'Payment & COD' },
-                { key: 'returns', label: 'Returns & Replacement' },
-                { key: 'warranty', label: 'Warranty & Guarantee' },
-                { key: 'general', label: 'General' },
-              ].map((pill) => (
-                <button
-                  key={pill.key}
-                  type="button"
-                  onClick={() => setFaqCategoryFilter(pill.key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors ${
-                    faqCategoryFilter === pill.key
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  {pill.label}
-                </button>
-              ))}
-            </div>
-
-            {/* FAQs Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredFaqs.length === 0 ? (
-                <div className="col-span-2 py-12 text-center text-slate-400 bg-white border border-slate-200 rounded-xl">
-                  No FAQ questions found in this category. Click "+ Add FAQ Question" to create one.
-                </div>
-              ) : (
-                filteredFaqs.map((faq) => {
-                  const categoryBadgeColor: Record<string, string> = {
-                    delivery: 'bg-blue-100 text-blue-800',
-                    payment: 'bg-emerald-100 text-emerald-800',
-                    returns: 'bg-amber-100 text-amber-800',
-                    warranty: 'bg-purple-100 text-purple-800',
-                    general: 'bg-slate-100 text-slate-800',
-                  };
-
-                  return (
-                    <div
-                      key={faq.id}
-                      className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                              categoryBadgeColor[faq.category] || 'bg-slate-100 text-slate-700'
-                            }`}
-                          >
-                            {faq.category}
-                          </span>
-                          <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">
-                            Active on storefront
-                          </span>
-                        </div>
-
-                        <h4 className="font-bold text-slate-900 text-sm">{faq.question}</h4>
-                        {faq.questionBn && (
-                          <p className="text-xs text-slate-500 font-medium mt-0.5">{faq.questionBn}</p>
-                        )}
-
-                        <p className="text-xs text-slate-600 mt-2 leading-relaxed whitespace-pre-line">
-                          {faq.answer}
-                        </p>
-                        {faq.answerBn && (
-                          <p className="text-xs text-slate-500 mt-1 leading-relaxed whitespace-pre-line border-t border-slate-100 pt-1.5">
-                            {faq.answerBn}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
-                        <span className="font-mono text-[10px] text-slate-400">ID: {faq.id}</span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingFaq(faq);
-                              setIsFaqModalOpen(true);
-                            }}
-                            className="px-2.5 py-1 text-blue-600 hover:bg-blue-50 rounded-md font-semibold text-xs cursor-pointer flex items-center gap-1 border border-blue-200"
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                            <span>Edit</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteFaq(faq.id, faq.question)}
-                            className="p-1 text-rose-600 hover:bg-rose-50 rounded-md cursor-pointer border border-rose-200"
-                            title="Delete FAQ question"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
+          {/* TAB 9: LIVE CHAT DIRECT MESSAGING */}
+          {activeTab === 'live-chat' && (
+            <AdminLiveChatTab
+              onInspectCustomer={(userId) => {
+                const target = usersList.find((u) => u.id === userId || u.phone === userId || u.email === userId);
+                if (target) {
+                  setInspectingUser(target);
+                } else {
+                  showToast(`Customer #${userId} profile details not found in database`, 'info');
+                }
+              }}
+            />
+          )}
+        </main>
+      </div>
 
       {/* ========================================================================= */}
       {/* GLOBAL MODALS */}
@@ -3313,7 +1629,6 @@ export const AdminDashboard: React.FC = () => {
       {inspectingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden border border-slate-200">
-            {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
               <div className="flex items-center gap-2.5">
                 <span className="p-2 bg-sky-100 text-sky-700 rounded-lg">
@@ -3337,9 +1652,7 @@ export const AdminDashboard: React.FC = () => {
               </button>
             </div>
 
-            {/* Content */}
             <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto text-xs">
-              {/* Profile Card Summary */}
               <div className="p-4 bg-gradient-to-r from-sky-50 to-indigo-50/40 rounded-xl border border-sky-100 flex items-center justify-between">
                 <div className="flex items-center gap-3.5">
                   <div className="w-14 h-14 rounded-full bg-sky-200 text-sky-900 font-bold text-lg flex items-center justify-center shrink-0 uppercase border-2 border-white shadow-xs">
@@ -3378,7 +1691,6 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Sign-Up & Account Details Grid */}
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
                   Registration &amp; Security Attributes
@@ -3436,7 +1748,6 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Order History */}
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
                   Order History ({orders.filter((o) => o.userId === inspectingUser.id).length} Orders)
@@ -3478,7 +1789,6 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Footer with Delete and Close */}
             <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
               <button
                 type="button"
@@ -3638,3 +1948,4 @@ export const AdminDashboard: React.FC = () => {
     </div>
   );
 };
+export default AdminDashboard;

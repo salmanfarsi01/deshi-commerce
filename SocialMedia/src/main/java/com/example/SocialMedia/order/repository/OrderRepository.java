@@ -14,6 +14,8 @@ public interface OrderRepository {
 
     Optional<Order> findByOrderNumber(String orderNumber);
 
+    Optional<Order> findByTrackingNumber(String trackingNumber);
+
     List<Order> findByUserId(String userId);
 
     List<Order> findAll();

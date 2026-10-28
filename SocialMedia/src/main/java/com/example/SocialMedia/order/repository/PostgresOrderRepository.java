@@ -34,6 +34,11 @@ public class PostgresOrderRepository implements OrderRepository {
     }
 
     @Override
+    public Optional<Order> findByTrackingNumber(String trackingNumber) {
+        return springDataOrderRepository.findByTrackingNumber(trackingNumber);
+    }
+
+    @Override
     public List<Order> findByUserId(String userId) {
         return springDataOrderRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }

@@ -250,6 +250,21 @@ public class SslCommerzService {
             return new SslCommerzCallbackResponse(false, "Transaction not found for ID: " + tranId, tranId, valId, null, null, cardType, bankTranId);
         }
 
+        // Idempotent duplicate-event protection:
+        if (record.getStatus() == PaymentStatus.SUCCESS) {
+            log.info("[SSLCommerz Idempotent IPN] Payment for transaction {} already marked SUCCESS. Skipping duplicate processing.", tranId);
+            return new SslCommerzCallbackResponse(
+                    true,
+                    "Transaction already processed and verified (idempotent)",
+                    tranId,
+                    valId,
+                    record.getOrderId(),
+                    record.getAmount(),
+                    cardType,
+                    bankTranId
+            );
+        }
+
         // Verify with gateway if real valId provided
         boolean isValid = validateWithGateway(valId);
         if (!isValid) {
@@ -414,6 +429,16 @@ public class SslCommerzService {
             return new SslCommerzCallbackResponse(false, "Missing tran_id in IPN payload", null, null, null, null, null, null);
         }
 
+        // Verify MD5 signature hash (verify_sign) if present
+        if (payload.containsKey("verify_sign") && payload.containsKey("verify_key")) {
+            boolean hashValid = verifyHash(payload);
+            if (!hashValid) {
+                log.warn("[SSLCommerz IPN Security Alert] IPN verify_sign hash check failed for tran_id: {}", tranId);
+                return new SslCommerzCallbackResponse(false, "Invalid verify_sign signature hash", tranId, valId, null, null, cardType, bankTranId);
+            }
+            log.info("[SSLCommerz IPN Security] verify_sign hash verified successfully for tran_id: {}", tranId);
+        }
+
         // SSLCommerz status can be "VALID", "VALIDATED", "FAILED", "CANCELLED", etc.
         if ("VALID".equalsIgnoreCase(status) || "VALIDATED".equalsIgnoreCase(status)) {
             log.info("[SSLCommerz IPN Webhook] Transaction {} marked VALID. Verifying payment...", tranId);
@@ -437,5 +462,55 @@ public class SslCommerzService {
             return new SslCommerzCallbackResponse(false, "IPN status pending or unverified: " + status, tranId, valId, null, null, cardType, bankTranId);
         }
     }
+
+    /**
+     * Verifies MD5 signature hash (verify_sign) on incoming SSLCommerz IPN payloads.
+     */
+    public boolean verifyHash(Map<String, String> payload) {
+        String verifySign = payload.get("verify_sign");
+        String verifyKey = payload.get("verify_key");
+        if (verifySign == null || verifyKey == null || verifySign.trim().isEmpty() || verifyKey.trim().isEmpty()) {
+            return true;
+        }
+
+        try {
+            String[] keys = verifyKey.split(",");
+            StringBuilder sb = new StringBuilder();
+            for (String key : keys) {
+                String k = key.trim();
+                String val = payload.getOrDefault(k, "");
+                sb.append(k).append("=").append(val).append("&");
+            }
+            String storePassMd5 = md5(storePassword != null ? storePassword : "qwerty");
+            sb.append("store_passwd=").append(storePassMd5);
+
+            String calculatedSign = md5(sb.toString());
+            boolean matches = calculatedSign.equalsIgnoreCase(verifySign.trim());
+            if (!matches) {
+                log.warn("[SSLCommerz verify_sign Mismatch] Expected: {}, Calculated: {}", verifySign, calculatedSign);
+            }
+            return matches;
+        } catch (Exception e) {
+            log.warn("[SSLCommerz Hash Verification Error] Failed to compute signature: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    private String md5(String input) {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
+            byte[] messageDigest = md.digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : messageDigest) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new RuntimeException("MD5 algorithm not available", e);
+        }
+    }
 }
+
 
