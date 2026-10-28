@@ -5,18 +5,24 @@ import jakarta.validation.constraints.NotBlank;
 
 public class UpdateProfileRequest {
 
-    @NotBlank(message = "Name is required")
     private String name;
 
     @Email(message = "Invalid email format")
     private String email;
 
+    private String avatarUrl;
+
     public UpdateProfileRequest() {
     }
 
     public UpdateProfileRequest(String name, String email) {
+        this(name, email, null);
+    }
+
+    public UpdateProfileRequest(String name, String email, String avatarUrl) {
         this.name = name;
         this.email = email;
+        this.avatarUrl = avatarUrl;
     }
 
     public String getName() {
@@ -33,5 +39,13 @@ public class UpdateProfileRequest {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 }

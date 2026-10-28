@@ -37,7 +37,14 @@ public class UserService {
             user.setEmail(newEmail);
         }
 
-        user.setName(request.getName().trim());
+        if (request.getName() != null && !request.getName().isBlank()) {
+            user.setName(request.getName().trim());
+        }
+
+        if (request.getAvatarUrl() != null) {
+            user.setAvatarUrl(request.getAvatarUrl().trim());
+        }
+
         userRepository.save(user);
         return UserProfileResponse.fromUser(user);
     }

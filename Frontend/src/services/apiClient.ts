@@ -1172,7 +1172,9 @@ export const apiService = {
             phone: backendUser.phone,
             email: backendUser.email,
             role: backendUser.role,
-            avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(backendUser.name)}`,
+            avatarUrl:
+              backendUser.avatarUrl ||
+              `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(backendUser.name)}`,
             createdAt: backendUser.createdAt || new Date().toISOString(),
           };
 
@@ -1252,7 +1254,9 @@ export const apiService = {
             phone: backendUser.phone,
             email: backendUser.email,
             role: 'ADMIN',
-            avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(backendUser.name)}`,
+            avatarUrl:
+              backendUser.avatarUrl ||
+              `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(backendUser.name)}`,
             createdAt: backendUser.createdAt || new Date().toISOString(),
           };
 
@@ -1342,7 +1346,9 @@ export const apiService = {
             phone: backendUser.phone,
             email: backendUser.email,
             role: backendUser.role,
-            avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(backendUser.name)}`,
+            avatarUrl:
+              backendUser.avatarUrl ||
+              `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(backendUser.name)}`,
             createdAt: backendUser.createdAt || new Date().toISOString(),
           };
 
@@ -1479,6 +1485,9 @@ export const apiService = {
             email: u.email,
             phone: u.phone,
             role: u.role,
+            avatarUrl: u.avatarUrl,
+            gender: u.gender,
+            age: u.age,
             createdAt: u.createdAt || new Date().toISOString(),
           };
           return wrapSuccess(user);

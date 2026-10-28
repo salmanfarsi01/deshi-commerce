@@ -11,17 +11,23 @@ public class UserProfileResponse {
     private String email;
     private Role role;
     private boolean active;
+    private String avatarUrl;
 
     public UserProfileResponse() {
     }
 
     public UserProfileResponse(String id, String name, String phone, String email, Role role, boolean active) {
+        this(id, name, phone, email, role, active, null);
+    }
+
+    public UserProfileResponse(String id, String name, String phone, String email, Role role, boolean active, String avatarUrl) {
         this.id = id;
         this.name = name;
         this.phone = phone;
         this.email = email;
         this.role = role;
         this.active = active;
+        this.avatarUrl = avatarUrl;
     }
 
     public static UserProfileResponse fromUser(User user) {
@@ -34,7 +40,8 @@ public class UserProfileResponse {
                 user.getPhone(),
                 user.getEmail(),
                 user.getRole(),
-                user.isActive()
+                user.isActive(),
+                user.getAvatarUrl()
         );
     }
 
@@ -84,5 +91,13 @@ public class UserProfileResponse {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 }

@@ -35,6 +35,9 @@ public class User {
     @Column(name = "active", nullable = false)
     private boolean active;
 
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -42,6 +45,10 @@ public class User {
     }
 
     public User(String id, String name, String phone, String email, String password, Role role, boolean active, Instant createdAt) {
+        this(id, name, phone, email, password, role, active, createdAt, null);
+    }
+
+    public User(String id, String name, String phone, String email, String password, Role role, boolean active, Instant createdAt, String avatarUrl) {
         this.id = id;
         this.name = name;
         this.phone = phone;
@@ -50,6 +57,7 @@ public class User {
         this.role = role;
         this.active = active;
         this.createdAt = createdAt != null ? createdAt : Instant.now();
+        this.avatarUrl = avatarUrl;
     }
 
     public String getId() {
@@ -106,6 +114,14 @@ public class User {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 
     public Instant getCreatedAt() {

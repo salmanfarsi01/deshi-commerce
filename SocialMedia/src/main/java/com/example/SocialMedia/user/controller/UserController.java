@@ -46,7 +46,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("Notifications retrieved successfully", list));
     }
 
-    @PutMapping("/me")
+    @RequestMapping(value = "/me", method = {RequestMethod.PUT, RequestMethod.PATCH})
     public ResponseEntity<ApiResponse<UserProfileResponse>> updateProfile(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @Valid @RequestBody UpdateProfileRequest request) {
